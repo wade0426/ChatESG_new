@@ -40,7 +40,7 @@
 - **ReportName** (報告書名稱)
 - **CompanyDataID** (公司資料ID)
 - **ReportContent** (報告書內容) [JSON]
-- **ReportSetting** (報告書設定檔) [JSON]
+- **ReportSetting** (報告書設定檔) [JSON] [JSON要設定章節是否是唯讀]
 - **ReportTemplate** (準則模板) [直接給準則模板ID]
 - **ReportStatus** (報告書狀態)  
   e.g. "Draft(草稿)", "Audit(審核中)", "Finish(完成)"

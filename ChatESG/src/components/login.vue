@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-container">
       <div class="logo-container">
-        <img src="@/assets/logo.svg" alt="Logo" class="logo">
+        <img src="@/assets/logo_chatesg.png" alt="Logo" class="logo">
       </div>
       <h1 class="title">登入</h1>
       
@@ -39,36 +39,82 @@
         
         <div class="links">
           <a href="#" class="forgot-password">忘記密碼?</a>
-          <a href="#" class="create-account">建立新帳號</a>
+          <a href="/signup" class="create-account">建立新帳號</a>
         </div>
       </div>
     </div>
   </div>
+  <div id="toast"
+        style="display: none; position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 5px; color: white; z-index: 1000;">
+  </div>
 </template>
 
 <script>
+// 導出模組默認內容，在一個文件中定義主要的功能或組件，可以被其他文件引用和使用。
 export default {
+
   name: 'Login',
   data() {
     return {
       username: '',
       password: '',
-      rememberMe: false
+      rememberMe: false,
+      userID: null,
     }
   },
+
   methods: {
     handleLogin() {
-      // 處理登入邏輯
-      console.log('登入資料:', {
-        username: this.username,
-        password: this.password,
-        rememberMe: this.rememberMe
-      })
+      // 模擬與資料庫的API請求
+      const mockApiCall = () => {
+        return new Promise((resolve, reject) => {
+          // 假設正確的帳號密碼
+          if(this.username === 'admin' && this.password === '1') {
+            resolve({
+              status: 'success',
+              userID: 'user_123'
+            });
+          } else {
+            reject({
+              status: 'error',
+              message: '帳號或密碼錯誤'
+            });
+          }
+        });
+      }
+
+      // 執行登入
+      mockApiCall()
+        .then(response => {
+          this.userID = response.userID;
+          this.showToast('登入成功!', true);
+          // 如果勾選記住我,可以將資訊存入localStorage
+          if(this.rememberMe) {
+            localStorage.setItem('userID', this.userID);
+          }
+          // 這裡可以加入路由導航到首頁
+        })
+        .catch(error => {
+          this.showToast(error.message, false);
+          this.password = ''; // 清空密碼
+        });
+    },
+
+    showToast(message, isSuccess) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
+      toast.style.display = 'block';
+
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
     }
   }
 }
 </script>
 
+<!-- scoped 用於限制樣式只影響此元件 -->
 <style scoped>
 .login-page {
   min-height: 100vh;
@@ -86,7 +132,7 @@ export default {
   width: 100%;
   max-width: 400px;
   padding: 40px 20px;
-  background-color: #111;
+  background-color: #1c1c1e;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
@@ -97,7 +143,7 @@ export default {
 }
 
 .logo {
-  width: 60px;
+  width: 200px;
   height: auto;
 }
 
@@ -178,4 +224,3 @@ export default {
   text-decoration: underline;
 }
 </style>
-
