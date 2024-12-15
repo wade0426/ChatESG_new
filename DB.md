@@ -27,7 +27,8 @@
 ### 公司基本資料表
 - **CompanyDataID** (公司資料ID) [PK]
 - **CompanyDataName** (公司資料名稱)
-- **CompanyDataContent** (公司資料內容) [JSON]
+- **CompanyDataContent** (公司資料內容) [JSON] 
+ e.g. {"章節1":{"前言":"","長官的話":""},"章節2":{"前言":"","長官的話":""}}
 
 ### 準則模板表
 - **CriteriaTemplateID** (準則模板ID) [PK]
