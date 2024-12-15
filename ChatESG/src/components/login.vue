@@ -54,7 +54,7 @@
 export default {
 
   name: 'Login',
-  data() {
+  data() { // 定義元件的資料
     return {
       username: '',
       password: '',
@@ -63,8 +63,13 @@ export default {
     }
   },
 
+  // mounted 生命週期鉤子 (DOM後立即執行)
+  mounted() {
+    this.init();
+  },
+
   methods: {
-    handleLogin() {
+    handleLogin() { //事件觸發
       // 模擬與資料庫的API請求
       const mockApiCall = () => {
         return new Promise((resolve, reject) => {
@@ -88,11 +93,15 @@ export default {
         .then(response => {
           this.userID = response.userID;
           this.showToast('登入成功!', true);
+          // 設定 sessionStorage
+          sessionStorage.setItem('userID', this.userID);
           // 如果勾選記住我,可以將資訊存入localStorage
           if(this.rememberMe) {
-            localStorage.setItem('userID', this.userID);
+            // 存 username 讓使用者登出時可以更快登入
+            localStorage.setItem('username', this.username);
           }
-          // 這裡可以加入路由導航到首頁
+          // 路由導航到首頁
+          this.$router.push('/home');
         })
         .catch(error => {
           this.showToast(error.message, false);
@@ -100,7 +109,7 @@ export default {
         });
     },
 
-    showToast(message, isSuccess) {
+    showToast(message, isSuccess) { //顯示提示訊息
       const toast = document.getElementById('toast');
       toast.textContent = message;
       toast.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
@@ -109,6 +118,13 @@ export default {
       setTimeout(() => {
         toast.style.display = 'none';
       }, 3000);
+    },
+
+    init() { //初始化
+      this.username = localStorage.getItem('username') || '';
+      if (this.username) {
+        this.rememberMe = true;
+      }
     }
   }
 }
@@ -139,7 +155,7 @@ export default {
 
 .logo-container {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 0%;
 }
 
 .logo {
