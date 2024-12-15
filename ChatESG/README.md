@@ -1,66 +1,29 @@
-# ChatESG_new
+# ChatESG
 
-### ESG永續報告書生成系統規劃
+This template should help get you started developing with Vue 3 in Vite.
 
-#### 前端標準化工作項目
+## Recommended IDE Setup
 
-1. **建立組織介面**
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
 
-   - **功能**：
-     - 建立組織
-     - 組織人員新增刪除
-     - 組織人員權限(身份組)
+## Customize configuration
 
-2. **建立報告書介面**
+See [Vite Configuration Reference](https://vite.dev/config/).
 
-   - **功能**：
-     - 選擇產業
-     - 輸入報告書名稱
-     - 選擇組織
+## Project Setup
 
-3. **建立準則模板**
+```sh
+npm install
+```
 
-   - **功能**：
-     - 準則模板名稱
+### Compile and Hot-Reload for Development
 
-4. **公司資訊輸入介面**
+```sh
+npm run dev
+```
 
-   - **要求**：
-     - 使用章節進行區分
-     - 每一章節使用獨立頁面以避免該頁面擠在一起帶來亂七八糟
-     - 提供範例功能以便使用者參考輸入
-     - 即時存檔能力：確保在瀏覽器關閉或中斷時不會丟失資料
-     - 可視化進度條：顯示使用者的寫作進度
+### Compile and Minify for Production
 
-5. **生成設定介面**
-
-   - **要求**：
-     - 選擇要帶入哪一個分公司的資料
-     - 設定需要生成的章節（自訂模板）或直接快速生成
-
-6. **生成編輯介面**
-
-   - **功能要求**：
-     - [準則檢驗]：確保每段內容符合相關準則
-     - [左邊章節導覽列，右邊內容編輯器]：
-       - 左邊章節可以拖動調整位置
-       - 章節鎖定
-       - 右邊內容，要注意圖表的擺放位置
-     - 能超連結或彈出視窗，直接跳至公司資訊頁面
-     - 歷史紀錄功能（版本管理）
-     - 提供圖表模板和範例
-     - 提供生成圖表和新增圖表功能
-     - 即時存檔：確保瀏覽器關閉或中斷時不會丟失資料
-     - 權限管理：自行選擇要使用哪條法規檢驗報告書
-
-7. **審核系統**
-
-   - **要求**：
-     - 審核完成后，報告書輸入唯讀狀態
-     - 可查看編輯紀錄
-
-8. **報告書的權限管理介面**
-
-   - **功能要求**：
-     - 管理該份報告書何人可以進行編輯，能夠編輯的內容
-     - 每個章節可分別設定檢視和編輯權限
+```sh
+npm run build
+```
