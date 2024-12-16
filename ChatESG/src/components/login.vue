@@ -104,6 +104,7 @@ export default {
           this.$router.push('/home');
         })
         .catch(error => {
+          // 顯示錯誤訊息
           this.showToast(error.message, false);
           this.password = ''; // 清空密碼
         });
