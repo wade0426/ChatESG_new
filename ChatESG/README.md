@@ -6,6 +6,14 @@
 
 ### 安裝指引
 
+請使用以下指令安裝所需的 Vue 套件：
+```
+npm install @tiptap/vue-3 @tiptap/pm @tiptap/starter-kit
+npm install @tiptap/extension-table @tiptap/extension-table-row @tiptap/extension-table-cell @tiptap/extension-table-header
+<!-- (改用MDI)npm install @material-icons/font -->
+npm install @mdi/font
+```
+
 請使用以下指令安裝所需的 Python 套件：
 ```
 pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] python-multipart
