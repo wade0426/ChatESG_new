@@ -51,15 +51,21 @@
 
 <script>
 // 導出模組默認內容，在一個文件中定義主要的功能或組件，可以被其他文件引用和使用。
+import { useUserStore } from '@/stores/user'
+
 export default {
 
   name: 'Login',
+  setup() {
+    const userStore = useUserStore()
+    return { userStore }
+  },
+
   data() { // 定義元件的資料
     return {
       username: '',
       password: '',
       rememberMe: false,
-      userID: null,
     }
   },
 
@@ -91,23 +97,23 @@ export default {
       // 執行登入
       mockApiCall()
         .then(response => {
-          this.userID = response.userID;
-          this.showToast('登入成功!', true);
-          // 設定 sessionStorage
-          sessionStorage.setItem('userID', this.userID);
-          // 如果勾選記住我,可以將資訊存入localStorage
+          // 使用 Pinia store 來管理登入狀態
+          this.userStore.login(response.userID, this.username)
+          
+          this.showToast('登入成功!', true)
+          
+          // 如果勾選記住我
           if(this.rememberMe) {
-            // 存 username 讓使用者登出時可以更快登入
-            localStorage.setItem('username', this.username);
+            localStorage.setItem('username', this.username)
           }
-          // 路由導航到首頁
-          this.$router.push('/home');
+          
+          this.$router.push('/home')
         })
         .catch(error => {
           // 顯示錯誤訊息
-          this.showToast(error.message, false);
-          this.password = ''; // 清空密碼
-        });
+          this.showToast(error.message, false)
+          this.password = '' // 清空密碼
+        })
     },
 
     showToast(message, isSuccess) { //顯示提示訊息

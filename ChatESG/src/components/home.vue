@@ -100,11 +100,15 @@
 
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
 
 const isSidebarOpen = ref(false)
+const router = useRouter()
+const userStore = useUserStore()
 
 const openNav = () => {
     isSidebarOpen.value = true
@@ -146,6 +150,19 @@ const createReport = () => {
     });
     hideReportModal(); // 關閉小視窗
 };
+
+// 確保用戶已登入
+onMounted(() => {
+  if (!userStore.isAuthenticated) {
+    // 嘗試從 storage 恢復狀態
+    userStore.initializeFromStorage()
+    
+    // 如果仍未認證,跳轉到登入頁
+    if (!userStore.isAuthenticated) {
+      router.push('/login')
+    }
+  }
+})
 </script>
 
 
