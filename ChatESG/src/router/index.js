@@ -20,6 +20,12 @@ const router = createRouter({
             name: 'Signup',
             component: () => import('../components/signup.vue'),
             meta: { requiresAuth: false }
+        },
+        {
+            path: '/company-info-edit',
+            name: 'CompanyInfoEdit',
+            component: () => import('../components/CompanyInfoEdit.vue'),
+            meta: { requiresAuth: true }
         }
     ]
 })
