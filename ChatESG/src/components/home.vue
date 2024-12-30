@@ -6,16 +6,16 @@
     <div class="toolbar">
         <a href="#" class="tool-item">
             <i>📋</i>
-            <span>公司基本資料</span>
+            <span>建立公司基本資料</span>
+        </a>
+        <a href="#" class="tool-item">
+            <i>📊</i>
+            <span>建立準則模板</span>
         </a>
         <!-- 建立文件按鈕 -->
         <a href="javascript:void(0)" class="tool-item" @click="showReportModal">
             <i>📄</i>
             <span>建立文件</span>
-        </a>
-        <a href="#" class="tool-item">
-            <i>📊</i>
-            <span>簡報</span>
         </a>
         <a href="#" class="tool-item">
             <i>📝</i>
@@ -34,10 +34,10 @@
     <!-- 快捷功能區 -->
     <div style="display: flex; justify-content: center; gap: 10px; margin: 20px 0;">
         <button style="background-color: #3A3B3C; border: none; color: white; padding: 8px 16px; border-radius: 20px;">
-            📄 建立文件
+            📄 測試1
         </button>
         <button style="background-color: #3A3B3C; border: none; color: white; padding: 8px 16px; border-radius: 20px;">
-            📄 測試
+            📄 測試2
         </button>
     </div>
 
@@ -95,6 +95,9 @@ onMounted(() => {
 
 
 <style scoped>
+/* import 要放在最上面 */
+@import "@/assets/home.css";
+
 /* Toolbar 樣式 */
 .toolbar {
     display: flex;
@@ -148,6 +151,4 @@ onMounted(() => {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
 }
-
-@import "@/assets/home.css";
 </style>

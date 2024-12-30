@@ -41,29 +41,37 @@ fake_users_db = {
     "admin": {
         "username": "admin",
         "password": bcrypt.hashpw("1".encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-        "user_id": "user_123"
+        "user_id": "1",
+        "avatarUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYgxhfgMx7eTgoyIVGOHtM_m4KukKe1NdeKQKcFM1ayUvCc5Zpf16w1k2PMn9tcdIjm0A&usqp=CAU",
+        "organization": "國立臺中科技大學"
     }
 }
+
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 class User(BaseModel):
     username: str
     password: str
 
+
 class UserInDB(User):
     user_id: str
+
 
 def verify_password(plain_password, hashed_password):
     # 修改密碼驗證方法
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
+
 def get_password_hash(password):
     # 修改密碼加密方法
     salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -74,6 +82,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 @app.post("/api/login")
 async def login(form_data: User):
@@ -109,6 +118,7 @@ async def login(form_data: User):
         "username": user["username"]
     }
 
+
 @app.post("/api/register")
 async def register(user: User):
     if user.username in fake_users_db:
@@ -127,6 +137,22 @@ async def register(user: User):
     }
     
     return {"status": "success", "message": "註冊成功"}
+
+
+@app.post("/api/user/profile")
+async def get_user_profile(user_data: dict):
+    user_id = user_data.get("user_id")
+    # 使用用户名而不是 user_id 来查找用户
+    for username, user in fake_users_db.items():
+        if user["user_id"] == user_id:
+            return {
+                "userName": user["username"],
+                "userID": user["user_id"],
+                "avatarUrl": user.get("avatarUrl", ""),
+                "organization": user.get("organization", "")
+            }
+    raise HTTPException(status_code=404, detail="未找到用户")
+
 
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

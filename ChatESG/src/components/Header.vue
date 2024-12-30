@@ -12,7 +12,12 @@
                         d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                 </svg>
             </div>
-            <input type="text" placeholder="搜尋您的內容。">
+            <input 
+                type="text" 
+                placeholder="搜尋您的內容。"
+                v-model="searchQuery"
+                @input="handleSearchInput"
+            >
         </div>
         <div class="user-profile" @click="toggleDropdown">
             <div class="user-avatar" id="user-avatar"></div>
@@ -29,8 +34,6 @@
                     <a href="#"><span>設定</span></a>
                     <a href="#"><span>最新消息</span></a>
                     <a href="#"><span>方案和定價</span></a>
-                    <a href="#"><span>建議改善事項</span></a>
-                    <a href="#"><span>檢舉內容</span></a>
                     <a href="#"><span>隱私權政策</span></a>
                     <div class="menu-divider"></div>
                     <a href="#" @click="logout"><span>登出</span></a>
@@ -41,7 +44,28 @@
 </template>
 
 <script setup>
+import { ref, watch, onMounted } from 'vue'
+
 const emit = defineEmits(['openNav'])
+
+// 使用 ref 函式建立可被監聽的變數
+const userName = ref('')
+const userID = ref('')
+const userAvatarUrl = ref('')
+const userOrganization = ref('')
+
+// 新增搜索相關的響應式變量
+const searchQuery = ref('')
+
+// 監聽搜索輸入
+const handleSearchInput = () => {
+    console.log('搜索內容:', searchQuery.value)
+}
+
+// 也可以使用watch來監聽搜索內容的變化
+watch(searchQuery, (newValue) => {
+    console.log('搜索內容更新為:', newValue)
+})
 
 const handleOpenNav = () => {
     emit('openNav')
@@ -54,7 +78,66 @@ const toggleDropdown = () => {
 const logout = () => {
     console.log("登出");
 }
+
+// 從API獲取用戶資料
+const fetchUserData = async () => {
+    try {
+        // 從 sessionStorage 獲取使用者ID
+        const storedUserID = sessionStorage.getItem('userID')
+        if (!storedUserID) {
+            console.error('未找到使用者ID')
+            return
+        }
+        
+        const response = await fetch('http://localhost:8000/api/user/profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: storedUserID })
+        })
+
+        if (!response.ok) {
+            throw new Error('獲取使用者資料失敗')
+        }
+
+        const data = await response.json()
+        
+        // 更新使用者資料
+        userName.value = data.userName
+        userID.value = data.userID
+        userAvatarUrl.value = data.avatarUrl || ''
+        userOrganization.value = data.organization || ''
+        
+        // 更新界面
+        updateUserInterface()
+    } catch (error) {
+        console.error('獲取使用者資料失敗:', error)
+    }
+}
+
+const updateUserInterface = () => {
+    const userAvatarElement = document.getElementById('user-avatar')
+    if (userAvatarElement) {
+        userAvatarElement.style.backgroundImage = `url(${userAvatarUrl.value})`
+    }
+
+    const organizationElement = document.getElementById('organization-name')
+    if (organizationElement) {
+        organizationElement.textContent = userOrganization.value
+    }
+
+    const userNameElement = document.getElementById('user-name')
+    if (userNameElement) {
+        userNameElement.textContent = userName.value
+    }
+}
+
+onMounted(() => {
+    fetchUserData()
+})
 </script>
+
 
 <style scoped>
 .header {
@@ -129,16 +212,29 @@ const logout = () => {
     border-radius: 50%;
     background-color: #3A3B3C;
     margin-right: 10px;
+    background-size: cover;
+    background-position: center;
 }
 
 .user-info {
     text-align: left;
+    display: flex;
+    flex-direction: column;
+    margin-right: 5px;
 }
 
-.organization-name,
-.user-name {
+.organization-name {
+    color: #E4E6EB;
+    font-weight: 600;
     display: block;
-    font-size: 14px;
+    line-height: 1.2;
+}
+
+.user-name {
+    color: #B0B3B8;
+    font-size: 100%;
+    display: block;
+    line-height: 1.2;
 }
 
 .dropdown-arrow {
