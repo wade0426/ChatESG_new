@@ -100,6 +100,12 @@ export default {
           // 使用 Pinia store 來管理登入狀態
           this.userStore.login(response.userID, this.username)
           
+          // 設置認證狀態
+          localStorage.setItem('user', JSON.stringify({
+            userID: response.userID,
+            username: this.username
+          }))
+          
           this.showToast('登入成功!', true)
           
           // 如果勾選記住我
@@ -107,7 +113,12 @@ export default {
             localStorage.setItem('username', this.username)
           }
           
-          this.$router.push('/home')
+          // 確保在設置完認證狀態後再跳轉
+          this.$router.push('/home').catch(err => {
+            console.error('路由跳轉錯誤:', err)
+            // 可以在這裡添加錯誤提示
+            this.showToast('跳轉失敗，請稍後再試', false)
+          })
         })
         .catch(error => {
           // 顯示錯誤訊息
