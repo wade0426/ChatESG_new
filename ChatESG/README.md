@@ -4,6 +4,16 @@
 
 #### 前端標準化工作項目
 
+### 安裝指引
+
+請使用以下指令安裝所需的 Python 套件：
+```
+pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] python-multipart
+pip install PyJWT
+pip install bcrypt
+pip install passlib
+```
+
 1. **身份驗證相關頁面**
    - **登入頁面 (Login.vue)**
      - 登入表單
