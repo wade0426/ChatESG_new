@@ -104,17 +104,80 @@ export default {
     display: flex;
     justify-content: center;
     align-items: center;
+    background-color: #000;
 }
 
 .signup-container {
-    composes: container;  /* 使用全局容器樣式 */
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    background-color: #1c1c1e;
+    border-radius: 18px;
+    box-shadow: 0 2px 20px rgba(255, 255, 255, 0.1);
 }
 
-/* 只保留特定於註冊頁面的獨特樣式 */
 .logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.logo img {
     width: 140px;
     height: 120px;
 }
 
-/* ... 其他特定樣式 ... */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.terms {
+    display: flex;
+    align-items: flex-start;
+    margin: 20px 0;
+    color: #8e8e93;
+    font-size: 14px;
+}
+
+.terms input[type="checkbox"] {
+    margin-right: 8px;
+    margin-top: 3px;
+}
+
+.links {
+    text-align: center;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.links a {
+    color: #0a84ff;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 10px 0;
+    width: 100%;
+}
+
+.button[disabled] {
+    position: relative;
+}
+
+.button[disabled]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+    white-space: pre-line;
+    margin-bottom: 8px;
+    z-index: 1000;
+    width: max-content;
+    max-width: 300px;
+}
 </style>
