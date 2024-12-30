@@ -75,56 +75,49 @@ export default {
   },
 
   methods: {
-    handleLogin() { //事件觸發
-      // 模擬與資料庫的API請求
-      const mockApiCall = () => {
-        return new Promise((resolve, reject) => {
-          // 假設正確的帳號密碼
-          if(this.username === 'admin' && this.password === '1') {
-            resolve({
-              status: 'success',
-              userID: 'user_123'
-            });
-          } else {
-            reject({
-              status: 'error',
-              message: '帳號或密碼錯誤'
-            });
-          }
-        });
-      }
-
-      // 執行登入
-      mockApiCall()
-        .then(response => {
-          // 使用 Pinia store 來管理登入狀態
-          this.userStore.login(response.userID, this.username)
-          
-          // 設置認證狀態
-          localStorage.setItem('user', JSON.stringify({
-            userID: response.userID,
-            username: this.username
-          }))
-          
-          this.showToast('登入成功!', true)
-          
-          // 如果勾選記住我
-          if(this.rememberMe) {
-            localStorage.setItem('username', this.username)
-          }
-          
-          // 確保在設置完認證狀態後再跳轉
-          this.$router.push('/home').catch(err => {
-            console.error('路由跳轉錯誤:', err)
-            // 可以在這裡添加錯誤提示
-            this.showToast('跳轉失敗，請稍後再試', false)
+    async handleLogin() {
+      try {
+        const response = await fetch('http://localhost:8000/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: this.username,
+            password: this.password
           })
-        })
-        .catch(error => {
-          // 顯示錯誤訊息
-          this.showToast(error.message, false)
-          this.password = '' // 清空密碼
-        })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail);
+        }
+
+        // 使用 Pinia store 來管理登入狀態
+        this.userStore.login(data.userID, data.username);
+        
+        // 儲存認證信息
+        localStorage.setItem('user', JSON.stringify({
+          userID: data.userID,
+          username: data.username,
+          token: data.access_token
+        }));
+        
+        this.showToast('登入成功!', true);
+        
+        // 如果勾選記住我
+        if(this.rememberMe) {
+          localStorage.setItem('username', this.username);
+        }
+        
+        // 跳轉到首頁
+        this.$router.push('/home');
+        
+      } catch (error) {
+        this.showToast(error.message, false);
+        this.password = ''; // 清空密碼
+      }
     },
 
     showToast(message, isSuccess) { //顯示提示訊息
