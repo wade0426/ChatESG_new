@@ -1,0 +1,185 @@
+<template>
+    <div class="header">
+        <div class="menu-icon" @click="handleOpenNav">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <div class="search-bar">
+            <div class="search-icon">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+            </div>
+            <input type="text" placeholder="搜尋您的內容。">
+        </div>
+        <div class="user-profile" @click="toggleDropdown">
+            <div class="user-avatar" id="user-avatar"></div>
+            <div class="user-info">
+                <span class="organization-name" id="organization-name"></span>
+                <span class="user-name" id="user-name"></span>
+            </div>
+            <span class="dropdown-arrow">▼</span>
+            <div class="dropdown-menu" id="userDropdown">
+                <div class="dropdown-menu-content">
+                    <a href="#"><span>帳號</span></a>
+                    <a href="#"><span>邀請成員</span></a>
+                    <div class="menu-divider"></div>
+                    <a href="#"><span>設定</span></a>
+                    <a href="#"><span>最新消息</span></a>
+                    <a href="#"><span>方案和定價</span></a>
+                    <a href="#"><span>建議改善事項</span></a>
+                    <a href="#"><span>檢舉內容</span></a>
+                    <a href="#"><span>隱私權政策</span></a>
+                    <div class="menu-divider"></div>
+                    <a href="#" @click="logout"><span>登出</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script setup>
+const emit = defineEmits(['openNav'])
+
+const handleOpenNav = () => {
+    emit('openNav')
+}
+
+const toggleDropdown = () => {
+    document.getElementById("userDropdown").classList.toggle("show");
+}
+
+const logout = () => {
+    console.log("登出");
+}
+</script>
+
+<style scoped>
+.header {
+    background-color: #242526;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.menu-icon {
+    cursor: pointer;
+    padding: 10px;
+}
+
+.menu-icon div {
+    width: 25px;
+    height: 3px;
+    background-color: white;
+    margin: 5px 0;
+    border-radius: 3px;
+}
+
+.search-bar {
+    flex: 1;
+    max-width: 600px;
+    margin: 0 20px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: #3A3B3C;
+    border-radius: 20px;
+    padding: 5px 15px;
+}
+
+.search-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+}
+
+.search-icon svg {
+    fill: #B0B3B8;
+}
+
+.search-bar input {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 15px;
+    padding: 5px;
+    width: 100%;
+}
+
+.search-bar input:focus {
+    outline: none;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #3A3B3C;
+    margin-right: 10px;
+}
+
+.user-info {
+    text-align: left;
+}
+
+.organization-name,
+.user-name {
+    display: block;
+    font-size: 14px;
+}
+
+.dropdown-arrow {
+    margin-left: 5px;
+    font-size: 12px;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: #242526;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    margin-top: 5px;
+    min-width: 200px;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-menu-content {
+    padding: 8px 0;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 8px 16px;
+    color: white;
+    text-decoration: none;
+}
+
+.dropdown-menu a:hover {
+    background-color: #3A3B3C;
+}
+
+.menu-divider {
+    height: 1px;
+    background-color: #3A3B3C;
+    margin: 8px 0;
+}
+</style> 
