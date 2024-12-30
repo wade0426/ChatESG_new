@@ -33,8 +33,8 @@
 
             <!-- 動作按鈕 -->
             <div class="modal-actions">
-                <button @click="createReport">建立</button>
                 <button @click="hideModal">取消</button>
+                <button @click="createReport">建立</button>
             </div>
         </div>
     </dialog>
@@ -124,7 +124,7 @@ dialog {
     color: white;
 }
 
-.modal-actions button:nth-child(2) {
+.modal-actions button:nth-child(1) {
     background-color: #f44336;
 }
 </style> 

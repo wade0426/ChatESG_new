@@ -4,7 +4,7 @@
     
     <!-- 其餘內容保持不變 -->
     <div class="toolbar">
-        <a href="#" class="tool-item">
+        <a href="javascript:void(0)" class="tool-item" @click="showCreateCompanyInfoModal">
             <i>📋</i>
             <span>建立公司基本資料</span>
         </a>
@@ -43,6 +43,7 @@
 
     <!-- 引入報告書彈窗組件 -->
     <ReportModal ref="reportModalRef" />
+    <CreateCompanyInfoModal ref="createCompanyInfoModalRef" />
 
     <!-- 最近設計 -->
     <div class="recent-designs">
@@ -59,6 +60,7 @@ import { ref, onMounted } from "vue";
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import ReportModal from './ReportModal.vue'
+import CreateCompanyInfoModal from './CreateCompanyInfoModal.vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 
@@ -66,6 +68,7 @@ const isSidebarOpen = ref(false)
 const router = useRouter()
 const userStore = useUserStore()
 const reportModalRef = ref(null)
+const createCompanyInfoModalRef = ref(null)
 
 const openNav = () => {
     isSidebarOpen.value = true
@@ -77,6 +80,10 @@ const closeNav = () => {
 
 const showReportModal = () => {
     reportModalRef.value.showModal()
+}
+
+const showCreateCompanyInfoModal = () => {
+    createCompanyInfoModalRef.value.showModal()
 }
 
 // 確保用戶已登入

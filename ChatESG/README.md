@@ -123,9 +123,19 @@ pip install passlib
      - 準則分類管理
      - 模板創建和編輯功能
      - 準則關聯性說明：在勾選準則時，能提供準則之間的關聯性和適用性說明
+   - **準則模板編輯頁面 (StandardTemplateEdit.vue)**
+     - 編輯現有的準則模板
+     - 儲存和取消編輯功能
+   - **建立公司基本資料組件 (CreateCompanyInfoModal.vue)**
+     - 建立公司基本資料
+     - 公司基本資料名稱不可超過100個字
+     - 產業選擇
    - **公司資料管理頁面 (CompanyInfoManagement.vue)**
      - 公司基本資料表單 (使用 Json 格式)
      - 分章節資料管理
+   - **公司基本資料編輯頁面 (CompanyInfoEdit.vue)**
+     - 編輯公司的基本資料
+     - 儲存和取消編輯功能
 
 5. **審核相關頁面**
    - **審核管理頁面 (ReviewManagement.vue)**
