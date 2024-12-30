@@ -104,12 +104,12 @@
             </select>
             
             <!-- 勾選是否載入預設章節 -->
-            <div class="checkbox-container">
+            <!-- <div class="checkbox-container">
                 <label>
                     <span class="checkbox-label">是否自動載入預設章節</span>
                     <input type="checkbox" v-model="autoLoadSections" />
                 </label>
-            </div>
+            </div> -->
 
             <!-- 選擇公司基本資料 -->
             <label for="companyAsset">公司基本資料 (資產)</label>

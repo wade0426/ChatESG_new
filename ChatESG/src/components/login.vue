@@ -134,110 +134,105 @@ export default {
 <!-- scoped 用於限制樣式只影響此元件 -->
 <style scoped>
 .login-page {
-  min-height: 100vh;
-  width: 100vw;
-  background-color: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  top: 0;
-  left: 0;
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
 }
 
 .login-container {
-  width: 100%;
-  max-width: 400px;
-  padding: 40px 20px;
-  background-color: #1c1c1e;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    composes: container;  /* 使用全局容器樣式 */
 }
 
+/* 只保留特定於登入頁面的獨特樣式 */
 .logo-container {
-  text-align: center;
-  margin-bottom: 0%;
+    text-align: center;
+    margin-bottom: 0%;
 }
 
 .logo {
-  width: 200px;
-  height: auto;
+    width: 200px;
+    height: auto;
 }
 
 .title {
-  color: #fff;
-  text-align: center;
-  font-size: 24px;
-  margin-bottom: 32px;
-  font-weight: 500;
+    color: #fff;
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 32px;
+    font-weight: 500;
 }
 
 .form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .input-field {
-  padding: 14px 16px;
-  border: 1px solid #333;
-  border-radius: 8px;
-  background-color: #1a1a1a;
-  color: #fff;
-  font-size: 16px;
-  transition: all 0.3s ease;
+    padding: 14px 16px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background-color: #1a1a1a;
+    color: #fff;
+    font-size: 16px;
+    transition: all 0.3s ease;
 }
 
 .input-field:focus {
-  outline: none;
-  border-color: #007bff;
-  background-color: #222;
+    outline: none;
+    border-color: #007bff;
+    background-color: #222;
 }
 
 .input-field::placeholder {
-  color: #666;
+    color: #666;
 }
 
 .remember-me {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #fff;
-  font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: 14px;
 }
 
 .login-button {
-  width: 100%;
-  padding: 14px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: background-color 0.3s ease;
+    width: 100%;
+    padding: 14px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
 }
 
 .login-button:hover {
-  background-color: #0056b3;
+    background-color: #0056b3;
 }
 
 .links {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
 }
 
 .links a {
-  color: #007bff;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.3s ease;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
 }
 
 .links a:hover {
-  color: #0056b3;
-  text-decoration: underline;
+    color: #0056b3;
+    text-decoration: underline;
 }
 </style>
