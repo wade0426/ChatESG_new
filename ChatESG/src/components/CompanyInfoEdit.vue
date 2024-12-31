@@ -135,11 +135,51 @@
       <div class="editor-content">
         <!-- 只有在選中最小層級標題時才顯示輸入框 -->
         <div v-if="isLeafSection(selectedSection)" class="input-area">
-          <textarea 
-            v-model="sectionContents[selectedSection]" 
-            class="content-textarea"
-            :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
-          ></textarea>
+          <div class="content-wrapper">
+            <textarea 
+              v-model="sectionContents[selectedSection]" 
+              class="content-textarea"
+              :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
+            ></textarea>
+            
+            <!-- 註解按鈕 -->
+            <button 
+              class="add-comment-btn"
+              @click="addComment(selectedSection)"
+              v-if="!comments[selectedSection] || !showCommentPanel"
+            >
+              <i class="mdi mdi-comment-plus-outline"></i>
+              <span>{{ comments[selectedSection] ? '查看註解' : '添加註解' }}</span>
+            </button>
+
+            <!-- 註解面板 -->
+            <div v-if="comments[selectedSection]" class="comment-panel" :class="{ 'show': showCommentPanel }">
+              <div class="comment-header">
+                <h4>註解</h4>
+                <div class="comment-actions">
+                  <button 
+                    class="status-btn"
+                    :class="{ 'resolved': comments[selectedSection].status === 'resolved' }"
+                    @click="updateCommentStatus(selectedSection, comments[selectedSection].status === 'resolved' ? 'unfinished' : 'resolved')"
+                  >
+                    <i class="mdi" :class="comments[selectedSection].status === 'resolved' ? 'mdi-check-circle' : 'mdi-circle-outline'"></i>
+                    <span>{{ comments[selectedSection].status === 'resolved' ? '已解決' : '未完成' }}</span>
+                  </button>
+                  <button class="close-btn" @click="closeCommentPanel">
+                    <i class="mdi mdi-close"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="comment-body">
+                <textarea
+                  v-model="comments[selectedSection].content"
+                  class="comment-textarea"
+                  placeholder="請輸入註解內容..."
+                  @input="updateCommentContent(selectedSection, $event.target.value)"
+                ></textarea>
+              </div>
+            </div>
+          </div>
         </div>
         <div v-else class="no-edit-message">
           請選擇左側小標題以進行編輯
@@ -323,10 +363,20 @@ const getCurrentEditor = () => {
   return editors[selectedSection.value]
 }
 
-// 新增：儲存各區段內容的響應式對象
+// 修改：儲存各區段內容的響應式對象，包含內容和註解
 const sectionContents = ref({})
 
-// 新增：格式化資料的方法
+// 新增：註解相關的狀態
+const comments = ref({})
+const showCommentPanel = ref(false)
+const selectedCommentFilter = ref('current')
+
+// 新增：處理註解篩選變更
+const handleCommentFilterChange = (filter) => {
+  selectedCommentFilter.value = filter
+}
+
+// 修改：格式化資料的方法，加入註解
 const formatDataToJson = () => {
   const result = []
   
@@ -341,7 +391,10 @@ const formatDataToJson = () => {
         
         if (subSection.children) {
           subSection.children.forEach(item => {
-            itemData[item.title] = sectionContents.value[item.id] || ''
+            itemData[item.title] = {
+              content: sectionContents.value[item.id] || '',
+              comment: comments.value[item.id] || null
+            }
           })
         }
         
@@ -355,6 +408,37 @@ const formatDataToJson = () => {
   })
   
   return result
+}
+
+// 新增：添加註解的方法
+const addComment = (sectionId) => {
+  if (!comments.value[sectionId]) {
+    comments.value[sectionId] = {
+      create_user: 1, // 這裡應該使用實際的用戶ID
+      content: '',
+      status: 'unfinished',
+      section: getCurrentSectionTitle(), // 添加章節信息
+      created_at: new Date().toISOString() // 添加創建時間
+    }
+  }
+  showCommentPanel.value = true
+}
+
+// 新增：更新註解狀態的方法
+const updateCommentStatus = (sectionId, status) => {
+  if (comments.value[sectionId]) {
+    comments.value[sectionId].status = status
+  }
+}
+
+// 新增：更新註解內容的方法
+const updateCommentContent = (sectionId, content) => {
+  if (comments.value[sectionId]) {
+    comments.value[sectionId] = {
+      ...comments.value[sectionId],
+      content
+    }
+  }
 }
 
 // 提供給子組件的儲存方法
@@ -587,6 +671,14 @@ const closeEditModal = () => {
   showEditModal.value = false
   editingTitle.value = ''
   editingSectionId.value = null
+}
+
+// 提供註解數據給子組件
+provide('comments', comments)
+
+// 新增：關閉註解面板的方法
+const closeCommentPanel = () => {
+  showCommentPanel.value = false
 }
 </script>
 
@@ -1208,5 +1300,143 @@ const closeEditModal = () => {
 
 .dark .edit-title-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.content-wrapper {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+}
+
+.add-comment-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+  z-index: 999; /* 確保按鈕在適當的層級 */
+}
+
+.content-wrapper:hover .add-comment-btn {
+  opacity: 1;
+}
+
+.add-comment-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .add-comment-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.comment-panel {
+  position: fixed;
+  top: 60px;
+  right: -300px; /* 初始位置在視窗外 */
+  width: 300px;
+  height: calc(100vh - 60px);
+  background-color: var(--bg-color);
+  border-left: 1px solid var(--border-color);
+  transition: right 0.3s ease;
+  z-index: 1000;
+}
+
+.comment-panel.show {
+  right: 0;
+}
+
+.dark .comment-panel {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.comment-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comment-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-btn.resolved {
+  background-color: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+.close-btn {
+  padding: 0.25rem;
+  border: none;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.comment-body {
+  padding: 1rem;
+}
+
+.comment-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.dark .comment-textarea:focus {
+  border-color: #60a5fa;
 }
 </style>
