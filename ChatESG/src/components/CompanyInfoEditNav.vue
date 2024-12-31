@@ -64,7 +64,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, inject } from 'vue'
+
+// 注入父組件提供的儲存方法
+const handleSave = inject('handleSave')
 
 // 基本狀態
 const theme = ref('dark')
@@ -86,7 +89,7 @@ const toggleTheme = () => {
 }
 
 // 側邊欄控制
-const emit = defineEmits(['toggle-sidebar', 'theme-change'])
+const emit = defineEmits(['toggle-sidebar', 'theme-change', 'font-size-change'])
 const toggleSidebar = () => {
   emit('toggle-sidebar')
 }
@@ -96,11 +99,17 @@ const saveContent = () => {
   isSaved.value = false
   saveStatus.value = '儲存中...'
   
-  // 模擬儲存過程
-  setTimeout(() => {
-    isSaved.value = true
-    saveStatus.value = '已儲存'
-  }, 1000)
+  // 調用父組件的儲存方法
+  const success = handleSave()
+  
+  if (success) {
+    setTimeout(() => {
+      isSaved.value = true
+      saveStatus.value = '已儲存'
+    }, 1000)
+  } else {
+    saveStatus.value = '儲存失敗'
+  }
 }
 
 // 自動儲存設定
@@ -116,10 +125,7 @@ const updateAutoSaveInterval = () => {
 
 // 字體大小設定
 const updateFontSize = () => {
-  document.documentElement.style.setProperty('--editor-font-size', 
-    fontSize.value === 'small' ? '14px' : 
-    fontSize.value === 'medium' ? '16px' : '18px'
-  )
+  emit('font-size-change', fontSize.value)
 }
 
 // 生命週期鉤子

@@ -7,7 +7,11 @@
 <template>
   <div :class="['editor-container', theme]">
     <!-- 引入頂部導航欄 -->
-    <CompanyInfoEditNav @toggle-sidebar="toggleSidebar" @theme-change="handleThemeChange" />
+    <CompanyInfoEditNav 
+      @toggle-sidebar="toggleSidebar" 
+      @theme-change="handleThemeChange"
+      @font-size-change="handleFontSizeChange" 
+    />
     
     <!-- 側邊欄 -->
     <div class="sidebar-wrapper">
@@ -105,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, provide } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Table from '@tiptap/extension-table'
@@ -231,6 +235,47 @@ const getCurrentEditor = () => {
 // 新增：儲存各區段內容的響應式對象
 const sectionContents = ref({})
 
+// 新增：格式化資料的方法
+const formatDataToJson = () => {
+  const result = []
+  
+  sections.forEach(section => {
+    const sectionData = {}
+    
+    if (section.children) {
+      const subSectionData = {}
+      
+      section.children.forEach(subSection => {
+        const itemData = {}
+        
+        if (subSection.children) {
+          subSection.children.forEach(item => {
+            itemData[item.title] = sectionContents.value[item.id] || ''
+          })
+        }
+        
+        subSectionData[subSection.title] = itemData
+      })
+      
+      sectionData[section.title] = subSectionData
+    }
+    
+    result.push(sectionData)
+  })
+  
+  return result
+}
+
+// 提供給子組件的儲存方法
+const handleSave = () => {
+  const formattedData = formatDataToJson()
+  console.log(JSON.stringify(formattedData, null, 2))
+  return true
+}
+
+// 提供儲存方法給子組件
+provide('handleSave', handleSave)
+
 // 新增：判斷是否為最小層級（葉節點）的函數
 const isLeafSection = (sectionId) => {
   const findSection = (sections) => {
@@ -344,6 +389,16 @@ const isExpanded = (sectionId) => {
 const handleThemeChange = (newTheme) => {
   theme.value = newTheme
 }
+
+// 字體大小切換
+const handleFontSizeChange = (size) => {
+  const fontSizes = {
+    small: '14px',
+    medium: '16px',
+    large: '18px'
+  }
+  document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
+}
 </script>
 
 
@@ -361,6 +416,7 @@ const handleThemeChange = (newTheme) => {
   right: 0;
   overflow-y: auto;
   padding-top: 60px; /* 為頂部導航欄留出空間 */
+  font-size: var(--editor-font-size, 16px);
 }
 
 .editor-container.dark {
@@ -704,6 +760,7 @@ const handleThemeChange = (newTheme) => {
   resize: vertical;
   font-family: inherit;
   line-height: 1.5;
+  font-size: var(--editor-font-size, 16px);
 }
 
 .light .content-textarea {
