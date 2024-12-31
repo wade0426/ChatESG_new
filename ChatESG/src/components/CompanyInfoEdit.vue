@@ -34,6 +34,13 @@
                   <span>{{ index + 1 }}. {{ section.title }}</span>
                   <div class="section-actions">
                     <button 
+                      class="edit-title-btn"
+                      @click.stop="showEditTitleModal(section.id, section.title, $event)"
+                      title="編輯標題"
+                    >
+                      <i class="mdi mdi-pencil"></i>
+                    </button>
+                    <button 
                       class="add-subsection-btn"
                       @click.stop="showAddSubsectionModal(section.id, 1)"
                       title="新增子標題"
@@ -60,6 +67,13 @@
                       <span>{{ getAlphabetLabel(subIndex) }}. {{ subSection.title }}</span>
                       <div class="section-actions">
                         <button 
+                          class="edit-title-btn"
+                          @click.stop="showEditTitleModal(subSection.id, subSection.title, $event)"
+                          title="編輯標題"
+                        >
+                          <i class="mdi mdi-pencil"></i>
+                        </button>
+                        <button 
                           class="add-subsection-btn"
                           @click.stop="showAddSubsectionModal(subSection.id, 2)"
                           title="新增子標題"
@@ -84,6 +98,15 @@
                       >
                         <div class="section-title-content">
                           <span>{{ getRomanNumeral(itemIndex + 1) }}. {{ item.title }}</span>
+                          <div class="section-actions">
+                            <button 
+                              class="edit-title-btn"
+                              @click.stop="showEditTitleModal(item.id, item.title, $event)"
+                              title="編輯標題"
+                            >
+                              <i class="mdi mdi-pencil"></i>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -143,6 +166,25 @@
       </div>
     </div>
   </div>
+
+  <!-- 編輯標題的彈出視窗 -->
+  <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+    <div class="modal-content" @click.stop>
+      <h3>編輯標題</h3>
+      <div class="modal-form">
+        <input 
+          v-model="editingTitle" 
+          type="text" 
+          placeholder="請輸入標題名稱"
+          @keyup.enter="updateSectionTitle"
+        >
+        <div class="modal-buttons">
+          <button @click="updateSectionTitle" class="primary-btn">確認</button>
+          <button @click="closeEditModal" class="secondary-btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -167,6 +209,11 @@ const showModal = ref(false)
 const newSubsectionTitle = ref('')
 const currentParentId = ref(null)
 const currentLevel = ref(1)
+
+// 添加新的響應式變數
+const showEditModal = ref(false)
+const editingTitle = ref('')
+const editingSectionId = ref(null)
 
 // 章節結構
 const sections = [
@@ -498,6 +545,48 @@ const addSubsection = () => {
   expandedSections.value.add(currentParentId.value)
   
   closeModal()
+}
+
+// 添加編輯標題的方法
+const showEditTitleModal = (sectionId, title, event) => {
+  event.stopPropagation()
+  editingSectionId.value = sectionId
+  editingTitle.value = title
+  showEditModal.value = true
+}
+
+// 更新標題的方法
+const updateSectionTitle = () => {
+  if (!editingTitle.value.trim()) {
+    alert('請輸入標題名稱')
+    return
+  }
+
+  const updateTitle = (sections) => {
+    return sections.map(section => {
+      if (section.id === editingSectionId.value) {
+        return { ...section, title: editingTitle.value.trim() }
+      }
+      if (section.children) {
+        return {
+          ...section,
+          children: updateTitle(section.children)
+        }
+      }
+      return section
+    })
+  }
+
+  // 更新sections
+  sections.splice(0, sections.length, ...updateTitle(sections))
+  closeEditModal()
+}
+
+// 關閉編輯模態框
+const closeEditModal = () => {
+  showEditModal.value = false
+  editingTitle.value = ''
+  editingSectionId.value = null
 }
 </script>
 
@@ -1086,5 +1175,38 @@ const addSubsection = () => {
 
 .dark .modal-form input::placeholder {
   color: #6b7280;
+}
+
+.edit-title-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.section-title:hover .edit-title-btn {
+  opacity: 1;
+}
+
+.light .edit-title-btn {
+  color: #4b5563;
+}
+
+.dark .edit-title-btn {
+  color: #e2e8f0;
+}
+
+.edit-title-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .edit-title-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style>

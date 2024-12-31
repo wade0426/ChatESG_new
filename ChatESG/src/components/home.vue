@@ -19,7 +19,7 @@
         </a>
         <a href="#" class="tool-item">
             <i>📝</i>
-            <span>列印</span>
+            <span>資產總覽</span>
         </a>
         <a href="#" class="tool-item">
             <i>🌐</i>
@@ -27,7 +27,7 @@
         </a>
         <a href="#" class="tool-item">
             <i>☁️</i>
-            <span>上傳</span>
+            <span>測試</span>
         </a>
     </div>
 

@@ -4,8 +4,18 @@
       <button class="menu-btn" @click="toggleSidebar">
         <i class="mdi mdi-menu"></i>
       </button>
+      <button class="home-btn" @click="goHome">
+        <i class="mdi mdi-home"></i>
+      </button>
       <div class="file-info">
-        <span class="file-name">{{ fileName }}</span>
+        <!-- 檔案名稱輸入框 -->
+        <input
+        type="text"
+        v-model="fileName"
+        class="file-name-input"
+        @change="handleFileNameChange"
+        placeholder="輸入檔案名稱"
+          >
       </div>
     </div>
 
@@ -65,6 +75,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, inject } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // 注入父組件提供的儲存方法
 const handleSave = inject('handleSave')
@@ -139,6 +152,20 @@ onUnmounted(() => {
     clearInterval(autoSaveTimer)
   }
 })
+
+// 回到首頁前先存檔
+const goHome = async () => {
+  // 先執行存檔
+  saveContent()
+  // 等待一小段時間確保存檔完成
+  setTimeout(() => {
+    router.push('/home')
+  }, 800)
+}
+
+const handleFileNameChange = () => {
+  console.log('更新後的檔案名稱:', fileName.value)
+}
 </script>
 
 <style scoped>
@@ -281,5 +308,57 @@ button:hover {
 
 .mdi {
   font-size: 1.2rem;
+}
+
+.home-btn {
+  color: var(--icon-color);
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.home-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #2563eb;
+}
+
+.dark .home-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+}
+
+.file-name-input {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-color);
+  font-size: 14px;
+  font-weight: 500;
+  width: 200px;
+  transition: all 0.2s ease;
+}
+
+.file-name-input:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark .file-name-input:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.file-name-input:focus {
+  outline: none;
+  background: var(--bg-color);
+  box-shadow: 0 0 0 2px #0066cc;
+}
+
+.dark .file-name-input:focus {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.file-name-input::placeholder {
+  color: var(--text-color);
+  opacity: 0.5;
 }
 </style>
