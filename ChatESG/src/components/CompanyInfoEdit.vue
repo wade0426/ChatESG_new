@@ -32,7 +32,16 @@
               >
                 <div class="section-title-content">
                   <span>{{ index + 1 }}. {{ section.title }}</span>
-                  <i :class="['mdi', isExpanded(section.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                  <div class="section-actions">
+                    <button 
+                      class="add-subsection-btn"
+                      @click.stop="showAddSubsectionModal(section.id, 1)"
+                      title="新增子標題"
+                    >
+                      <i class="mdi mdi-plus"></i>
+                    </button>
+                    <i :class="['mdi', isExpanded(section.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                  </div>
                 </div>
               </div>
               
@@ -49,7 +58,16 @@
                   >
                     <div class="section-title-content">
                       <span>{{ getAlphabetLabel(subIndex) }}. {{ subSection.title }}</span>
-                      <i v-if="subSection.children" :class="['mdi', isExpanded(subSection.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                      <div class="section-actions">
+                        <button 
+                          class="add-subsection-btn"
+                          @click.stop="showAddSubsectionModal(subSection.id, 2)"
+                          title="新增子標題"
+                        >
+                          <i class="mdi mdi-plus"></i>
+                        </button>
+                        <i v-if="subSection.children" :class="['mdi', isExpanded(subSection.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                      </div>
                     </div>
                   </div>
                   
@@ -106,6 +124,25 @@
       </div>
     </div>
   </div>
+
+  <!-- 新增子標題的彈出視窗 -->
+  <div v-if="showModal" class="modal-overlay" @click="closeModal">
+    <div class="modal-content" @click.stop>
+      <h3>新增子標題</h3>
+      <div class="modal-form">
+        <input 
+          v-model="newSubsectionTitle" 
+          type="text" 
+          placeholder="請輸入子標題名稱"
+          @keyup.enter="addSubsection"
+        >
+        <div class="modal-buttons">
+          <button @click="addSubsection" class="primary-btn">確認</button>
+          <button @click="closeModal" class="secondary-btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -117,12 +154,19 @@ import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
+import { v4 as uuidv4 } from 'uuid'
 
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
 const selectedSection = ref('about')
 const theme = ref('dark')
 const expandedSections = ref(new Set())
+
+// 新增子標題相關的響應式變數
+const showModal = ref(false)
+const newSubsectionTitle = ref('')
+const currentParentId = ref(null)
+const currentLevel = ref(1)
 
 // 章節結構
 const sections = [
@@ -332,7 +376,7 @@ const getAlphabetLabel = (index) => {
 
 // 輔助函數：將數字轉換為羅馬數字
 const getRomanNumeral = (num) => {
-  const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+  const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
   return romanNumerals[num - 1] || num;
 }
 
@@ -399,13 +443,69 @@ const handleFontSizeChange = (size) => {
   }
   document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
 }
+
+// 顯示新增子標題的彈出視窗
+const showAddSubsectionModal = (parentId, level) => {
+  currentParentId.value = parentId
+  currentLevel.value = level
+  showModal.value = true
+  newSubsectionTitle.value = ''
+}
+
+// 關閉彈出視窗
+const closeModal = () => {
+  showModal.value = false
+  newSubsectionTitle.value = ''
+}
+
+// 新增子標題
+const addSubsection = () => {
+  if (!newSubsectionTitle.value.trim()) {
+    alert('請輸入子標題名稱')
+    return
+  }
+
+  const newId = uuidv4()
+  const newSubsection = {
+    id: newId,
+    title: newSubsectionTitle.value.trim(),
+    children: currentLevel.value === 1 ? [] : null
+  }
+
+  // 遞迴函數來找到並更新父節點
+  const updateSections = (sections) => {
+    return sections.map(section => {
+      if (section.id === currentParentId.value) {
+        return {
+          ...section,
+          children: [...(section.children || []), newSubsection]
+        }
+      }
+      if (section.children) {
+        return {
+          ...section,
+          children: updateSections(section.children)
+        }
+      }
+      return section
+    })
+  }
+
+  // 更新sections
+  sections.splice(0, sections.length, ...updateSections(sections))
+  
+  // 展開父節點
+  expandedSections.value.add(currentParentId.value)
+  
+  closeModal()
+}
 </script>
 
 
 <style scoped>
 .editor-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   transition: all 0.3s ease;
   background-color: #ffffff;
   width: 100%;
@@ -414,7 +514,6 @@ const handleFontSizeChange = (size) => {
   left: 0;
   bottom: 0;
   right: 0;
-  overflow-y: auto;
   padding-top: 60px; /* 為頂部導航欄留出空間 */
   font-size: var(--editor-font-size, 16px);
 }
@@ -429,13 +528,14 @@ const handleFontSizeChange = (size) => {
 }
 
 .sidebar {
+  height: calc(100vh - 60px);
   width: 280px;
-  height: 100vh;
   transition: all 0.3s ease;
-  position: relative;
+  position: fixed;
   background-color: #f8f9fa;
   border-right: 1px solid #e2e8f0;
-  overflow: hidden;
+  overflow-y: auto;
+  top: 60px;
 }
 
 .dark .sidebar {
@@ -627,10 +727,14 @@ const handleFontSizeChange = (size) => {
   flex: 1;
   padding: 2rem;
   transition: all 0.3s ease;
-  margin: 1rem;
-  position: relative;
-  min-height: calc(100vh - 2rem);
+  margin-left: 280px;
+  height: calc(100vh - 60px);
   overflow-y: auto;
+  position: relative;
+}
+
+.main-content.expanded {
+  margin-left: 0;
 }
 
 .light .main-content {
@@ -788,5 +892,131 @@ const handleFontSizeChange = (size) => {
 
 .input-area {
   margin-top: 1rem;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-subsection-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.section-title:hover .add-subsection-btn {
+  opacity: 1;
+}
+
+.light .add-subsection-btn {
+  color: #4b5563;
+}
+
+.dark .add-subsection-btn {
+  color: #e2e8f0;
+}
+
+.add-subsection-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .add-subsection-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #ffffff;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.dark .modal-content {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-form input {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  font-size: 1rem;
+}
+
+.dark .modal-form input {
+  background-color: #2d2d2d;
+  border-color: #404040;
+  color: #ffffff;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.primary-btn,
+.secondary-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  border: none;
+}
+
+.primary-btn {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.secondary-btn {
+  background-color: #e2e8f0;
+  color: #1a1a1a;
+}
+
+.dark .secondary-btn {
+  background-color: #2d2d2d;
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.secondary-btn:hover {
+  background-color: #cbd5e0;
+}
+
+.dark .secondary-btn:hover {
+  background-color: #404040;
 }
 </style>
