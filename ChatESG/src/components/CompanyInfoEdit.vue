@@ -6,6 +6,9 @@
 
 <template>
   <div :class="['editor-container', theme]">
+    <!-- 引入頂部導航欄 -->
+    <CompanyInfoEditNav @toggle-sidebar="toggleSidebar" @theme-change="handleThemeChange" />
+    
     <!-- 側邊欄 -->
     <div class="sidebar-wrapper">
       <div :class="['sidebar', { 'collapsed': isSidebarCollapsed }]">
@@ -85,10 +88,17 @@
       </div>
       
       <div class="editor-content">
-        <editor-content 
-          :editor="getCurrentEditor()" 
-          class="tiptap-editor"
-        />
+        <!-- 只有在選中最小層級標題時才顯示輸入框 -->
+        <div v-if="isLeafSection(selectedSection)" class="input-area">
+          <textarea 
+            v-model="sectionContents[selectedSection]" 
+            class="content-textarea"
+            :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
+          ></textarea>
+        </div>
+        <div v-else class="no-edit-message">
+          請選擇左側小標題以進行編輯
+        </div>
       </div>
     </div>
   </div>
@@ -102,6 +112,7 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
+import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
 
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
@@ -217,9 +228,31 @@ const getCurrentEditor = () => {
   return editors[selectedSection.value]
 }
 
+// 新增：儲存各區段內容的響應式對象
+const sectionContents = ref({})
+
+// 新增：判斷是否為最小層級（葉節點）的函數
+const isLeafSection = (sectionId) => {
+  const findSection = (sections) => {
+    for (const section of sections) {
+      if (section.id === sectionId) {
+        return !section.children || section.children.length === 0
+      }
+      if (section.children) {
+        const found = findSection(section.children)
+        if (found !== undefined) return found
+      }
+    }
+  }
+  return findSection(sections)
+}
+
+// 修改：獲取當前標題的函數，只顯示最小層級的標題
 const getCurrentSectionTitle = () => {
+  if (!selectedSection.value) return ''
   const section = findSectionById(selectedSection.value, sections)
-  return section ? section.title : '';
+  if (!section) return ''
+  return isLeafSection(selectedSection.value) ? section.title : ''
 }
 
 const findSectionById = (id, sectionsArray) => {
@@ -306,6 +339,11 @@ const toggleSubSection = (sectionId) => {
 const isExpanded = (sectionId) => {
   return expandedSections.value.has(sectionId)
 }
+
+// 主題切換
+const handleThemeChange = (newTheme) => {
+  theme.value = newTheme
+}
 </script>
 
 
@@ -322,6 +360,7 @@ const isExpanded = (sectionId) => {
   bottom: 0;
   right: 0;
   overflow-y: auto;
+  padding-top: 60px; /* 為頂部導航欄留出空間 */
 }
 
 .editor-container.dark {
@@ -340,6 +379,7 @@ const isExpanded = (sectionId) => {
   position: relative;
   background-color: #f8f9fa;
   border-right: 1px solid #e2e8f0;
+  overflow: hidden;
 }
 
 .dark .sidebar {
@@ -349,12 +389,24 @@ const isExpanded = (sectionId) => {
 
 .sidebar.collapsed {
   width: 0;
+  padding: 0;
+  border-right: none;
+}
+
+.sidebar-content,
+.sidebar-header h3 {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease;
+  transition-delay: 0.2s;
+  min-width: 280px;
 }
 
 .sidebar.collapsed .sidebar-content,
 .sidebar.collapsed .sidebar-header h3 {
   opacity: 0;
   visibility: hidden;
+  transition-delay: 0s;
 }
 
 .sidebar-header {
@@ -366,6 +418,7 @@ const isExpanded = (sectionId) => {
   position: relative;
   border-bottom: 1px solid #e2e8f0;
   min-width: 280px;
+  overflow: hidden;
 }
 
 .dark .sidebar-header {
@@ -641,5 +694,42 @@ const isExpanded = (sectionId) => {
 
 .hidden {
   display: none;
+}
+
+.content-textarea {
+  width: 100%;
+  min-height: 300px;
+  padding: 1rem;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.light .content-textarea {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #000000;
+}
+
+.dark .content-textarea {
+  background-color: #1a1a1a;
+  border: 1px solid #2d2d2d;
+  color: #e2e8f0;
+}
+
+.no-edit-message {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+.dark .no-edit-message {
+  color: #999;
+}
+
+.input-area {
+  margin-top: 1rem;
 }
 </style>

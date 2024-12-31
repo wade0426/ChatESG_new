@@ -6,12 +6,13 @@
 
 ### 安裝指引
 
-請使用以下指令安裝所需的 Vue 套件：
+請使用以下指令安裝所需的 Vue 套件(不需安裝 使用 package.json 會自動安裝)：
 ```
 npm install @tiptap/vue-3 @tiptap/pm @tiptap/starter-kit
 npm install @tiptap/extension-table @tiptap/extension-table-row @tiptap/extension-table-cell @tiptap/extension-table-header
 <!-- (改用MDI)npm install @material-icons/font -->
 npm install @mdi/font
+npm install @tiptap/vue-3 @tiptap/starter-kit @tiptap/extension-table @tiptap/extension-horizontal-rule
 ```
 
 請使用以下指令安裝所需的 Python 套件：
@@ -143,7 +144,13 @@ pip install passlib
      - 分章節資料管理
    - **公司基本資料編輯頁面 (CompanyInfoEdit.vue)**
      - 編輯公司的基本資料
-     - 儲存和取消編輯功能
+     - 儲存和取消
+     - 範例
+   - **公司基本資料編輯頁面的上方導覽列 (CompanyInfoEditNav.vue)**
+     - 導覽列
+     - 導覽列的按鈕
+     - 亮色模式和暗色模式切換
+     - 設定按鈕
 
 5. **審核相關頁面**
    - **審核管理頁面 (ReviewManagement.vue)**
