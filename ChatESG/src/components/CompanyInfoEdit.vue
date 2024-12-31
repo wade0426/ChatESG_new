@@ -946,17 +946,39 @@ const addSubsection = () => {
   z-index: 1000;
 }
 
-.modal-content {
+.light .modal-content {
   background-color: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .modal-content {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid #2d2d2d;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content {
   padding: 2rem;
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
 }
 
-.dark .modal-content {
-  background-color: #1a1a1a;
+.light .modal-content h3 {
+  color: #1a1a1a;
+}
+
+.dark .modal-content h3 {
   color: #ffffff;
+}
+
+.modal-content h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .modal-form {
@@ -965,32 +987,55 @@ const addSubsection = () => {
   gap: 1rem;
 }
 
-.modal-form input {
-  padding: 0.5rem;
-  border-radius: 4px;
+.light .modal-form input {
+  background-color: #ffffff;
+  color: #1a1a1a;
   border: 1px solid #e2e8f0;
-  font-size: 1rem;
 }
 
 .dark .modal-form input {
   background-color: #2d2d2d;
-  border-color: #404040;
   color: #ffffff;
+  border-color: #404040;
+}
+
+.modal-form input {
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.light .modal-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.dark .modal-form input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.modal-form input:focus {
+  outline: none;
 }
 
 .modal-buttons {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .primary-btn,
 .secondary-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 1rem;
   border: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .primary-btn {
@@ -998,25 +1043,48 @@ const addSubsection = () => {
   color: #ffffff;
 }
 
-.secondary-btn {
+.primary-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.primary-btn:active {
+  transform: translateY(0);
+}
+
+.light .secondary-btn {
   background-color: #e2e8f0;
   color: #1a1a1a;
+  border: none;
 }
 
 .dark .secondary-btn {
   background-color: #2d2d2d;
   color: #ffffff;
+  border: 1px solid #404040;
 }
 
-.primary-btn:hover {
-  background-color: #1d4ed8;
-}
-
-.secondary-btn:hover {
+.light .secondary-btn:hover {
   background-color: #cbd5e0;
 }
 
 .dark .secondary-btn:hover {
   background-color: #404040;
+}
+
+.secondary-btn:hover {
+  transform: translateY(-1px);
+}
+
+.secondary-btn:active {
+  transform: translateY(0);
+}
+
+.light .modal-form input::placeholder {
+  color: #9ca3af;
+}
+
+.dark .modal-form input::placeholder {
+  color: #6b7280;
 }
 </style>
