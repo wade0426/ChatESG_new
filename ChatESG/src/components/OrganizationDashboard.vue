@@ -13,6 +13,7 @@
           <div class="org-details">
             <h2>{{ organizationName || '組織名稱' }}</h2>
             <p class="description">{{ organizationDescription || '組織描述' }}</p>
+            <hr>
             <div class="meta-info">
               <p>組織ID：{{ organizationId || 'N/A' }}</p>
               <p>組織擁有者：{{ ownerName || 'N/A' }}</p>
@@ -90,6 +91,7 @@ export default {
 
 .org-info {
   display: flex;
+  flex-direction: column;
   gap: 30px;
 }
 
@@ -98,26 +100,29 @@ export default {
   height: 100px;
   border-radius: 50%;
   object-fit: cover;
+  display: block;
+  margin: 0 auto;
 }
 
 .org-details h2 {
   margin: 0 0 10px 0;
-  font-size: 20px;
+  font-size: 24px;
 }
 
 .description {
-  color: #f1eded;
-  margin: 20px 0 20px 0;
+  color: #f5f0f0;
+  margin: 20px 0 30px 0;
   font-size: 18px;
 }
 
 .meta-info {
   color: #888;
   font-size: 18px;
+  width: 100%;
 }
 
 .meta-info p {
-  margin: 10px 0;
+  margin: 20px 0;
   color: #f1eded;
 }
 </style>
