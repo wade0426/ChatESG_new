@@ -3,7 +3,7 @@
     <div class="sidebar" :class="{ 'open': isOpen }">
         <a href="javascript:void(0)" class="close-btn" @click="handleClose">&times;</a>
         <div class="sidebar-content">
-            <a href="#" class="sidebar-item">首頁</a>
+            <a href="/home" class="sidebar-item">首頁</a>
             <a href="#" class="sidebar-item">我的設計</a>
             <a href="#" class="sidebar-item">模板庫</a>
             <a href="#" class="sidebar-item">設定</a>

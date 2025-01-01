@@ -110,26 +110,43 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'UserProfile',
-  //   引入組件
   components: {
     Sidebar,
     Header
   },
   setup() {
     const isSidebarOpen = ref(false)
-    const userInfo = ref({
-      userName: '',
-      userID: '',
-      avatarUrl: '',
-      email: '',
-      organizationName: ''
+    const userStore = useUserStore()
+    const router = useRouter()
+
+    // 確保用戶已登入並獲取用戶信息
+    onMounted(async () => {
+      if (!userStore.isAuthenticated) {
+        userStore.initializeFromStorage()
+        if (!userStore.isAuthenticated) {
+          router.push('/login')
+        }
+      }
+      await userStore.fetchUserProfile()
     })
+
+    // 使用 computed 屬性來獲取用戶信息
+    const userInfo = computed(() => ({
+      userName: userStore.username,
+      userID: userStore.userID,
+      avatarUrl: userStore.avatarUrl,
+      email: userStore.email,
+      organizationName: userStore.organizationName,
+      organizationRole: userStore.organizationRole
+    }))
 
     const openNav = () => {
       isSidebarOpen.value = true
@@ -149,28 +166,6 @@ export default {
     })
 
     const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
-
-    const getUserProfile = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/user/profile/Personal_Information', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            user_id: sessionStorage.getItem('userID')
-          })
-        })
-        const data = await response.json()
-        if (data.status === 'success') {
-          userInfo.value = data.data
-        } else {
-          console.error('獲取用戶資料失敗')
-        }
-      } catch (error) {
-        console.error('獲取用戶資料失敗:', error)
-      }
-    }
 
     const closePasswordModal = () => {
       showPasswordModal.value = false
@@ -201,28 +196,19 @@ export default {
 
       try {
         isSubmitting.value = true
-        const response = await fetch('http://localhost:8000/api/user/profile/Change_Password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            user_id: sessionStorage.getItem('userID'),
-            current_password: passwordForm.value.currentPassword,
-            new_password: passwordForm.value.newPassword
-          })
-        })
+        const result = await userStore.updatePassword(
+          passwordForm.value.currentPassword,
+          passwordForm.value.newPassword
+        )
 
-        const data = await response.json()
-        if (data.status === 'success') {
+        if (result.success) {
           alert('密碼修改成功')
           closePasswordModal()
         } else {
-          errorMessage.value = data.detail || '密碼修改失敗'
+          errorMessage.value = result.error
         }
       } catch (error) {
         errorMessage.value = '發生錯誤，請稍後再試'
-        console.error('密碼修改失敗:', error)
       } finally {
         isSubmitting.value = false
       }
@@ -244,7 +230,6 @@ export default {
     }
 
     const submitUsernameChange = async () => {
-      // 驗證表單
       if (!usernameForm.value.newUsername) {
         usernameErrorMessage.value = '請填寫新姓名'
         return
@@ -252,37 +237,20 @@ export default {
 
       try {
         isSubmittingUsername.value = true
-        const response = await fetch('http://localhost:8000/api/user/profile/Change_Username', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            user_id: sessionStorage.getItem('userID'),
-            new_username: usernameForm.value.newUsername
-          })
-        })
+        const result = await userStore.updateUsername(usernameForm.value.newUsername)
 
-        const data = await response.json()
-        if (data.status === 'success') {
-          // 直接更新本地的用戶信息
-          userInfo.value.userName = usernameForm.value.newUsername
+        if (result.success) {
           alert('姓名修改成功')
           closeUsernameModal()
         } else {
-          usernameErrorMessage.value = data.detail || '姓名修改失敗'
+          usernameErrorMessage.value = result.error
         }
       } catch (error) {
         usernameErrorMessage.value = '發生錯誤，請稍後再試'
-        console.error('姓名修改失敗:', error)
       } finally {
         isSubmittingUsername.value = false
       }
     }
-
-    onMounted(() => {
-      getUserProfile()
-    })
 
     return {
       userInfo,

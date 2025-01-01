@@ -28,7 +28,7 @@
             <span class="dropdown-arrow">▼</span>
             <div class="dropdown-menu" id="userDropdown">
                 <div class="dropdown-menu-content">
-                    <a href="#"><span>帳號</span></a>
+                    <a href="/user_profile"><span>帳號</span></a>
                     <a href="#"><span>管理組織</span></a>
                     <div class="menu-divider"></div>
                     <a href="#"><span>設定</span></a>
@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 
 const emit = defineEmits(['openNav'])
@@ -52,11 +52,29 @@ const emit = defineEmits(['openNav'])
 const userStore = useUserStore()
 
 // 使用 ref 函式建立可被監聽的變數
-const userName = ref('')
-const userID = ref('')
-const userAvatarUrl = ref('')
-const userOrganizationID = ref('')
-const userOrganizationName = ref('')
+const userName = computed(() => userStore.username)
+const userAvatarUrl = computed(() => userStore.avatarUrl)
+const userOrganizationName = computed(() => userStore.organizationName)
+
+const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
+
+// 定義更新界面的函數
+const updateUserInterface = () => {
+    const userAvatarElement = document.getElementById('user-avatar')
+    if (userAvatarElement) {
+        userAvatarElement.style.backgroundImage = `url(${userStore.avatarUrl || defaultAvatar})`
+    }
+
+    const organizationElement = document.getElementById('organization-name')
+    if (organizationElement) {
+        organizationElement.textContent = userStore.organizationName
+    }
+
+    const userNameElement = document.getElementById('user-name')
+    if (userNameElement) {
+        userNameElement.textContent = userStore.username
+    }
+}
 
 // 新增搜索相關的響應式變量
 const searchQuery = ref('')
@@ -66,7 +84,7 @@ const handleSearchInput = () => {
     console.log('搜索內容:', searchQuery.value)
 }
 
-// 也可以使用watch來監聽搜索內容的變化
+// 監聽搜索內容的變化
 watch(searchQuery, (newValue) => {
     console.log('搜索內容更新為:', newValue)
 })
@@ -89,63 +107,20 @@ const logout = async () => {
     }
 }
 
-// 從API獲取用戶資料
-const fetchUserData = async () => {
-    try {
-        // 從 sessionStorage 獲取使用者ID
-        const storedUserID = sessionStorage.getItem('userID')
-        if (!storedUserID) {
-            console.error('未找到使用者ID')
-            return
-        }
-        
-        const response = await fetch('http://localhost:8000/api/user/profile', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ user_id: storedUserID })
-        })
-
-        if (!response.ok) {
-            throw new Error('獲取使用者資料失敗')
-        }
-
-        const data = await response.json()
-        
-        // 更新使用者資料
-        userName.value = data.userName
-        userID.value = data.userID
-        userAvatarUrl.value = data.avatarUrl || ''
-        userOrganizationID.value = data.organizationID || ''
-        userOrganizationName.value = data.organizationName || ''
-        
-        // 更新界面
+// 監聽用戶資料變化並更新界面
+watch(
+    () => [userStore.username, userStore.avatarUrl, userStore.organizationName],
+    () => {
         updateUserInterface()
-    } catch (error) {
-        console.error('獲取使用者資料失敗:', error)
-    }
-}
-
-const updateUserInterface = () => {
-    const userAvatarElement = document.getElementById('user-avatar')
-    if (userAvatarElement) {
-        userAvatarElement.style.backgroundImage = `url(${userAvatarUrl.value})`
-    }
-
-    const organizationElement = document.getElementById('organization-name')
-    if (organizationElement) {
-        organizationElement.textContent = userOrganizationName.value
-    }
-
-    const userNameElement = document.getElementById('user-name')
-    if (userNameElement) {
-        userNameElement.textContent = userName.value
-    }
-}
+    },
+    { immediate: true }
+)
 
 onMounted(() => {
-    fetchUserData()
+    // 確保用戶資料已加載
+    if (userStore.isAuthenticated) {
+        userStore.fetchUserProfile()
+    }
 })
 </script>
 
