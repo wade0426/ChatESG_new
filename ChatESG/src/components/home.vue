@@ -23,7 +23,7 @@
         </a>
         <a href="#" class="tool-item">
             <i>🌐</i>
-            <span>測試</span>
+            <span>加入組織</span>
         </a>
         <a href="#" class="tool-item">
             <i>☁️</i>

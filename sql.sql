@@ -24,9 +24,10 @@ CREATE TABLE Users (
     -- avatarUrl
     AvatarUrl VARCHAR(255) COMMENT '使用者頭像URL',
     -- organization
-    Organization VARCHAR(100) COMMENT '使用者所屬組織',
+    OrganizationID VARCHAR(36) COMMENT '使用者所屬組織ID',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
-    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間'
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+    FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE SET NULL
 ) COMMENT '使用者基本資料表';
 
 -- --------------------------------------------------------
@@ -36,10 +37,10 @@ CREATE TABLE Users (
 CREATE TABLE Organizations (
     OrganizationID VARCHAR(36) PRIMARY KEY COMMENT '組織唯一標識 (UUID)',
     OrganizationName VARCHAR(100) NOT NULL COMMENT '組織名稱',
-    OwnerID VARCHAR(36) NOT NULL COMMENT '擁有者使用者ID',
+    OrganizationDescription VARCHAR(255) COMMENT '組織描述',
+    AvatarUrl VARCHAR(255) COMMENT '組織標誌URL',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
-    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
-    FOREIGN KEY (OwnerID) REFERENCES Users(UserID) ON DELETE RESTRICT
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間'
 ) COMMENT '組織資料表';
 
 -- --------------------------------------------------------

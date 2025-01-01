@@ -48,6 +48,10 @@ SECRET_KEY = "your-secret-key"  # 在生產環境中應該使用環境變量
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# 默認圖片設置
+DEFAULT_USER_AVATAR = "https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png"
+DEFAULT_ORGANIZATION_LOGO = "https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/organization.png"
+
 # 資料庫連接池
 async def get_db_pool():
     pool = await aiomysql.create_pool(**DB_CONFIG)
@@ -76,7 +80,6 @@ class User(BaseModel):
     username: str
     password: str
     userEmail: str
-    organization: str
 
 class LoginUser(BaseModel):
     username: str
@@ -84,6 +87,16 @@ class LoginUser(BaseModel):
 
 class UserInDB(User):
     user_id: str
+
+class Organization(BaseModel):
+    organizationName: str
+    organizationDescription: Optional[str] = None
+    avatarUrl: Optional[str] = None
+
+class OrganizationResponse(BaseModel):
+    status: str
+    message: str
+    organization_id: Optional[str] = None
 
 def verify_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
@@ -107,7 +120,7 @@ async def login(form_data: LoginUser):
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT UserID, UserName, UserPassword, AvatarUrl, Organization FROM Users WHERE UserName = %s",
+                "SELECT UserID, UserName, UserPassword, AvatarUrl, OrganizationID FROM Users WHERE UserName = %s",
                 (form_data.username,)
             )
             user = await cur.fetchone()
@@ -161,12 +174,11 @@ async def register(user: User):
             # 創建新用戶
             user_id = str(uuid.uuid4())
             hashed_password = get_password_hash(user.password)
-            default_avatar = "https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png"
             
             await cur.execute("""
-                INSERT INTO Users (UserID, UserName, UserPassword, UserEmail, Organization, AvatarUrl)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (user_id, user.username, hashed_password, user.userEmail, user.organization, default_avatar))
+                INSERT INTO Users (UserID, UserName, UserPassword, UserEmail, AvatarUrl)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, user.username, hashed_password, user.userEmail, DEFAULT_USER_AVATAR))
             
             await conn.commit()
             
@@ -178,7 +190,7 @@ async def get_user_profile(user_data: dict):
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("""
-                SELECT UserID, UserName, AvatarUrl, Organization
+                SELECT UserID, UserName, AvatarUrl, OrganizationID
                 FROM Users WHERE UserID = %s
             """, (user_id,))
             
@@ -186,12 +198,73 @@ async def get_user_profile(user_data: dict):
             if not user:
                 raise HTTPException(status_code=404, detail="未找到使用者")
             
+            # 獲取組織名稱
+            organization_name = "尚未加入組織"
+            if user[3]:  # 如果有組織ID
+                await cur.execute("""
+                    SELECT OrganizationName 
+                    FROM Organizations 
+                    WHERE OrganizationID = %s
+                """, (user[3],))
+                org = await cur.fetchone()
+                if org:
+                    organization_name = org[0]
+            
             return {
                 "userName": user[1],
                 "userID": user[0],
                 "avatarUrl": user[2] or "",
-                "organization": user[3] or ""
+                "organizationID": user[3] or "",
+                "organizationName": organization_name
             }
+
+@app.post("/api/organizations", response_model=OrganizationResponse)
+async def create_organization(organization: Organization):
+    try:
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 檢查組織名稱是否已存在
+                await cur.execute(
+                    "SELECT OrganizationID FROM Organizations WHERE OrganizationName = %s",
+                    (organization.organizationName,)
+                )
+                if await cur.fetchone():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="組織名稱已存在"
+                    )
+                
+                # 生成組織ID
+                organization_id = str(uuid.uuid4())
+                
+                # 插入新組織
+                await cur.execute("""
+                    INSERT INTO Organizations (
+                        OrganizationID,
+                        OrganizationName,
+                        OrganizationDescription,
+                        AvatarUrl
+                    ) VALUES (%s, %s, %s, %s)
+                """, (
+                    organization_id,
+                    organization.organizationName,
+                    organization.organizationDescription,
+                    organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO
+                ))
+                
+                await conn.commit()
+                
+                return {
+                    "status": "success",
+                    "message": "組織創建成功",
+                    "organization_id": organization_id
+                }
+                
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

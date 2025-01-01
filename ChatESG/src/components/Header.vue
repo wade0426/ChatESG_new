@@ -5,7 +5,7 @@
             <div></div>
             <div></div>
         </div>
-        <div class="search-bar">
+        <div class="search-bar" style="display: none;">
             <div class="search-icon">
                 <svg viewBox="0 0 24 24">
                     <path
@@ -29,7 +29,7 @@
             <div class="dropdown-menu" id="userDropdown">
                 <div class="dropdown-menu-content">
                     <a href="#"><span>帳號</span></a>
-                    <a href="#"><span>邀請成員</span></a>
+                    <a href="#"><span>管理組織</span></a>
                     <div class="menu-divider"></div>
                     <a href="#"><span>設定</span></a>
                     <a href="#"><span>最新消息</span></a>
@@ -55,7 +55,8 @@ const userStore = useUserStore()
 const userName = ref('')
 const userID = ref('')
 const userAvatarUrl = ref('')
-const userOrganization = ref('')
+const userOrganizationID = ref('')
+const userOrganizationName = ref('')
 
 // 新增搜索相關的響應式變量
 const searchQuery = ref('')
@@ -116,7 +117,8 @@ const fetchUserData = async () => {
         userName.value = data.userName
         userID.value = data.userID
         userAvatarUrl.value = data.avatarUrl || ''
-        userOrganization.value = data.organization || ''
+        userOrganizationID.value = data.organizationID || ''
+        userOrganizationName.value = data.organizationName || ''
         
         // 更新界面
         updateUserInterface()
@@ -133,7 +135,7 @@ const updateUserInterface = () => {
 
     const organizationElement = document.getElementById('organization-name')
     if (organizationElement) {
-        organizationElement.textContent = userOrganization.value
+        organizationElement.textContent = userOrganizationName.value
     }
 
     const userNameElement = document.getElementById('user-name')

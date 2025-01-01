@@ -7,14 +7,6 @@
         <h1>建立帳號</h1>
         <form @submit.prevent="handleSignup">
             <div class="input-group">
-                <select v-model="organization" required>
-                    <option value="" disabled selected>選擇組織名稱</option>
-                    <option value="國立臺中科技大學">國立臺中科技大學</option>
-                    <option value="勤業眾信">勤業眾信</option>
-                    <option value="行動貝果">行動貝果</option>
-                </select>
-            </div>
-            <div class="input-group">
                 <input type="text" v-model="username" placeholder="使用者名稱" required>
             </div>
             <div class="input-group">
@@ -49,7 +41,6 @@ export default {
     name: 'Signup',
     data() {
         return {
-            organization: '',
             username: '',
             email: '',
             password: '',
@@ -59,8 +50,7 @@ export default {
     },
     computed: {
         isFormValid() {
-            return this.organization && 
-                   this.username && 
+            return this.username && 
                    this.email && 
                    this.password && 
                    this.password === this.confirmPassword &&
@@ -70,7 +60,6 @@ export default {
             if (this.isFormValid) return ''
             
             let message = '請完成以下項目：'
-            if (!this.organization) message += '\n- 選擇組織'
             if (!this.username) message += '\n- 輸入使用者名稱'
             if (!this.email) message += '\n- 輸入電子郵件'
             if (!this.password) message += '\n- 輸入密碼'
@@ -95,8 +84,7 @@ export default {
                     body: JSON.stringify({
                         username: this.username,
                         userEmail: this.email,
-                        password: this.password,
-                        organization: this.organization
+                        password: this.password
                     })
                 });
 

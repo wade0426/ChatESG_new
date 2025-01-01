@@ -47,6 +47,9 @@ pip install passlib
      - 組織類型選擇
 
 2. **組織管理相關頁面**
+   - **創建組織頁面 (found_organization.vue)** 
+     - 組織名稱輸入
+     - 組織描述輸入
    - **組織管理主頁面 (OrganizationDashboard.vue)**
      - 組織基本訊息展示 (組織名稱、組織擁有者、組織成員數量、組織報告書數量、組織身份組數量)
      - 成員列表與管理

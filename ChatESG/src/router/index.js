@@ -26,7 +26,19 @@ const router = createRouter({
             name: 'CompanyInfoEdit',
             component: () => import('../components/CompanyInfoEdit.vue'),
             meta: { requiresAuth: true }
-        }
+        },
+        {
+            path: '/found_organization',
+            name: 'FoundOrganization',
+            component: () => import('../components/found_organization.vue'),
+            meta: { requiresAuth: true }
+        },
+        // {
+        //     path: '/organization_dashboard',
+        //     name: 'OrganizationDashboard',
+        //     component: () => import('../components/OrganizationDashboard.vue'),
+        //     meta: { requiresAuth: true }
+        // }
     ]
 })
 
