@@ -81,16 +81,42 @@ export default {
         }
     },
     methods: {
-        handleSignup() {
+        async handleSignup() {
             if(!this.isFormValid) return
 
-            // 這裡可以加入註冊邏輯
-            console.log('註冊資料:', {
-                organization: this.organization,
-                username: this.username,
-                email: this.email,
-                password: this.password
-            })
+            try {
+                const response = await fetch('http://localhost:8000/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        username: this.username,
+                        userEmail: this.email,
+                        password: this.password,
+                        organization: this.organization
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `註冊失敗：${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('註冊成功！');
+                    this.$router.push('/login');
+                } else {
+                    alert(data.detail || '註冊失敗，請稍後再試');
+                }
+            } catch (error) {
+                console.error('註冊錯誤:', error);
+                alert(error.message || '註冊時發生錯誤，請稍後再試');
+            }
         }
     }
 }

@@ -200,6 +200,7 @@ pip install passlib
   - 實現組件間的數據通信
 - **API 設計**
   - 使用 FastAPI 實現後端 API
+  - 使用Asynchronous Python 實現非同步請求處理
   - 提供高效的數據處理和響應
   - 支持異步請求處理
 
