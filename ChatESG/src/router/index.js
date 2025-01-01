@@ -28,7 +28,7 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
-            path: '/found_organization',
+            path: '/found-organization',
             name: 'FoundOrganization',
             component: () => import('../components/found_organization.vue'),
             meta: { requiresAuth: true }
@@ -40,7 +40,7 @@ const router = createRouter({
         //     meta: { requiresAuth: true }
         // }
         {
-            path: '/user_profile',
+            path: '/user-profile',
             name: 'UserProfile',
             component: () => import('../components/UserProfile.vue'),
             meta: { requiresAuth: true }

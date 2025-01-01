@@ -110,11 +110,11 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 export default {
   name: 'UserProfile',
@@ -126,17 +126,31 @@ export default {
     const isSidebarOpen = ref(false)
     const userStore = useUserStore()
     const router = useRouter()
+    const route = useRoute()
 
-    // 確保用戶已登入並獲取用戶信息
-    onMounted(async () => {
+    const initializeUser = async () => {
       if (!userStore.isAuthenticated) {
         userStore.initializeFromStorage()
         if (!userStore.isAuthenticated) {
           router.push('/login')
+          return
         }
       }
       await userStore.fetchUserProfile()
+    }
+
+    // 在組件掛載時初始化
+    onMounted(async () => {
+      await initializeUser()
     })
+
+    // 監聽路由變化
+    watch(
+      () => route.fullPath,
+      async () => {
+        await initializeUser()
+      }
+    )
 
     // 使用 computed 屬性來獲取用戶信息
     const userInfo = computed(() => ({

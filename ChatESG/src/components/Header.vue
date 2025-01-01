@@ -28,7 +28,7 @@
             <span class="dropdown-arrow">▼</span>
             <div class="dropdown-menu" id="userDropdown">
                 <div class="dropdown-menu-content">
-                    <a href="/user_profile"><span>帳號</span></a>
+                    <a href="/user-profile"><span>帳號</span></a>
                     <a href="#"><span>管理組織</span></a>
                     <div class="menu-divider"></div>
                     <a href="#"><span>設定</span></a>
@@ -46,10 +46,12 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useRoute } from 'vue-router'
 
 const emit = defineEmits(['openNav'])
 
 const userStore = useUserStore()
+const route = useRoute()
 
 // 使用 ref 函式建立可被監聽的變數
 const userName = computed(() => userStore.username)
@@ -114,6 +116,16 @@ watch(
         updateUserInterface()
     },
     { immediate: true }
+)
+
+// 監聽路由變化
+watch(
+    () => route.fullPath,
+    async () => {
+        if (userStore.isAuthenticated) {
+            await userStore.fetchUserProfile()
+        }
+    }
 )
 
 onMounted(() => {
