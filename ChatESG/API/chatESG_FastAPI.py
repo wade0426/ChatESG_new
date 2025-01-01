@@ -218,6 +218,37 @@ async def get_user_profile(user_data: dict):
                 "organizationName": organization_name
             }
 
+
+@app.post("/api/user/profile/Personal_Information")
+async def get_user_profile_Personal_Information(user_data: dict):
+    user_id = user_data.get("user_id")
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # 獲取用戶基本信息
+            await cur.execute("""
+                SELECT u.UserID, u.UserName, u.AvatarUrl, u.OrganizationID, u.UserEmail,
+                       o.OrganizationName
+                FROM Users u
+                LEFT JOIN Organizations o ON u.OrganizationID = o.OrganizationID
+                WHERE u.UserID = %s
+            """, (user_id,))
+            user = await cur.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="未找到使用者")
+            
+            return {
+                "status": "success",
+                "data": {
+                    "userID": user[0],
+                    "userName": user[1],
+                    "avatarUrl": user[2] or DEFAULT_USER_AVATAR,
+                    "organizationID": user[3] or "",
+                    "organizationName": user[5] or "尚未加入組織",
+                    "email": user[4]
+                }
+            }
+
 @app.post("/api/organizations", response_model=OrganizationResponse)
 async def create_organization(organization: Organization):
     try:
@@ -265,6 +296,62 @@ async def create_organization(organization: Organization):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+@app.post("/api/user/profile/Change_Password")
+async def change_password(user_data: dict):
+    user_id = user_data.get("user_id")
+    current_password = user_data.get("current_password")
+    new_password = user_data.get("new_password")
+    
+    if not all([user_id, current_password, new_password]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # 驗證當前密碼
+            await cur.execute("SELECT UserPassword FROM Users WHERE UserID = %s", (user_id,))
+            user = await cur.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="未找到使用者")
+            
+            stored_password = user[0]
+            if not verify_password(current_password, stored_password):
+                raise HTTPException(status_code=400, detail="當前密碼錯誤")
+            
+            # 更新新密碼
+            hashed_new_password = get_password_hash(new_password)
+            await cur.execute(
+                "UPDATE Users SET UserPassword = %s WHERE UserID = %s",
+                (hashed_new_password, user_id)
+            )
+            await conn.commit()
+            
+            return {"status": "success", "message": "密碼修改成功"}
+
+@app.post("/api/user/profile/Change_Username")
+async def change_username(user_data: dict):
+    user_id = user_data.get("user_id")
+    new_username = user_data.get("new_username")
+    
+    if not all([user_id, new_username]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # 檢查新用戶名是否已存在
+            await cur.execute("SELECT UserID FROM Users WHERE UserName = %s AND UserID != %s", (new_username, user_id))
+            if await cur.fetchone():
+                raise HTTPException(status_code=400, detail="用戶名已存在")
+            
+            # 更新用戶名
+            await cur.execute(
+                "UPDATE Users SET UserName = %s WHERE UserID = %s",
+                (new_username, user_id)
+            )
+            await conn.commit()
+            
+            return {"status": "success", "message": "用戶名修改成功"}
 
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

@@ -45,6 +45,9 @@ pip install passlib
      - 組織描述輸入
      - 組織標誌上傳
      - 組織類型選擇
+   - **個人資料頁面 (UserProfile.vue)**
+     - 個人資料展示
+     - 個人資料編輯
 
 2. **組織管理相關頁面**
    - **創建組織頁面 (found_organization.vue)** 

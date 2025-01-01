@@ -39,6 +39,12 @@ const router = createRouter({
         //     component: () => import('../components/OrganizationDashboard.vue'),
         //     meta: { requiresAuth: true }
         // }
+        {
+            path: '/user_profile',
+            name: 'UserProfile',
+            component: () => import('../components/UserProfile.vue'),
+            meta: { requiresAuth: true }
+        },
     ]
 })
 
