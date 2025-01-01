@@ -31,7 +31,7 @@
                 @click="toggleSection(section.id)"
               >
                 <div class="section-title-content">
-                  <span>{{ index + 1 }}. {{ section.title }}</span>
+                  <span>{{ getSectionNumber(index) }}. {{ section.title }}</span>
                   <div class="section-actions">
                     <button 
                       class="edit-title-btn"
@@ -46,6 +46,13 @@
                       title="新增子標題"
                     >
                       <i class="mdi mdi-plus"></i>
+                    </button>
+                    <button 
+                      class="delete-btn"
+                      @click.stop="confirmDelete(section.id, section.title)"
+                      title="刪除"
+                    >
+                      <i class="mdi mdi-delete"></i>
                     </button>
                     <i :class="['mdi', isExpanded(section.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
                   </div>
@@ -80,6 +87,13 @@
                         >
                           <i class="mdi mdi-plus"></i>
                         </button>
+                        <button 
+                          class="delete-btn"
+                          @click.stop="confirmDelete(subSection.id, subSection.title)"
+                          title="刪除"
+                        >
+                          <i class="mdi mdi-delete"></i>
+                        </button>
                         <i v-if="subSection.children" :class="['mdi', isExpanded(subSection.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
                       </div>
                     </div>
@@ -105,6 +119,13 @@
                               title="編輯標題"
                             >
                               <i class="mdi mdi-pencil"></i>
+                            </button>
+                            <button 
+                              class="delete-btn"
+                              @click.stop="confirmDelete(item.id, item.title)"
+                              title="刪除"
+                            >
+                              <i class="mdi mdi-delete"></i>
                             </button>
                           </div>
                         </div>
@@ -228,7 +249,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, provide, nextTick } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Table from '@tiptap/extension-table'
@@ -256,7 +277,7 @@ const editingTitle = ref('')
 const editingSectionId = ref(null)
 
 // 章節結構
-const sections = [
+const sections = ref([
   {
     id: 'about',
     title: '關於本報告書',
@@ -311,7 +332,7 @@ const sections = [
       }
     ]
   }
-]
+])
 
 // 編輯器配置
 const createEditor = (content = '') => new Editor({
@@ -332,7 +353,7 @@ const createEditor = (content = '') => new Editor({
 
 // 為每個章節創建編輯器實例
 const editors = {}
-sections.forEach(section => {
+sections.value.forEach(section => {
   editors[section.id] = createEditor()
   if (section.children) {
     section.children.forEach(subSection => {
@@ -380,7 +401,7 @@ const handleCommentFilterChange = (filter) => {
 const formatDataToJson = () => {
   const result = []
   
-  sections.forEach(section => {
+  sections.value.forEach(section => {
     const sectionData = {}
     
     if (section.children) {
@@ -464,13 +485,13 @@ const isLeafSection = (sectionId) => {
       }
     }
   }
-  return findSection(sections)
+  return findSection(sections.value)
 }
 
 // 修改：獲取當前標題的函數，只顯示最小層級的標題
 const getCurrentSectionTitle = () => {
   if (!selectedSection.value) return ''
-  const section = findSectionById(selectedSection.value, sections)
+  const section = findSectionById(selectedSection.value, sections.value)
   if (!section) return ''
   return isLeafSection(selectedSection.value) ? section.title : ''
 }
@@ -513,7 +534,7 @@ const getRomanNumeral = (num) => {
 
 // 初始化展開狀態
 const initializeExpandedSections = () => {
-  sections.forEach(section => {
+  sections.value.forEach(section => {
     expandedSections.value.add(section.id)
     if (section.children) {
       section.children.forEach(subSection => {
@@ -534,7 +555,7 @@ const toggleSection = (sectionId) => {
   if (newExpandedSections.has(sectionId)) {
     newExpandedSections.delete(sectionId);
     // 收合直接子節點
-    const section = sections.find(s => s.id === sectionId);
+    const section = sections.value.find(s => s.id === sectionId);
     if (section && section.children) {
       section.children.forEach(child => newExpandedSections.delete(child.id));
     }
@@ -603,9 +624,8 @@ const addSubsection = () => {
     children: currentLevel.value === 1 ? [] : null
   }
 
-  // 遞迴函數來找到並更新父節點
-  const updateSections = (sections) => {
-    return sections.map(section => {
+  const updateSections = (sectionsArr) => {
+    return sectionsArr.map(section => {
       if (section.id === currentParentId.value) {
         return {
           ...section,
@@ -622,12 +642,8 @@ const addSubsection = () => {
     })
   }
 
-  // 更新sections
-  sections.splice(0, sections.length, ...updateSections(sections))
-  
-  // 展開父節點
+  sections.value = updateSections(sections.value)
   expandedSections.value.add(currentParentId.value)
-  
   closeModal()
 }
 
@@ -646,8 +662,8 @@ const updateSectionTitle = () => {
     return
   }
 
-  const updateTitle = (sections) => {
-    return sections.map(section => {
+  const updateTitle = (sectionsArr) => {
+    return sectionsArr.map(section => {
       if (section.id === editingSectionId.value) {
         return { ...section, title: editingTitle.value.trim() }
       }
@@ -661,8 +677,7 @@ const updateSectionTitle = () => {
     })
   }
 
-  // 更新sections
-  sections.splice(0, sections.length, ...updateTitle(sections))
+  sections.value = updateTitle(sections.value)
   closeEditModal()
 }
 
@@ -679,6 +694,73 @@ provide('comments', comments)
 // 新增：關閉註解面板的方法
 const closeCommentPanel = () => {
   showCommentPanel.value = false
+}
+
+// 修改刪除章節的方法
+const deleteSection = async (sectionId) => {
+  // 如果刪除的是當前選中的章節，先清除選中狀態
+  if (selectedSection.value === sectionId) {
+    selectedSection.value = null
+  }
+  
+  // 從展開狀態中移除
+  if (expandedSections.value.has(sectionId)) {
+    expandedSections.value.delete(sectionId)
+  }
+  
+  // 清除相關的內容和註解
+  if (sectionContents.value[sectionId]) {
+    delete sectionContents.value[sectionId]
+  }
+  if (comments.value[sectionId]) {
+    delete comments.value[sectionId]
+  }
+
+  // 使用臨時數組進行刪除操作
+  const deleteFromArray = (arr) => {
+    const newArr = [...arr]
+    const index = newArr.findIndex(item => item.id === sectionId)
+    if (index !== -1) {
+      newArr.splice(index, 1)
+      return { found: true, array: newArr }
+    }
+    
+    for (let i = 0; i < newArr.length; i++) {
+      if (newArr[i].children) {
+        const result = deleteFromArray(newArr[i].children)
+        if (result.found) {
+          newArr[i] = { ...newArr[i], children: result.array }
+          return { found: true, array: newArr }
+        }
+      }
+    }
+    return { found: false, array: newArr }
+  }
+
+  const result = deleteFromArray(sections.value)
+  if (result.found) {
+    await nextTick()
+    sections.value = result.array
+  }
+}
+
+// 修改確認刪除的方法
+const confirmDelete = async (sectionId, title) => {
+  if (confirm(`確定要刪除「${title}」嗎？此操作無法復原。`)) {
+    await deleteSection(sectionId)
+  }
+}
+
+// 生成章節序號的方法
+const getSectionNumber = (index) => {
+  // 重新計算實際的序號（跳過已刪除的章節）
+  let visibleIndex = 0;
+  sections.value.forEach((section, i) => {
+    if (i < index) {
+      visibleIndex++;
+    }
+  });
+  return visibleIndex + 1;
 }
 </script>
 
@@ -710,7 +792,7 @@ const closeCommentPanel = () => {
 
 .sidebar {
   height: calc(100vh - 60px);
-  width: 280px;
+  width: 300px;
   transition: all 0.3s ease;
   position: fixed;
   background-color: #f8f9fa;
@@ -1438,5 +1520,35 @@ const closeCommentPanel = () => {
 
 .dark .comment-textarea:focus {
   border-color: #60a5fa;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: #dc2626;
+}
+
+.section-title:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+.dark .delete-btn {
+  color: #ef4444;
+}
+
+.dark .delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 </style>
