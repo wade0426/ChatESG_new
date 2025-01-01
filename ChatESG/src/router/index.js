@@ -33,17 +33,53 @@ const router = createRouter({
             component: () => import('../components/found_organization.vue'),
             meta: { requiresAuth: true }
         },
-        // {
-        //     path: '/organization_dashboard',
-        //     name: 'OrganizationDashboard',
-        //     component: () => import('../components/OrganizationDashboard.vue'),
-        //     meta: { requiresAuth: true }
-        // }
         {
             path: '/user-profile',
             name: 'UserProfile',
             component: () => import('../components/UserProfile.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/organization',
+            component: () => import('../components/OrganizationLayout.vue'),
+            meta: { requiresAuth: true },
+            children: [
+                {
+                    path: 'details',
+                    name: 'OrganizationDetails',
+                    component: () => import('../components/OrganizationDashboard.vue')
+                },
+                {
+                    path: 'members',
+                    name: 'OrganizationMembers',
+                    component: () => import('../components/OrganizationMember.vue')
+                },
+                {
+                    path: 'roles',
+                    name: 'OrganizationRoles',
+                    component: () => import('../components/OrganizationRole.vue')
+                },
+                {
+                    path: 'permissions',
+                    name: 'OrganizationPermissions',
+                    component: () => import('../components/OrganizationPermission.vue')
+                },
+                {
+                    path: 'payment',
+                    name: 'PaymentAndPlan',
+                    component: () => import('../components/PaymentAndPlan.vue')
+                },
+                {
+                    path: 'purchases',
+                    name: 'PurchaseRecord',
+                    component: () => import('../components/PurchaseRecord.vue')
+                },
+                {
+                    path: 'membership-application-review',
+                    name: 'MembershipApplicationReview',
+                    component: () => import('../components/MembershipApplicationReview.vue')
+                }
+            ]
         },
     ]
 })

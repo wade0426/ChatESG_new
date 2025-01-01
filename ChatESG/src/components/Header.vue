@@ -29,7 +29,7 @@
             <div class="dropdown-menu" id="userDropdown">
                 <div class="dropdown-menu-content">
                     <a href="/user-profile"><span>帳號</span></a>
-                    <a href="#"><span>管理組織</span></a>
+                    <a href="/organization/details"><span>管理組織</span></a>
                     <div class="menu-divider"></div>
                     <a href="#"><span>設定</span></a>
                     <a href="#"><span>最新消息</span></a>
