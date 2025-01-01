@@ -15,6 +15,10 @@
             <p class="description">{{ organizationDescription || '組織描述' }}</p>
             <div class="meta-info">
               <p>組織ID：{{ organizationId || 'N/A' }}</p>
+              <p>組織擁有者：{{ ownerName || 'N/A' }}</p>
+              <p>組織成員數量：{{ memberCount || 'N/A' }}</p>
+              <p>組織報告書數量：{{ reportCount || 'N/A' }}</p>
+              <p>組織身份組數量：{{ identityGroupCount || 'N/A' }}</p>
               <p>創建時間：{{ createdAt || 'N/A' }}</p>
               <p>最後更新：{{ updatedAt || 'N/A' }}</p>
             </div>
@@ -27,15 +31,18 @@
 
 <script>
 export default {
-  name: 'OrganizationDashboard',
+  name: 'OrganizationDashboard', // 組件名稱,用於在Vue開發工具中識別組件
   data() {
     return {
-      organizationId: '',
-      organizationName: '',
-      organizationDescription: '',
-      avatarUrl: '',
-      updatedAt: '',
-      createdAt: ''
+      // 組織基本資料
+      organizationId: '', // 組織的唯一識別ID
+      organizationName: '', // 組織名稱
+      organizationDescription: '', // 組織描述文字
+      avatarUrl: '', // 組織頭像圖片的URL
+      
+      // 時間相關資訊
+      updatedAt: '', // 組織資料最後更新時間
+      createdAt: '' // 組織創建時間
     }
   }
 }
@@ -99,16 +106,18 @@ export default {
 }
 
 .description {
-  color: #666;
-  margin-bottom: 20px;
+  color: #f1eded;
+  margin: 20px 0 20px 0;
+  font-size: 18px;
 }
 
 .meta-info {
   color: #888;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .meta-info p {
-  margin: 5px 0;
+  margin: 10px 0;
+  color: #f1eded;
 }
 </style>

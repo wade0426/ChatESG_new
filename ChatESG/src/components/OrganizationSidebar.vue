@@ -15,13 +15,13 @@
         <i class="fas fa-user-plus"></i>
         人員申請審核
       </router-link>
-      <router-link to="/organization/members" class="nav-item" :class="{ active: $route.path === '/organization/members' }">
-        <i class="fas fa-users"></i>
-        組織成員
-      </router-link>
       <router-link to="/organization/roles" class="nav-item" :class="{ active: $route.path === '/organization/roles' }">
         <i class="fas fa-user-tag"></i>
         身份組
+      </router-link>
+      <router-link to="/organization/members" class="nav-item" :class="{ active: $route.path === '/organization/members' }">
+        <i class="fas fa-users"></i>
+        組織成員
       </router-link>
       <router-link to="/organization/permissions" class="nav-item" :class="{ active: $route.path === '/organization/permissions' }">
         <i class="fas fa-lock"></i>
