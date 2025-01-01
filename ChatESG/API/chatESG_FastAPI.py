@@ -142,7 +142,7 @@ async def login(form_data: LoginUser):
 async def register(user: User):
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # 檢查用戶名是否已存在
+            # 檢查使用者名是否已存在
             await cur.execute("SELECT UserName FROM Users WHERE UserName = %s", (user.username,))
             if await cur.fetchone():
                 raise HTTPException(
@@ -184,7 +184,7 @@ async def get_user_profile(user_data: dict):
             
             user = await cur.fetchone()
             if not user:
-                raise HTTPException(status_code=404, detail="未找到用户")
+                raise HTTPException(status_code=404, detail="未找到使用者")
             
             return {
                 "userName": user[1],

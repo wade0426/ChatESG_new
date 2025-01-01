@@ -45,8 +45,11 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
 
 const emit = defineEmits(['openNav'])
+
+const userStore = useUserStore()
 
 // 使用 ref 函式建立可被監聽的變數
 const userName = ref('')
@@ -75,8 +78,14 @@ const toggleDropdown = () => {
     document.getElementById("userDropdown").classList.toggle("show");
 }
 
-const logout = () => {
-    console.log("登出");
+const logout = async () => {
+    try {
+        userStore.logout()  // 調用 Pinia store 的登出方法
+        // 重整頁面
+        window.location.reload();
+    } catch (error) {
+        console.error('登出時發生錯誤:', error)
+    }
 }
 
 // 從API獲取用戶資料

@@ -54,29 +54,35 @@
 import { useUserStore } from '@/stores/user'
 
 export default {
-
+  // 定義組件名稱
   name: 'Login',
+
+  // 使用組合式API設置Pinia store
   setup() {
     const userStore = useUserStore()
     return { userStore }
   },
 
-  data() { // 定義元件的資料
+  // 定義組件的響應式數據
+  data() {
     return {
-      username: '',
-      password: '',
-      rememberMe: false,
+      username: '', // 用戶名
+      password: '', // 密碼
+      rememberMe: false, // 記住我選項
     }
   },
 
-  // mounted 生命週期鉤子 (DOM後立即執行)
+  // 組件掛載後執行初始化
   mounted() {
     this.init();
   },
 
+  // 定義組件的方法
   methods: {
+    // 處理登入邏輯的異步方法
     async handleLogin() {
       try {
+        // 發送登入請求到後端API
         const response = await fetch('http://localhost:8000/api/login', {
           method: 'POST',
           headers: {
@@ -88,35 +94,39 @@ export default {
           })
         });
 
+        // 解析響應數據
         const data = await response.json();
         
+        // 檢查響應狀態
         if (!response.ok) {
           throw new Error(data.detail);
         }
 
-        // 使用 Pinia store 來管理登入狀態
+        // 使用 Pinia store 更新登入狀態
         this.userStore.login(data.userID, data.username);
         
-        // 儲存認證信息
+        // 將用戶信息保存到本地存儲
         localStorage.setItem('user', JSON.stringify({
           userID: data.userID,
           username: data.username,
           token: data.access_token
         }));
         
+        // 顯示登入成功提示
         this.showToast('登入成功!', true);
         
-        // 如果勾選記住我
+        // 如果用戶選擇記住我，保存用戶名
         if(this.rememberMe) {
           localStorage.setItem('username', this.username);
         }
         
-        // 跳轉到首頁
+        // 登入成功後導航到首頁
         this.$router.push('/home');
         
       } catch (error) {
+        // 處理錯誤情況
         this.showToast(error.message, false);
-        this.password = ''; // 清空密碼
+        this.password = ''; // 清空密碼欄位
       }
     },
 
