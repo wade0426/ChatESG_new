@@ -16,7 +16,7 @@ import bcrypt
 import uvicorn
 import aiomysql
 import uuid
-
+import json
 # 創建 FastAPI 應用
 app = FastAPI()
 
@@ -279,6 +279,12 @@ async def create_organization(organization: Organization):
                 # 生成組織加入代碼（8位大小寫字母和數字）
                 organization_code = str(uuid.uuid4())[:8].upper()
                 
+                # 預設身份組
+                default_roles = {
+                    "number_of_organization_roles": 2,
+                    "organization_roles": ["資訊部", "行銷部"]
+                }
+                
                 # 插入新組織
                 await cur.execute("""
                     INSERT INTO Organizations (
@@ -287,15 +293,17 @@ async def create_organization(organization: Organization):
                         OrganizationDescription,
                         AvatarUrl,
                         OrganizationCode,
-                        OwnerID
-                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                        OwnerID,
+                        RoleInfo
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (
                     organization_id,
                     organization.organizationName,
                     organization.organizationDescription,
                     organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO,
                     organization_code,
-                    organization.user_id
+                    organization.user_id,
+                    json.dumps(default_roles)
                 ))
 
                 # 將創建者的組織ID設置為組織ID
@@ -303,6 +311,13 @@ async def create_organization(organization: Organization):
                     "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
                     (organization_id, organization.user_id)
                 )
+
+                # 更新組織成員資料表
+                await cur.execute("""
+                    INSERT INTO OrganizationMembers 
+                    (OrganizationID, UserID, Permission, Role, CreatedAt) 
+                    VALUES (%s, %s, 'admin', '["資訊部"]', CURRENT_TIMESTAMP)
+                """, (organization_id, organization.user_id))
                 
                 await conn.commit()
                 
@@ -388,44 +403,177 @@ async def join_organization(join_data: dict):
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # 檢查用戶是否已經在組織中
-            await cur.execute("SELECT OrganizationID FROM Users WHERE UserID = %s", (user_id,))
-            user = await cur.fetchone()
-            if user and user[0]:
-                raise HTTPException(status_code=400, detail="使用者已經在其他組織中")
-            
-            # 查找組織代碼對應的組織
-            await cur.execute(
-                "SELECT OrganizationID FROM Organizations WHERE OrganizationCode = %s",
-                (organization_code,)
-            )
-            organization = await cur.fetchone()
-            
-            if not organization:
-                raise HTTPException(status_code=404, detail="無效的組織代碼")
-            
-            # 更新用戶的組織ID
-            await cur.execute(
-                "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
-                (organization[0], user_id)
-            )
+            try:
+                # 開始事務
+                await conn.begin()
+                
+                # 檢查用戶是否已經在組織中
+                await cur.execute("SELECT OrganizationID FROM Users WHERE UserID = %s", (user_id,))
+                user = await cur.fetchone()
+                if user and user[0]:
+                    raise HTTPException(status_code=400, detail="使用者已經在其他組織中")
+                
+                # 查找組織代碼對應的組織
+                await cur.execute(
+                    "SELECT OrganizationID FROM Organizations WHERE OrganizationCode = %s",
+                    (organization_code,)
+                )
+                organization = await cur.fetchone()
+                
+                if not organization:
+                    raise HTTPException(status_code=404, detail="無效的組織代碼")
+                
+                # 檢查是否已經是組織成員
+                await cur.execute(
+                    "SELECT OrganizationMemberID FROM OrganizationMembers WHERE OrganizationID = %s AND UserID = %s",
+                    (organization[0], user_id)
+                )
+                if await cur.fetchone():
+                    raise HTTPException(status_code=400, detail="使用者已經是該組織的成員")
+                
+                # 更新用戶的組織ID
+                await cur.execute(
+                    "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
+                    (organization[0], user_id)
+                )
 
-            # 查 User 算 OrganizationID 看有幾個人
-            await cur.execute(
-                "SELECT COUNT(*) FROM Users WHERE OrganizationID = %s",
-                (organization[0],)
-            )
-            member_count = await cur.fetchone()
+                # 更新組織成員資料表
+                await cur.execute("""
+                    INSERT INTO OrganizationMembers 
+                    (OrganizationID, UserID, Role, CreatedAt) 
+                    VALUES (%s, %s, 'PendingReview', CURRENT_TIMESTAMP)
+                """, (organization[0], user_id))
+
+                # 更新組織成員數量
+                await cur.execute(
+                    "SELECT COUNT(*) FROM OrganizationMembers WHERE OrganizationID = %s",
+                    (organization[0],)
+                )
+                member_count = await cur.fetchone()
+                
+                await cur.execute(
+                    "UPDATE Organizations SET MemberCount = %s WHERE OrganizationID = %s",
+                    (member_count[0], organization[0])
+                )
+                
+                # 提交事務
+                await conn.commit()
+                
+                return {"status": "success", "message": "成功加入組織"}
+                
+            except Exception as e:
+                # 發生錯誤時回滾事務
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"加入組織失敗: {str(e)}")
+
+
+@app.post("/api/organizations/info")
+async def get_organization_info(data: dict):
+    organization_id = data.get("organization_id")
+    if not organization_id:
+        raise HTTPException(status_code=400, detail="缺少組織ID")
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # 獲取組織基本信息
+            await cur.execute("""
+                SELECT 
+                    o.OrganizationID,
+                    o.OrganizationName,
+                    o.OrganizationDescription,
+                    o.AvatarUrl,
+                    o.OwnerID,
+                    o.ReportCount,
+                    o.RoleInfo,
+                    o.CreatedAt,
+                    o.UpdatedAt,
+                    u.UserName as OwnerName,
+                    (SELECT COUNT(*) FROM OrganizationMembers WHERE OrganizationID = o.OrganizationID) as MemberCount
+                FROM Organizations o
+                LEFT JOIN Users u ON o.OwnerID = u.UserID
+                WHERE o.OrganizationID = %s
+            """, (organization_id,))
             
-            # 更新組織成員數量
-            await cur.execute(
-                "UPDATE Organizations SET MemberCount = %s WHERE OrganizationID = %s",
-                (member_count[0], organization[0])
-            )
+            org = await cur.fetchone()
+            if not org:
+                raise HTTPException(status_code=404, detail="未找到組織")
             
-            await conn.commit()
+            # 獲取組織成員列表
+            await cur.execute("""
+                SELECT 
+                    u.UserID,
+                    u.UserName,
+                    u.AvatarUrl,
+                    om.Permission,
+                    om.Role,
+                    om.CreatedAt
+                FROM OrganizationMembers om
+                JOIN Users u ON om.UserID = u.UserID
+                WHERE om.OrganizationID = %s
+            """, (organization_id,))
             
-            return {"status": "success", "message": "成功加入組織"}
+            members = await cur.fetchall()
+            members_list = []
+            for member in members:
+                members_list.append({
+                    "userID": member[0],
+                    "name": member[1],
+                    "avatarUrl": member[2],
+                    "permission": member[3],
+                    "role": member[4],
+                    "joinedAt": member[5].isoformat() if member[5] else None
+                })
+            
+            # 解析 RoleInfo JSON
+            role_info = json.loads(org[6]) if org[6] else {"organization_roles": []}
+            
+            return {
+                "status": "success",
+                "data": {
+                    "id": org[0],
+                    "name": org[1],
+                    "description": org[2],
+                    "avatarUrl": org[3],
+                    "owner": {
+                        "id": org[4],
+                        "name": org[9]
+                    },
+                    "reportCount": org[5],
+                    "roles": role_info["organization_roles"],
+                    "memberCount": org[10],
+                    "members": members_list,
+                    "createdAt": org[7].isoformat() if org[7] else None,
+                    "updatedAt": org[8].isoformat() if org[8] else None
+                }
+            }
+
+
+@app.post("/api/organizations/get_by_user")
+async def get_organization_by_user(data: dict):
+    user_id = data.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="缺少用戶ID")
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("""
+                SELECT om.OrganizationID, o.OrganizationName
+                FROM OrganizationMembers om
+                LEFT JOIN Organizations o ON om.OrganizationID = o.OrganizationID
+                WHERE om.UserID = %s
+            """, (user_id,))
+            
+            result = await cur.fetchone()
+            if not result:
+                return {"status": "success", "data": None}
+            
+            return {
+                "status": "success",
+                "data": {
+                    "organization_id": result[0],
+                    "organization_name": result[1]
+                }
+            }
 
 
 if __name__ == "__main__":

@@ -41,9 +41,8 @@ CREATE TABLE Organizations (
     OrganizationDescription VARCHAR(255) COMMENT '組織描述',
     AvatarUrl VARCHAR(255) COMMENT '組織標誌URL',
     OwnerID VARCHAR(36) NOT NULL COMMENT '組織擁有者ID',
-    MemberCount INT DEFAULT 0 COMMENT '組織成員數量',
     ReportCount INT DEFAULT 0 COMMENT '組織報告書數量',
-    RoleCount INT DEFAULT 0 COMMENT '組織身份組數量',
+    RoleInfo JSON COMMENT '組織身份組資訊',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
     FOREIGN KEY (OwnerID) REFERENCES Users(UserID) ON DELETE CASCADE
@@ -54,9 +53,11 @@ CREATE TABLE Organizations (
 -- 用於管理組織與成員之間的關係以及成員在組織內的身份組
 -- --------------------------------------------------------
 CREATE TABLE OrganizationMembers (
-    OrganizationMemberID VARCHAR(36) PRIMARY KEY COMMENT '組織成員關係唯一標識 (UUID)',
+    OrganizationMemberID INT AUTO_INCREMENT PRIMARY KEY COMMENT '組織成員關係唯一標識',
     OrganizationID VARCHAR(36) NOT NULL COMMENT '組織ID',
     UserID VARCHAR(36) NOT NULL COMMENT '使用者ID',
+    Permission ENUM('admin', 'member') NOT NULL DEFAULT 'member' COMMENT '使用者在組織中的權限',
+    Role VARCHAR(50) COMMENT '使用者在組織中的角色',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '加入時間',
     FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE CASCADE,
     FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,

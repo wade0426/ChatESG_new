@@ -21,7 +21,7 @@
               <p>組織報告書數量：{{ reportCount || 'N/A' }}</p>
               <p>組織身份組數量：{{ identityGroupCount || 'N/A' }}</p>
               <p>創建時間：{{ createdAt || 'N/A' }}</p>
-              <p>最後更新：{{ updatedAt || 'N/A' }}</p>
+              <p>最後更新時間：{{ updatedAt || 'N/A' }}</p>
             </div>
           </div>
         </div>
@@ -31,19 +31,57 @@
 </template>
 
 <script>
+import { organizationStore } from '../stores/organization'
+import { onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+
 export default {
-  name: 'OrganizationDashboard', // 組件名稱,用於在Vue開發工具中識別組件
-  data() {
+  name: 'OrganizationDashboard',
+  setup() {
+    const store = organizationStore()
+    const router = useRouter()
+
+    onMounted(async () => {
+      try {
+        // 從 sessionStorage 獲取用戶ID
+        const userID = sessionStorage.getItem('userID')
+        if (!userID) {
+          console.error('未找到用戶ID')
+          router.push('/login')
+          return
+        }
+
+        // 先獲取用戶的組織信息
+        const orgInfo = await store.getOrganizationByUserId()
+        if (!orgInfo || !orgInfo.organization_id) {
+          console.error('未找到組織信息')
+          router.push('/home')
+          return
+        }
+
+        // 獲取組織詳細信息
+        const success = await store.fetchOrganizationInfo(orgInfo.organization_id)
+        if (!success) {
+          console.error('獲取組織資訊失敗')
+          router.push('/home')
+        }
+      } catch (error) {
+        console.error('加載組織資訊時發生錯誤:', error)
+        router.push('/home')
+      }
+    })
+
     return {
-      // 組織基本資料
-      organizationId: '', // 組織的唯一識別ID
-      organizationName: '', // 組織名稱
-      organizationDescription: '', // 組織描述文字
-      avatarUrl: '', // 組織頭像圖片的URL
-      
-      // 時間相關資訊
-      updatedAt: '', // 組織資料最後更新時間
-      createdAt: '' // 組織創建時間
+      organizationId: computed(() => store.organizationId),
+      organizationName: computed(() => store.organizationName),
+      organizationDescription: computed(() => store.description),
+      avatarUrl: computed(() => store.avatarUrl),
+      ownerName: computed(() => store.organizationOwner),
+      memberCount: computed(() => store.memberCount),
+      reportCount: computed(() => store.reportCount),
+      identityGroupCount: computed(() => store.roleCount),
+      createdAt: computed(() => store.createdAt),
+      updatedAt: computed(() => store.updatedAt)
     }
   }
 }
