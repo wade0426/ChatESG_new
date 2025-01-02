@@ -55,7 +55,7 @@ CREATE TABLE OrganizationMembers (
     OrganizationID VARCHAR(36) NOT NULL COMMENT '組織ID',
     UserID VARCHAR(36) NOT NULL COMMENT '使用者ID',
     Permission ENUM('admin', 'member') NOT NULL DEFAULT 'member' COMMENT '使用者在組織中的權限',
-    Role VARCHAR(50) COMMENT '使用者在組織中的角色',
+    Role VARCHAR(500) COMMENT '使用者在組織中的角色',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '加入時間',
     FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE CASCADE,
     FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,

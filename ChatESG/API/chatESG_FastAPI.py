@@ -580,5 +580,48 @@ async def get_organization_by_user(data: dict):
             }
 
 
+@app.post("/api/organizations/update_member_roles")
+async def update_member_roles(data: dict):
+    user_id = data.get("user_id")
+    roles = data.get("roles")
+    organization_id = data.get("organization_id")
+    
+    if not all([user_id, roles, organization_id]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+    
+    # 確保 roles 是列表並轉換為 JSON 字符串
+    if not isinstance(roles, list):
+        raise HTTPException(status_code=400, detail="roles 必須是列表")
+    
+    roles_json = json.dumps(roles)
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                # 檢查用戶是否屬於該組織
+                await cur.execute("""
+                    SELECT OrganizationMemberID 
+                    FROM OrganizationMembers 
+                    WHERE UserID = %s AND OrganizationID = %s
+                """, (user_id, organization_id))
+                
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="找不到該組織成員")
+                
+                # 更新成員角色
+                await cur.execute("""
+                    UPDATE OrganizationMembers 
+                    SET Role = %s 
+                    WHERE UserID = %s AND OrganizationID = %s
+                """, (roles_json, user_id, organization_id))
+                print(roles_json)
+                await conn.commit()
+                return {"status": "success", "message": "成員身份組更新成功"}
+                
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"更新失敗: {str(e)}")
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

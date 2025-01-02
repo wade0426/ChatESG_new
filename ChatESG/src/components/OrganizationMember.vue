@@ -60,6 +60,7 @@
       v-model="showEditMemberRolesModal"
       :member="selectedMember"
       :roles="roles"
+      :organization-id="organizationId"
       @save="saveMemberRoles"
     />
   </div>
@@ -82,7 +83,7 @@ export default {
   setup() {
     const store = organizationStore()
     const router = useRouter()
-    const { members, roles } = storeToRefs(store)
+    const { members, roles, organizationId } = storeToRefs(store)
 
     // 創建計算屬性來確保返回數組
     const membersList = computed(() => {
@@ -130,11 +131,34 @@ export default {
       showEditMemberRolesModal.value = true;
     }
 
-    const saveMemberRoles = (newRoles) => {
+    const saveMemberRoles = async (newRoles) => {
       if (selectedMember.value?.email) {
-        const memberIndex = members.value.findIndex(m => m.email === selectedMember.value.email);
-        if (memberIndex !== -1) {
-          members.value[memberIndex].role = JSON.stringify(newRoles);
+        try {
+          const response = await fetch('http://localhost:8000/api/organizations/update_member_roles', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: selectedMember.value.userID,
+              roles: newRoles,
+              organization_id: organizationId.value
+            })
+          });
+
+          const data = await response.json();
+          if (data.status === 'success') {
+            // 更新本地狀態
+            const memberIndex = members.value.findIndex(m => m.email === selectedMember.value.email);
+            if (memberIndex !== -1) {
+              members.value[memberIndex].role = newRoles;
+            }
+          } else {
+            throw new Error(data.detail || '更新失敗');
+          }
+        } catch (error) {
+          console.error('更新成員身份組失敗:', error);
+          alert('更新失敗: ' + error.message);
         }
       }
     }
@@ -152,6 +176,7 @@ export default {
     return { 
       members: membersList,
       roles: rolesList,
+      organizationId,
       selectedMember,
       showRolesModal,
       showEditMemberRolesModal,

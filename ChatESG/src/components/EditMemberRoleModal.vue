@@ -43,12 +43,17 @@ export default {
       type: Array,
       required: true,
       default: () => []
+    },
+    organizationId: {
+      type: String,
+      required: true
     }
   },
   emits: ['update:modelValue', 'save'],
   data() {
     return {
-      selectedRoles: []
+      selectedRoles: [],
+      isLoading: false
     }
   },
   watch: {
@@ -66,9 +71,52 @@ export default {
     }
   },
   methods: {
-    saveMemberRoles() {
-      this.$emit('save', this.selectedRoles);
-      this.$emit('update:modelValue', false);
+    async saveMemberRoles() {
+      try {
+        this.isLoading = true;
+        
+        // 檢查必要參數
+        console.log('正在發送的數據:', {
+          user_id: this.member?.userID,
+          roles: this.selectedRoles,
+          organization_id: this.organizationId
+        });
+
+        if (!this.member?.userID) {
+          throw new Error('缺少用戶ID');
+        }
+        if (!this.selectedRoles || !this.selectedRoles.length) {
+          throw new Error('請至少選擇一個身份組');
+        }
+        if (!this.organizationId) {
+          throw new Error('缺少組織ID');
+        }
+
+        const response = await fetch('http://localhost:8000/api/organizations/update_member_roles', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: this.member.userID,
+            roles: this.selectedRoles,
+            organization_id: this.organizationId
+          })
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+          this.$emit('save', this.selectedRoles);
+          this.$emit('update:modelValue', false);
+        } else {
+          throw new Error(data.detail || '更新失敗');
+        }
+      } catch (error) {
+        console.error('更新成員身份組失敗:', error);
+        alert('更新失敗: ' + error.message);
+      } finally {
+        this.isLoading = false;
+      }
     }
   }
 }
@@ -126,6 +174,12 @@ export default {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  opacity: 1;
+}
+
+.save-btn:disabled, .cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .save-btn {
