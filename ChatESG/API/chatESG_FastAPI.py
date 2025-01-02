@@ -367,5 +367,41 @@ async def change_username(user_data: dict):
             return {"status": "success", "message": "用戶名修改成功"}
 
 
+@app.post("/api/organizations/join")
+async def join_organization(join_data: dict):
+    user_id = join_data.get("user_id")
+    organization_code = join_data.get("organization_code")
+    
+    if not all([user_id, organization_code]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # 檢查用戶是否已經在組織中
+            await cur.execute("SELECT OrganizationID FROM Users WHERE UserID = %s", (user_id,))
+            user = await cur.fetchone()
+            if user and user[0]:
+                raise HTTPException(status_code=400, detail="使用者已經在其他組織中")
+            
+            # 查找組織代碼對應的組織
+            await cur.execute(
+                "SELECT OrganizationID FROM Organizations WHERE OrganizationCode = %s",
+                (organization_code,)
+            )
+            organization = await cur.fetchone()
+            
+            if not organization:
+                raise HTTPException(status_code=404, detail="無效的組織代碼")
+            
+            # 更新用戶的組織ID
+            await cur.execute(
+                "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
+                (organization[0], user_id)
+            )
+            await conn.commit()
+            
+            return {"status": "success", "message": "成功加入組織"}
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

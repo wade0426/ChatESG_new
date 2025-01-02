@@ -21,7 +21,7 @@
             <i>📄</i>
             <span>建立文件</span>
         </a>
-        <a href="#" class="tool-item">
+        <a href="javascript:void(0)" class="tool-item" @click="showAddOrganizationModal">
             <i>🌐</i>
             <span>加入組織</span>
         </a>
@@ -41,9 +41,10 @@
         </button>
     </div>
 
-    <!-- 引入報告書彈窗組件 -->
+    <!-- 引入彈窗組件 -->
     <ReportModal ref="reportModalRef" />
     <CreateCompanyInfoModal ref="createCompanyInfoModalRef" />
+    <AddOrganizationModal ref="addOrganizationModalRef" />
 
     <!-- 最近設計 -->
     <div class="recent-designs">
@@ -61,6 +62,7 @@ import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import ReportModal from './ReportModal.vue'
 import CreateCompanyInfoModal from './CreateCompanyInfoModal.vue'
+import AddOrganizationModal from './AddOrganizationModal.vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 
@@ -69,6 +71,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const reportModalRef = ref(null)
 const createCompanyInfoModalRef = ref(null)
+const addOrganizationModalRef = ref(null)
 
 const openNav = () => {
     isSidebarOpen.value = true
@@ -84,6 +87,10 @@ const showReportModal = () => {
 
 const showCreateCompanyInfoModal = () => {
     createCompanyInfoModalRef.value.showModal()
+}
+
+const showAddOrganizationModal = () => {
+    addOrganizationModalRef.value.showModal()
 }
 
 // 確保用戶已登入

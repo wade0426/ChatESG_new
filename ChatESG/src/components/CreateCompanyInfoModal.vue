@@ -1,6 +1,3 @@
-<!-- CreateCompanyInfoModal.vue -->
-
-
 <template>
   <div class="modal" v-if="isVisible">
     <div class="modal-content">
