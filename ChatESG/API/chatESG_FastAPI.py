@@ -281,8 +281,8 @@ async def create_organization(organization: Organization):
                 
                 # 預設身份組
                 default_roles = {
-                    "number_of_organization_roles": 2,
-                    "organization_roles": ["資訊部", "行銷部"]
+                    "number_of_organization_roles": 3,
+                    "organization_roles": ["一般", "資訊部", "行銷部"]
                 }
                 
                 # 插入新組織
@@ -482,6 +482,7 @@ async def get_organization_info(data: dict):
                     o.OrganizationName,
                     o.OrganizationDescription,
                     o.AvatarUrl,
+                    o.OrganizationCode,
                     o.OwnerID,
                     o.ReportCount,
                     o.RoleInfo,
@@ -527,25 +528,26 @@ async def get_organization_info(data: dict):
                 })
             
             # 解析 RoleInfo JSON
-            role_info = json.loads(org[6]) if org[6] else {"organization_roles": []}
+            role_info = json.loads(org[7]) if org[7] else {"organization_roles": []}
             
             return {
                 "status": "success",
                 "data": {
                     "id": org[0],
+                    "code": org[4],
                     "name": org[1],
                     "description": org[2],
                     "avatarUrl": org[3],
                     "owner": {
-                        "id": org[4],
-                        "name": org[9]
+                        "id": org[5],
+                        "name": org[10]
                     },
-                    "reportCount": org[5],
+                    "reportCount": org[6],
                     "roles": role_info["organization_roles"],
-                    "memberCount": org[10],
+                    "memberCount": org[11],
                     "members": members_list,
-                    "createdAt": org[7].isoformat() if org[7] else None,
-                    "updatedAt": org[8].isoformat() if org[8] else None
+                    "createdAt": org[8].isoformat() if org[8] else None,
+                    "updatedAt": org[9].isoformat() if org[9] else None
                 }
             }
 

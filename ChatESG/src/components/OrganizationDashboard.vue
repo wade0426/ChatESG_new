@@ -16,6 +16,7 @@
             <hr>
             <div class="meta-info">
               <p>組織ID：{{ organizationId || 'N/A' }}</p>
+              <p>組織加入代碼：{{ organizationCode || 'N/A' }}</p>
               <p>組織擁有者：{{ ownerName || 'N/A' }}</p>
               <p>組織成員數量：{{ memberCount || 'N/A' }}</p>
               <p>組織報告書數量：{{ reportCount || 'N/A' }}</p>
@@ -47,6 +48,7 @@ export default {
 
     return {
       organizationId: computed(() => store.organizationId),
+      organizationCode: computed(() => store.organizationCode),
       organizationName: computed(() => store.organizationName),
       organizationDescription: computed(() => store.description),
       avatarUrl: computed(() => store.avatarUrl),

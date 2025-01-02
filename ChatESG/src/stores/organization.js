@@ -8,6 +8,7 @@ export const organizationStore = defineStore('organization', {
     state: () => ({
         organizationName: '', // 組織名稱
         organizationId: '', // 組織ID
+        organizationCode: '', // 組織加入代碼
         organizationOwner: '', // 組織擁有者
         memberCount: 0, // 組織成員數量
         reportCount: 0, // 組織報告書數量
@@ -68,6 +69,7 @@ export const organizationStore = defineStore('organization', {
                     const data = response.data.data
                     this.setOrganizationInfo({
                         orgID: data.id,
+                        code: data.code,
                         name: data.name,
                         email: data.email,
                         owner: data.owner.name,
@@ -95,6 +97,7 @@ export const organizationStore = defineStore('organization', {
         // 設置組織基本資訊
         setOrganizationInfo(info) {
             this.organizationName = info.name
+            this.organizationCode = info.code
             this.organizationId = info.orgID
             this.organizationOwner = info.owner
             this.description = info.description
