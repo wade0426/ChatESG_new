@@ -83,6 +83,11 @@ const router = createRouter({
                     path: 'report-management',
                     name: 'ReportManagement',
                     component: () => import('../components/ReportManagement.vue')
+                },
+                {
+                    path: 'audit-log',
+                    name: 'AuditLog',
+                    component: () => import('../components/AuditLog.vue')
                 }
             ]
         },

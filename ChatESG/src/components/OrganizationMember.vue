@@ -4,7 +4,7 @@
       <h1>組織成員 ({{ members.length }})</h1>
       <div class="header-buttons">
         <!-- <button class="add-btn" @click="showAddMemberModal = true">新增成員</button>不使用 -->
-        <button class="manage-groups-btn" @click="showGroupsModal = true">管理身份組</button>
+        <button class="manage-groups-btn" @click="showRolesModal = true">管理身份組</button>
       </div>
     </div>
     <div class="member-list">
@@ -29,11 +29,11 @@
             <td>{{ member.email }}</td>
             <td>{{ formatDate(member.joinedAt) }}</td>
             <td>
-              <div class="groups-cell">
-                <span v-for="group in member.groups" :key="group" class="group-tag">
-                  {{ group }}
+              <div class="roles-cell">
+                <span v-for="role in getMemberRoles(member)" :key="role" class="role-tag">
+                  {{ role }}
                 </span>
-                <button class="edit-groups-btn" @click="editMemberGroups(member)">
+                <button class="edit-groups-btn" @click="editMemberRoles(member)">
                   編輯身份組
                 </button>
               </div>
@@ -47,45 +47,45 @@
     </div>
 
     <!-- 身份組管理彈窗 -->
-    <div v-if="showGroupsModal" class="modal">
+    <div v-if="showRolesModal" class="modal">
       <div class="modal-content">
         <h2>身份組管理</h2>
-        <div class="groups-list">
-          <div v-for="group in groups" :key="group.name" class="group-item">
-            <div class="group-info">
-              <span>{{ group.name }}</span>
-              <span class="member-count">({{ group.memberCount }} 位成員)</span>
+        <div class="roles-list">
+          <div v-for="role in roles" :key="role" class="role-item">
+            <div class="role-info">
+              <span>{{ role }}</span>
+              <span class="member-count">({{ getMemberCountForRole(role) }} 位成員)</span>
             </div>
-            <div class="group-actions">
-              <button class="edit-btn" @click="editGroup(group)">編輯</button>
-              <button class="delete-btn" @click="deleteGroup(group)">刪除</button>
+            <div class="role-actions">
+              <button class="edit-btn" @click="editRole(role)">編輯</button>
+              <button class="delete-btn" @click="deleteRole(role)">刪除</button>
             </div>
           </div>
         </div>
-        <button class="add-group-btn" @click="showAddGroupModal = true">新增身份組</button>
-        <button class="close-btn" @click="showGroupsModal = false">關閉</button>
+        <button class="add-role-btn" @click="showAddRoleModal = true">新增身份組</button>
+        <button class="close-btn" @click="showRolesModal = false">關閉</button>
       </div>
     </div>
 
     <!-- 編輯成員身份組彈窗 -->
-    <div v-if="showEditMemberGroupsModal" class="modal">
+    <div v-if="showEditMemberRolesModal" class="modal">
       <div class="modal-content">
         <h2>編輯成員身份組</h2>
         <div class="member-info">
           <span>{{ selectedMember?.name }}</span>
-          <span>{{ selectedMember?.email }}</span>
+          <span> ({{ selectedMember?.email }})</span>
         </div>
-        <div class="groups-selection">
-          <label v-for="group in groups" :key="group.name" class="group-checkbox">
+        <div class="roles-selection">
+          <label v-for="role in roles" :key="role.name" class="role-checkbox">
             <input type="checkbox" 
-                   :value="group.name" 
-                   v-model="selectedGroups">
-            {{ group.name }}
+                   :value="role" 
+                   v-model="selectedRoles">
+            {{ role }}
           </label>
         </div>
         <div class="modal-actions">
-          <button class="save-btn" @click="saveMemberGroups">保存</button>
-          <button class="cancel-btn" @click="showEditMemberGroupsModal = false">取消</button>
+          <button class="save-btn" @click="saveMemberRoles">保存</button>
+          <button class="cancel-btn" @click="showEditMemberRolesModal = false">取消</button>
         </div>
       </div>
     </div>
@@ -95,28 +95,42 @@
 <script>
 import { organizationStore } from '../stores/organization'
 import { storeToRefs } from 'pinia'
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'OrganizationMember',
   setup() {
     const store = organizationStore()
-    const { members } = storeToRefs(store)
-    return { members }
+    const router = useRouter()
+    const { members, roles } = storeToRefs(store)
+
+    onMounted(async () => {
+      await store.initializeOrganization()
+    })
+    return { members, roles }
+
   },
   data() {
     return {
-      showGroupsModal: false,
-      showEditMemberGroupsModal: false,
-      showAddGroupModal: false,
+      showRolesModal: false,
+      showEditMemberRolesModal: false,
+      showAddRoleModal: false,
       selectedMember: null,
-      selectedGroups: [],
-      groups: [
-        { name: '資訊部', memberCount: 3 },
-        { name: '行銷部', memberCount: 2 }
-      ]
+      selectedRoles: [],
     }
   },
   methods: {
+    getMemberRoles(member) {
+      if (!member.role) return [];
+      return typeof member.role === 'string' ? JSON.parse(member.role) : member.role;
+    },
+    getMemberCountForRole(role) {
+      return this.members.filter(member => {
+        const memberRoles = this.getMemberRoles(member);
+        return memberRoles.includes(role);
+      }).length;
+    },
     formatDate(date) {
       return new Date(date).toLocaleDateString('zh-TW', {
         year: 'numeric',
@@ -129,26 +143,28 @@ export default {
         this.members = this.members.filter(m => m.email !== member.email)
       }
     },
-    editMemberGroups(member) {
-      this.selectedMember = member
-      this.selectedGroups = [...member.groups]
-      this.showEditMemberGroupsModal = true
+    editMemberRoles(member) {
+      this.selectedMember = member;
+      this.selectedRoles = this.getMemberRoles(member);
+      this.showEditMemberRolesModal = true;
     },
-    saveMemberGroups() {
+    saveMemberRoles() {
       if (this.selectedMember) {
-        const memberIndex = this.members.findIndex(m => m.email === this.selectedMember.email)
+        const memberIndex = this.members.findIndex(m => m.email === this.selectedMember.email);
         if (memberIndex !== -1) {
-          this.members[memberIndex].groups = [...this.selectedGroups]
+          this.members[memberIndex].role = JSON.stringify(this.selectedRoles);
         }
       }
-      this.showEditMemberGroupsModal = false
+      this.showEditMemberRolesModal = false;
     },
-    editGroup(group) {
+    editRole(role) {
       // 實作編輯身份組邏輯
+    //   console.log(this.roles)
+      console.log(role)
     },
-    deleteGroup(group) {
-      if (confirm(`確定要刪除 ${group.name} 身份組嗎？`)) {
-        this.groups = this.groups.filter(g => g.name !== group.name)
+    deleteRole(role) {
+      if (confirm(`確定要刪除 ${role.name} 身份組嗎？`)) {
+        this.roles = this.roles.filter(r => r.name !== role.name)
       }
     }
   }
@@ -265,14 +281,14 @@ export default {
   background-color: #c82333;
 }
 
-.groups-cell {
+.roles-cell {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.group-tag {
+.role-tag {
   background-color: #3498db;
   color: white;
   padding: 4px 8px;
@@ -311,11 +327,11 @@ export default {
   color: white;
 }
 
-.groups-list {
+.roles-list {
   margin: 20px 0;
 }
 
-.group-item {
+.role-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -323,7 +339,7 @@ export default {
   border-bottom: 1px solid #444;
 }
 
-.group-info {
+.role-info {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -334,7 +350,7 @@ export default {
   font-size: 14px;
 }
 
-.group-actions {
+.role-actions {
   display: flex;
   gap: 8px;
 }
@@ -356,14 +372,14 @@ export default {
   color: white;
 }
 
-.groups-selection {
+.roles-selection {
   margin: 20px 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.group-checkbox {
+.role-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -404,7 +420,7 @@ export default {
   width: 100%;
 }
 
-.add-group-btn {
+.add-role-btn {
   width: 100%;
   padding: 8px 16px;
   background-color: #007bff;

@@ -1,6 +1,7 @@
 // 引入 Pinia 的 defineStore 函數
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 
 // 定義一個名為 'organization' 的 store
 export const organizationStore = defineStore('organization', {
@@ -20,6 +21,42 @@ export const organizationStore = defineStore('organization', {
     }),
 
     actions: {
+        // 初始化組織資訊
+        async initializeOrganization() {
+            const router = useRouter()
+            try {
+                // 從 sessionStorage 獲取用戶ID
+                const userID = sessionStorage.getItem('userID')
+                if (!userID) {
+                    console.error('未找到用戶ID')
+                    router.push('/login')
+                    return false
+                }
+
+                // 先獲取用戶的組織信息
+                const orgInfo = await this.getOrganizationByUserId()
+                if (!orgInfo || !orgInfo.organization_id) {
+                    console.error('未找到組織信息')
+                    router.push('/home')
+                    return false
+                }
+
+                // 獲取組織詳細信息
+                const success = await this.fetchOrganizationInfo(orgInfo.organization_id)
+                if (!success) {
+                    console.error('獲取組織資訊失敗')
+                    router.push('/home')
+                    return false
+                }
+
+                return true
+            } catch (error) {
+                console.error('加載組織資訊時發生錯誤:', error)
+                router.push('/home')
+                return false
+            }
+        },
+
         // 獲取組織資料
         async fetchOrganizationInfo(organizationId) {
             try {

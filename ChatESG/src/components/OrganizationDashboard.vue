@@ -42,33 +42,7 @@ export default {
     const router = useRouter()
 
     onMounted(async () => {
-      try {
-        // 從 sessionStorage 獲取用戶ID
-        const userID = sessionStorage.getItem('userID')
-        if (!userID) {
-          console.error('未找到用戶ID')
-          router.push('/login')
-          return
-        }
-
-        // 先獲取用戶的組織信息
-        const orgInfo = await store.getOrganizationByUserId()
-        if (!orgInfo || !orgInfo.organization_id) {
-          console.error('未找到組織信息')
-          router.push('/home')
-          return
-        }
-
-        // 獲取組織詳細信息
-        const success = await store.fetchOrganizationInfo(orgInfo.organization_id)
-        if (!success) {
-          console.error('獲取組織資訊失敗')
-          router.push('/home')
-        }
-      } catch (error) {
-        console.error('加載組織資訊時發生錯誤:', error)
-        router.push('/home')
-      }
+      await store.initializeOrganization()
     })
 
     return {
