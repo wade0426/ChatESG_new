@@ -37,6 +37,7 @@ CREATE TABLE Users (
 CREATE TABLE Organizations (
     OrganizationID VARCHAR(36) PRIMARY KEY COMMENT '組織唯一標識 (UUID)',
     OrganizationName VARCHAR(100) NOT NULL COMMENT '組織名稱',
+    OrganizationCode VARCHAR(8) NOT NULL UNIQUE COMMENT '組織加入代碼（8位大小寫字母和數字）',
     OrganizationDescription VARCHAR(255) COMMENT '組織描述',
     AvatarUrl VARCHAR(255) COMMENT '組織標誌URL',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',

@@ -98,12 +98,15 @@ class OrganizationResponse(BaseModel):
     message: str
     organization_id: Optional[str] = None
 
+
 def verify_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
 
 def get_password_hash(password):
     salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -114,6 +117,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 @app.post("/api/login")
 async def login(form_data: LoginUser):
@@ -151,6 +155,7 @@ async def login(form_data: LoginUser):
                 "username": user[1]  # UserName
             }
 
+
 @app.post("/api/register")
 async def register(user: User):
     async with db_pool.acquire() as conn:
@@ -183,6 +188,7 @@ async def register(user: User):
             await conn.commit()
             
             return {"status": "success", "message": "註冊成功"}
+
 
 @app.post("/api/user/profile")
 async def get_user_profile(user_data: dict):
@@ -249,6 +255,7 @@ async def get_user_profile_Personal_Information(user_data: dict):
                 }
             }
 
+
 @app.post("/api/organizations", response_model=OrganizationResponse)
 async def create_organization(organization: Organization):
     try:
@@ -267,6 +274,8 @@ async def create_organization(organization: Organization):
                 
                 # 生成組織ID
                 organization_id = str(uuid.uuid4())
+                # 生成組織加入代碼（8位大小寫字母和數字）
+                organization_code = str(uuid.uuid4())[:8].upper()
                 
                 # 插入新組織
                 await cur.execute("""
@@ -274,13 +283,15 @@ async def create_organization(organization: Organization):
                         OrganizationID,
                         OrganizationName,
                         OrganizationDescription,
-                        AvatarUrl
-                    ) VALUES (%s, %s, %s, %s)
+                        AvatarUrl,
+                        OrganizationCode
+                    ) VALUES (%s, %s, %s, %s, %s)
                 """, (
                     organization_id,
                     organization.organizationName,
                     organization.organizationDescription,
-                    organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO
+                    organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO,
+                    organization_code
                 ))
                 
                 await conn.commit()
@@ -296,6 +307,7 @@ async def create_organization(organization: Organization):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
 
 @app.post("/api/user/profile/Change_Password")
 async def change_password(user_data: dict):
@@ -329,6 +341,7 @@ async def change_password(user_data: dict):
             
             return {"status": "success", "message": "密碼修改成功"}
 
+
 @app.post("/api/user/profile/Change_Username")
 async def change_username(user_data: dict):
     user_id = user_data.get("user_id")
@@ -352,6 +365,7 @@ async def change_username(user_data: dict):
             await conn.commit()
             
             return {"status": "success", "message": "用戶名修改成功"}
+
 
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
