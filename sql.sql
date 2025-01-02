@@ -21,9 +21,7 @@ CREATE TABLE Users (
     UserName VARCHAR(100) NOT NULL COMMENT '使用者名稱',
     UserPassword VARCHAR(255) NOT NULL COMMENT '使用者密碼（使用 bcrypt 或 Argon2 加密）',
     UserEmail VARCHAR(100) NOT NULL UNIQUE COMMENT '使用者電子郵件（用於登錄和通知）',
-    -- avatarUrl
     AvatarUrl VARCHAR(255) COMMENT '使用者頭像URL',
-    -- organization
     OrganizationID VARCHAR(36) COMMENT '使用者所屬組織ID',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',

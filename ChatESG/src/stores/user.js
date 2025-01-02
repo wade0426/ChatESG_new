@@ -65,12 +65,23 @@ export const useUserStore = defineStore('user', {
                         user_id: this.userID
                     })
                 })
+
+                if (!response.ok) {
+                    console.error('API請求失敗:', response.status, response.statusText)
+                    const errorText = await response.text()
+                    console.error('錯誤詳情:', errorText)
+                    return
+                }
+
                 const data = await response.json()
                 if (data.status === 'success') {
                     this.updateUserInfo(data.data)
                 }
             } catch (error) {
                 console.error('獲取用戶資料失敗:', error)
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    console.error('無法連接到後端服務器，請確保服務器正在運行')
+                }
             }
         },
 
