@@ -3,7 +3,6 @@
     <div class="page-header">
       <h1>組織成員 ({{ members.length }})</h1>
       <div class="header-buttons">
-        <!-- <button class="add-btn" @click="showAddMemberModal = true">新增成員</button>不使用 -->
         <button class="manage-groups-btn" @click="showRolesModal = true">管理身份組</button>
       </div>
     </div>
@@ -46,126 +45,124 @@
       </table>
     </div>
 
-    <!-- 身份組管理彈窗 -->
-    <div v-if="showRolesModal" class="modal">
-      <div class="modal-content">
-        <h2>身份組管理</h2>
-        <div class="roles-list">
-          <div v-for="role in roles" :key="role" class="role-item">
-            <div class="role-info">
-              <span>{{ role }}</span>
-              <span class="member-count">({{ getMemberCountForRole(role) }} 位成員)</span>
-            </div>
-            <div class="role-actions">
-              <button class="edit-btn" @click="editRole(role)">編輯</button>
-              <button class="delete-btn" @click="deleteRole(role)">刪除</button>
-            </div>
-          </div>
-        </div>
-        <button class="add-role-btn" @click="showAddRoleModal = true">新增身份組</button>
-        <button class="close-btn" @click="showRolesModal = false">關閉</button>
-      </div>
-    </div>
+    <!-- 使用身份組管理模態框組件 -->
+    <RoleManagementModal
+      v-model="showRolesModal"
+      :roles="roles"
+      :members="members"
+      @add-role="showAddRoleModal = true"
+      @edit-role="editRole"
+      @delete-role="deleteRole"
+    />
 
-    <!-- 編輯成員身份組彈窗 -->
-    <div v-if="showEditMemberRolesModal" class="modal">
-      <div class="modal-content">
-        <h2>編輯成員身份組</h2>
-        <div class="member-info">
-          <span>{{ selectedMember?.name }}</span>
-          <span> ({{ selectedMember?.email }})</span>
-        </div>
-        <div class="roles-selection">
-          <label v-for="role in roles" :key="role.name" class="role-checkbox">
-            <input type="checkbox" 
-                   :value="role" 
-                   v-model="selectedRoles">
-            {{ role }}
-          </label>
-        </div>
-        <div class="modal-actions">
-          <button class="save-btn" @click="saveMemberRoles">保存</button>
-          <button class="cancel-btn" @click="showEditMemberRolesModal = false">取消</button>
-        </div>
-      </div>
-    </div>
+    <!-- 使用編輯成員身份組模態框組件 -->
+    <EditMemberRoleModal
+      v-model="showEditMemberRolesModal"
+      :member="selectedMember"
+      :roles="roles"
+      @save="saveMemberRoles"
+    />
   </div>
 </template>
 
 <script>
 import { organizationStore } from '../stores/organization'
 import { storeToRefs } from 'pinia'
-import { onMounted } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import RoleManagementModal from './RoleManagementModal.vue'
+import EditMemberRoleModal from './EditMemberRoleModal.vue'
 
 export default {
   name: 'OrganizationMember',
+  components: {
+    RoleManagementModal,
+    EditMemberRoleModal
+  },
   setup() {
     const store = organizationStore()
     const router = useRouter()
     const { members, roles } = storeToRefs(store)
 
+    // 創建計算屬性來確保返回數組
+    const membersList = computed(() => {
+      return Array.isArray(members.value) ? members.value : []
+    })
+    
+    const rolesList = computed(() => {
+      return Array.isArray(roles.value) ? roles.value : []
+    })
+
+    const selectedMember = ref({
+      name: '',
+      email: '',
+      role: []
+    })
+    const showRolesModal = ref(false)
+    const showEditMemberRolesModal = ref(false)
+    const showAddRoleModal = ref(false)
+
     onMounted(async () => {
       await store.initializeOrganization()
     })
-    return { members, roles }
 
-  },
-  data() {
-    return {
-      showRolesModal: false,
-      showEditMemberRolesModal: false,
-      showAddRoleModal: false,
-      selectedMember: null,
-      selectedRoles: [],
-    }
-  },
-  methods: {
-    getMemberRoles(member) {
-      if (!member.role) return [];
+    const getMemberRoles = (member) => {
+      if (!member?.role) return [];
       return typeof member.role === 'string' ? JSON.parse(member.role) : member.role;
-    },
-    getMemberCountForRole(role) {
-      return this.members.filter(member => {
-        const memberRoles = this.getMemberRoles(member);
-        return memberRoles.includes(role);
-      }).length;
-    },
-    formatDate(date) {
+    }
+
+    const formatDate = (date) => {
       return new Date(date).toLocaleDateString('zh-TW', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       })
-    },
-    removeMember(member) {
+    }
+
+    const removeMember = (member) => {
       if (confirm(`確定要移除 ${member.name} 嗎？`)) {
-        this.members = this.members.filter(m => m.email !== member.email)
+        members.value = members.value.filter(m => m.email !== member.email)
       }
-    },
-    editMemberRoles(member) {
-      this.selectedMember = member;
-      this.selectedRoles = this.getMemberRoles(member);
-      this.showEditMemberRolesModal = true;
-    },
-    saveMemberRoles() {
-      if (this.selectedMember) {
-        const memberIndex = this.members.findIndex(m => m.email === this.selectedMember.email);
+    }
+
+    const editMemberRoles = (member) => {
+      selectedMember.value = { ...member }; // 創建一個新的對象
+      showEditMemberRolesModal.value = true;
+    }
+
+    const saveMemberRoles = (newRoles) => {
+      if (selectedMember.value?.email) {
+        const memberIndex = members.value.findIndex(m => m.email === selectedMember.value.email);
         if (memberIndex !== -1) {
-          this.members[memberIndex].role = JSON.stringify(this.selectedRoles);
+          members.value[memberIndex].role = JSON.stringify(newRoles);
         }
       }
-      this.showEditMemberRolesModal = false;
-    },
-    editRole(role) {
-      // 實作編輯身份組邏輯
-    //   console.log(this.roles)
+    }
+
+    const editRole = (role) => {
       console.log(role)
-    },
-    deleteRole(role) {
-      if (confirm(`確定要刪除 ${role.name} 身份組嗎？`)) {
-        this.roles = this.roles.filter(r => r.name !== role.name)
+    }
+
+    const deleteRole = (role) => {
+      if (Array.isArray(roles.value)) {
+        roles.value = roles.value.filter(r => r !== role)
       }
+    }
+
+    return { 
+      members: membersList,
+      roles: rolesList,
+      selectedMember,
+      showRolesModal,
+      showEditMemberRolesModal,
+      showAddRoleModal,
+      getMemberRoles,
+      formatDate,
+      removeMember,
+      editMemberRoles,
+      saveMemberRoles,
+      editRole,
+      deleteRole
     }
   }
 }
@@ -187,19 +184,6 @@ export default {
   margin: 0;
   font-size: 24px;
   color: #ffffff;
-}
-
-.add-btn {
-  padding: 8px 20px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.add-btn:hover {
-  background-color: #0056b3;
 }
 
 .member-list {
@@ -304,130 +288,5 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: #2c2c2c;
-  padding: 20px;
-  border-radius: 8px;
-  min-width: 400px;
-  color: white;
-}
-
-.roles-list {
-  margin: 20px 0;
-}
-
-.role-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #444;
-}
-
-.role-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.member-count {
-  color: #888;
-  font-size: 14px;
-}
-
-.role-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.edit-btn, .delete-btn {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.edit-btn {
-  background-color: #ffc107;
-  color: black;
-}
-
-.delete-btn {
-  background-color: #dc3545;
-  color: white;
-}
-
-.roles-selection {
-  margin: 20px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.role-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.save-btn, .cancel-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.save-btn {
-  background-color: #28a745;
-  color: white;
-}
-
-.cancel-btn {
-  background-color: #6c757d;
-  color: white;
-}
-
-.close-btn {
-  margin-top: 20px;
-  padding: 8px 16px;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  width: 100%;
-}
-
-.add-role-btn {
-  width: 100%;
-  padding: 8px 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 10px;
 }
 </style> 
