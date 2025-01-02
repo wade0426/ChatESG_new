@@ -504,6 +504,7 @@ async def get_organization_info(data: dict):
                     u.UserID,
                     u.UserName,
                     u.AvatarUrl,
+                    u.UserEmail,
                     om.Permission,
                     om.Role,
                     om.CreatedAt
@@ -519,9 +520,10 @@ async def get_organization_info(data: dict):
                     "userID": member[0],
                     "name": member[1],
                     "avatarUrl": member[2],
-                    "permission": member[3],
-                    "role": member[4],
-                    "joinedAt": member[5].isoformat() if member[5] else None
+                    "email": member[3],
+                    "permission": member[4],
+                    "role": member[5],
+                    "joinedAt": member[6].isoformat() if member[6] else None
                 })
             
             # 解析 RoleInfo JSON

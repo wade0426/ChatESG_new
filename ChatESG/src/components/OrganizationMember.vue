@@ -3,7 +3,7 @@
     <div class="page-header">
       <h1>組織成員 ({{ members.length }})</h1>
       <div class="header-buttons">
-        <button class="add-btn" @click="showAddMemberModal = true">新增成員</button>
+        <!-- <button class="add-btn" @click="showAddMemberModal = true">新增成員</button>不使用 -->
         <button class="manage-groups-btn" @click="showGroupsModal = true">管理身份組</button>
       </div>
     </div>
@@ -21,13 +21,13 @@
         <tbody>
           <tr v-for="member in members" :key="member.email">
             <td class="name-cell">
-              <div class="avatar" :style="{ backgroundColor: member.avatarColor }">
-                {{ member.name.charAt(0).toUpperCase() }}
+              <div class="avatar">
+                <img :src="member.avatarUrl" :alt="member.name">
               </div>
               <span>{{ member.name }}</span>
             </td>
             <td>{{ member.email }}</td>
-            <td>{{ formatDate(member.joinDate) }}</td>
+            <td>{{ formatDate(member.joinedAt) }}</td>
             <td>
               <div class="groups-cell">
                 <span v-for="group in member.groups" :key="group" class="group-tag">
@@ -93,8 +93,16 @@
 </template>
 
 <script>
+import { organizationStore } from '../stores/organization'
+import { storeToRefs } from 'pinia'
+
 export default {
   name: 'OrganizationMember',
+  setup() {
+    const store = organizationStore()
+    const { members } = storeToRefs(store)
+    return { members }
+  },
   data() {
     return {
       showGroupsModal: false,
@@ -105,29 +113,6 @@ export default {
       groups: [
         { name: '資訊部', memberCount: 3 },
         { name: '行銷部', memberCount: 2 }
-      ],
-      members: [
-        {
-          name: 'Lien',
-          email: 'mln10330380@mail.edu.tw',
-          groups: ['資訊部'],
-          avatarColor: '#ff4757',
-          joinDate: '2023-05-15'
-        },
-        {
-          name: 'John Doe',
-          email: 'john@example.com',
-          groups: ['行銷部'],
-          avatarColor: '#2ed573',
-          joinDate: '2023-06-20'
-        },
-        {
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          groups: ['資訊部', '行銷部'],
-          avatarColor: '#1e90ff',
-          joinDate: '2023-07-01'
-        }
       ]
     }
   },
@@ -240,9 +225,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .header-buttons {

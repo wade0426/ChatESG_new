@@ -30,8 +30,9 @@ export const organizationStore = defineStore('organization', {
                 if (response.data.status === 'success') {
                     const data = response.data.data
                     this.setOrganizationInfo({
-                        userID: data.userID,
+                        orgID: data.id,
                         name: data.name,
+                        email: data.email,
                         owner: data.owner.name,
                         description: data.description,
                         avatarUrl: data.avatarUrl,
@@ -57,7 +58,7 @@ export const organizationStore = defineStore('organization', {
         // 設置組織基本資訊
         setOrganizationInfo(info) {
             this.organizationName = info.name
-            this.organizationId = info.id
+            this.organizationId = info.orgID
             this.organizationOwner = info.owner
             this.description = info.description
             this.avatarUrl = info.avatarUrl
