@@ -55,11 +55,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
 
 const router = useRouter()
 const isSubmitting = ref(false)
 const defaultLogo = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/organization.png'
 const previewImage = ref(null)
+const userStore = useUserStore()
 
 const formData = ref({
   organizationName: '',
@@ -94,7 +96,8 @@ const handleSubmit = async () => {
       body: JSON.stringify({
         organizationName: formData.value.organizationName,
         organizationDescription: formData.value.organizationDescription,
-        avatarUrl: formData.value.avatarUrl
+        avatarUrl: formData.value.avatarUrl,
+        user_id: userStore.userID
       })
     })
 

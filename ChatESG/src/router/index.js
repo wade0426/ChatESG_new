@@ -78,6 +78,11 @@ const router = createRouter({
                     path: 'membership-application-review',
                     name: 'MembershipApplicationReview',
                     component: () => import('../components/MembershipApplicationReview.vue')
+                },
+                {
+                    path: 'report-management',
+                    name: 'ReportManagement',
+                    component: () => import('../components/ReportManagement.vue')
                 }
             ]
         },

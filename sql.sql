@@ -40,8 +40,13 @@ CREATE TABLE Organizations (
     OrganizationCode VARCHAR(8) NOT NULL UNIQUE COMMENT '組織加入代碼（8位大小寫字母和數字）',
     OrganizationDescription VARCHAR(255) COMMENT '組織描述',
     AvatarUrl VARCHAR(255) COMMENT '組織標誌URL',
+    OwnerID VARCHAR(36) NOT NULL COMMENT '組織擁有者ID',
+    MemberCount INT DEFAULT 0 COMMENT '組織成員數量',
+    ReportCount INT DEFAULT 0 COMMENT '組織報告書數量',
+    RoleCount INT DEFAULT 0 COMMENT '組織身份組數量',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
-    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間'
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+    FOREIGN KEY (OwnerID) REFERENCES Users(UserID) ON DELETE CASCADE
 ) COMMENT '組織資料表';
 
 -- --------------------------------------------------------

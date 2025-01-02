@@ -92,6 +92,7 @@ class Organization(BaseModel):
     organizationName: str
     organizationDescription: Optional[str] = None
     avatarUrl: Optional[str] = None
+    user_id: str
 
 class OrganizationResponse(BaseModel):
     status: str
@@ -256,6 +257,7 @@ async def get_user_profile_Personal_Information(user_data: dict):
             }
 
 
+# 建立組織
 @app.post("/api/organizations", response_model=OrganizationResponse)
 async def create_organization(organization: Organization):
     try:
@@ -284,15 +286,23 @@ async def create_organization(organization: Organization):
                         OrganizationName,
                         OrganizationDescription,
                         AvatarUrl,
-                        OrganizationCode
-                    ) VALUES (%s, %s, %s, %s, %s)
+                        OrganizationCode,
+                        OwnerID
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
                     organization_id,
                     organization.organizationName,
                     organization.organizationDescription,
                     organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO,
-                    organization_code
+                    organization_code,
+                    organization.user_id
                 ))
+
+                # 將創建者的組織ID設置為組織ID
+                await cur.execute(
+                    "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
+                    (organization_id, organization.user_id)
+                )
                 
                 await conn.commit()
                 
@@ -367,6 +377,7 @@ async def change_username(user_data: dict):
             return {"status": "success", "message": "用戶名修改成功"}
 
 
+# 加入組織
 @app.post("/api/organizations/join")
 async def join_organization(join_data: dict):
     user_id = join_data.get("user_id")
@@ -398,6 +409,20 @@ async def join_organization(join_data: dict):
                 "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
                 (organization[0], user_id)
             )
+
+            # 查 User 算 OrganizationID 看有幾個人
+            await cur.execute(
+                "SELECT COUNT(*) FROM Users WHERE OrganizationID = %s",
+                (organization[0],)
+            )
+            member_count = await cur.fetchone()
+            
+            # 更新組織成員數量
+            await cur.execute(
+                "UPDATE Organizations SET MemberCount = %s WHERE OrganizationID = %s",
+                (member_count[0], organization[0])
+            )
+            
             await conn.commit()
             
             return {"status": "success", "message": "成功加入組織"}

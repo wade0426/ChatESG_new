@@ -11,6 +11,10 @@
         <i class="fas fa-info-circle"></i>
         組織詳細資訊
       </router-link>
+      <router-link to="/organization/report-management" class="nav-item" :class="{ active: $route.path === '/organization/report-management' }">
+        <i class="fas fa-file-alt"></i>
+        報告書管理
+      </router-link>
       <router-link to="/organization/membership-application-review" class="nav-item" :class="{ active: $route.path === '/organization/membership-application-review' }">
         <i class="fas fa-user-plus"></i>
         人員申請審核
@@ -34,6 +38,10 @@
       <router-link to="/organization/purchases" class="nav-item" :class="{ active: $route.path === '/organization/purchases' }">
         <i class="fas fa-shopping-cart"></i>
         購買記錄
+      </router-link>
+      <router-link to="/organization/audit-log" class="nav-item" :class="{ active: $route.path === '/organization/audit-log' }">
+        <i class="fas fa-history"></i>
+        操作日誌
       </router-link>
     </nav>
   </div>
