@@ -12,7 +12,7 @@
             <i>📋</i>
             <span>建立公司資料</span>
         </a>
-        <a href="#" class="tool-item">
+        <a href="javascript:void(0)" class="tool-item" @click="showStandardTemplateModel">
             <i>📊</i>
             <span>建立準則模板</span>
         </a>
@@ -45,6 +45,7 @@
     <ReportModal ref="reportModalRef" />
     <CreateCompanyInfoModal ref="createCompanyInfoModalRef" />
     <AddOrganizationModal ref="addOrganizationModalRef" />
+    <StandardTemplateModel ref="standardTemplateModelRef" />
 
     <!-- 最近設計 -->
     <div class="recent-designs">
@@ -62,6 +63,7 @@ import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import ReportModal from './ReportModal.vue'
 import CreateCompanyInfoModal from './CreateCompanyInfoModal.vue'
+import StandardTemplateModel from './StandardTemplateModel.vue'
 import AddOrganizationModal from './AddOrganizationModal.vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
@@ -71,6 +73,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const reportModalRef = ref(null)
 const createCompanyInfoModalRef = ref(null)
+const standardTemplateModelRef = ref(null)
 const addOrganizationModalRef = ref(null)
 
 const openNav = () => {
@@ -91,6 +94,10 @@ const showCreateCompanyInfoModal = () => {
 
 const showAddOrganizationModal = () => {
     addOrganizationModalRef.value.showModal()
+}
+
+const showStandardTemplateModel = () => {
+    standardTemplateModelRef.value.showModal()
 }
 
 // 確保用戶已登入
