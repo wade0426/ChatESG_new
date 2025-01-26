@@ -503,18 +503,45 @@ provide('handleSave', handleSave)
 
 // 新增：判斷是否為最小層級（葉節點）的函數
 const isLeafSection = (sectionId) => {
-  const findSection = (sections) => {
+  // 如果沒有選擇章節,返回false
+  if (!sectionId) return false
+
+  // 內部遞迴函數,用於在章節樹中尋找指定ID的章節和其層級路徑
+  const findSectionAndPath = (sections, path = []) => {
     for (const section of sections) {
       if (section.id === sectionId) {
-        return !section.children || section.children.length === 0
+        return {
+          section,
+          path
+        }
       }
       if (section.children) {
-        const found = findSection(section.children)
-        if (found !== undefined) return found
+        const result = findSectionAndPath(section.children, [...path, section])
+        if (result) return result
       }
     }
+    return null
   }
-  return findSection(sections.value)
+
+  // 從根章節開始搜索
+  const result = findSectionAndPath(sections.value)
+  if (!result) return false
+
+  const { section, path } = result
+
+  // 檢查是否為小標題(第三層)
+  if (path.length !== 2) return false
+
+  // 檢查上層(中標題)是否有內容
+  const parentSection = path[1]
+  if (!parentSection.children || parentSection.children.length === 0) return false
+
+  // 檢查上上層(大標題)是否有內容
+  const grandParentSection = path[0] 
+  if (!grandParentSection.children || grandParentSection.children.length === 0) return false
+
+  // 檢查當前章節是否為葉節點
+  return !section.children || section.children.length === 0
 }
 
 // 修改：獲取當前標題的函數，只顯示最小層級的標題
