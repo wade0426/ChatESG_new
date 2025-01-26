@@ -1117,6 +1117,8 @@ const addMainSection = () => {
 }
 
 .theme-button {
+  /* 因為 navbar 已經有主題切換按鈕，所以這裡不需要再顯示 */
+  display: none;
   background: none;
   border: none;
   cursor: pointer;
@@ -1480,7 +1482,9 @@ const addMainSection = () => {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  display: flex;
+  /* 暫時關閉註解功能 */
+  /* display: flex; */
+  display: none;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
