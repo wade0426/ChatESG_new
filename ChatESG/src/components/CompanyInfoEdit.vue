@@ -23,6 +23,12 @@
           </button>
         </div>
         <div class="sidebar-content">
+          <div class="add-main-section">
+            <button @click="showAddMainSectionModal" class="add-main-section-btn">
+              <i class="mdi mdi-plus"></i>
+              <span>新增大章節</span>
+            </button>
+          </div>
           <template v-for="(section, index) in sections" :key="section.id">
             <!-- 大標題 -->
             <div class="section-level-1">
@@ -246,6 +252,25 @@
       </div>
     </div>
   </div>
+
+  <!-- 新增大章節的彈出視窗 -->
+  <div v-if="showMainSectionModal" class="modal-overlay" @click="closeMainSectionModal">
+    <div class="modal-content" @click.stop>
+      <h3>新增大章節</h3>
+      <div class="modal-form">
+        <input 
+          v-model="newMainSectionTitle" 
+          type="text" 
+          placeholder="請輸入大章節名稱"
+          @keyup.enter="addMainSection"
+        >
+        <div class="modal-buttons">
+          <button @click="addMainSection" class="primary-btn">確認</button>
+          <button @click="closeMainSectionModal" class="secondary-btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -275,6 +300,10 @@ const currentLevel = ref(1)
 const showEditModal = ref(false)
 const editingTitle = ref('')
 const editingSectionId = ref(null)
+
+// 新增大章節相關的響應式變數
+const showMainSectionModal = ref(false)
+const newMainSectionTitle = ref('')
 
 // 章節結構
 const sections = ref([
@@ -761,6 +790,36 @@ const getSectionNumber = (index) => {
     }
   });
   return visibleIndex + 1;
+}
+
+// 顯示新增大章節的彈出視窗
+const showAddMainSectionModal = () => {
+  showMainSectionModal.value = true
+  newMainSectionTitle.value = ''
+}
+
+// 關閉新增大章節的彈出視窗
+const closeMainSectionModal = () => {
+  showMainSectionModal.value = false
+  newMainSectionTitle.value = ''
+}
+
+// 新增大章節
+const addMainSection = () => {
+  if (!newMainSectionTitle.value.trim()) {
+    alert('請輸入大章節名稱')
+    return
+  }
+
+  const newSection = {
+    id: uuidv4(),
+    title: newMainSectionTitle.value.trim(),
+    children: []
+  }
+
+  sections.value.push(newSection)
+  expandedSections.value.add(newSection.id)
+  closeMainSectionModal()
 }
 </script>
 
@@ -1550,5 +1609,53 @@ const getSectionNumber = (index) => {
 
 .dark .delete-btn:hover {
   background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* 添加新的樣式 */
+.add-main-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.add-main-section-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.light .add-main-section-btn {
+  border-color: #e2e8f0;
+  color: #4b5563;
+}
+
+.dark .add-main-section-btn {
+  border-color: #2d2d2d;
+  color: #e2e8f0;
+}
+
+.add-main-section-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .add-main-section-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.add-main-section-btn i {
+  font-size: 1.2rem;
+}
+
+/* 確保 modal 樣式與其他 modal 一致 */
+.modal-overlay {
+  z-index: 1001;
 }
 </style>

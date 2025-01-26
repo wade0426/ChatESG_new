@@ -17,18 +17,7 @@ import uvicorn
 import aiomysql
 import uuid
 import json
-# 創建 FastAPI 應用
-app = FastAPI()
-
-# 設置 CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
-)
+from contextlib import asynccontextmanager
 
 # 資料庫配置
 DB_CONFIG = {
@@ -60,17 +49,29 @@ async def get_db_pool():
 # 全域變數儲存連接池
 db_pool = None
 
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 啟動時執行
     global db_pool
     db_pool = await get_db_pool()
-
-@app.on_event("shutdown")
-async def shutdown():
-    global db_pool
+    yield
+    # 關閉時執行
     if db_pool:
         db_pool.close()
         await db_pool.wait_closed()
+
+# 創建 FastAPI 應用
+app = FastAPI(lifespan=lifespan)
+
+# 設置 CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
 
 class Token(BaseModel):
     access_token: str
