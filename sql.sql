@@ -99,14 +99,12 @@ CREATE TABLE UserRoles (
 -- --------------------------------------------------------
 CREATE TABLE RolePermissionMappings (
     RoleID BINARY(16) NOT NULL COMMENT '角色(UUID)',
-    PermissionID BINARY(16) NOT NULL COMMENT '權限(UUID)',
-    ChapterUUID BINARY(16) DEFAULT NULL COMMENT '章節權限識別標籤(UUID)',
+    PermissionChapterID BINARY(16) DEFAULT NULL COMMENT '章節權限識別標籤(UUID)',
     ResourceType VARCHAR(50) DEFAULT 'report/template/company_info' COMMENT '資源類型',
-    ActionType VARCHAR(50) DEFAULT 'read' COMMENT '操作類型', -- 例如：read/read_write/no_access/create/update/delete
+    ActionType ENUM('read', 'read_write', 'no_access', 'create', 'update', 'delete') DEFAULT 'read' COMMENT '操作類型',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
-    PRIMARY KEY (RoleID, PermissionID),
-    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
-    FOREIGN KEY (PermissionID) REFERENCES Permissions(PermissionID) ON DELETE CASCADE
+    PRIMARY KEY (RoleID),
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE
 ) COMMENT '角色權限映射表';
 
 -- --------------------------------------------------------

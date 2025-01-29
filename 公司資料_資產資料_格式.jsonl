@@ -14,7 +14,7 @@
             {
               "subSubChapterTitle": "公司名稱", // 小章節名稱
               "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
-              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+              "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
             }
           ]
         }
@@ -29,7 +29,7 @@
             {
               "subSubChapterTitle": "永續發展委員會", // 小章節名稱
               "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
-              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+              "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
             }
           ]
         },
@@ -39,12 +39,12 @@
             {
               "subSubChapterTitle": "永續策略主軸", // 小章節名稱
               "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
-              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+              "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
             },
             {
               "subSubChapterTitle": "永續目標", // 小章節名稱
               "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
-              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+              "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
             }
           ]
         }

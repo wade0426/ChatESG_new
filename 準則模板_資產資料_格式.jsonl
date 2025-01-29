@@ -1,8 +1,9 @@
 資產資料(準則模板)JSON定義
 
-需求：要有AssetID、BlockID
+需求：要有AssetID、BlockID、access_permissions
 
 {
     "AssetID": "UUID", // 資產唯一標識(UUID)
     "BlockID": "UUID", // 內容(UUID)
+    "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
 }
