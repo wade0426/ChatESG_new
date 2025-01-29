@@ -1,0 +1,29 @@
+內容資料(準則模板)JSON定義
+
+需求：要有BlockID、選擇的準則、準則的內容
+
+{
+  "BlockID": "",
+  "selectedCriteria": [
+    {
+      "gri_id": "201",
+      "topic": "經濟績效",
+      "domain": "經濟",
+      "description": "組織所產生及分配的直接經濟價值",
+      "gri_name": "經濟績效 2016",
+      "sdgs": ["8", "9", "17"],
+      "tcfd": null,
+      "sasb": null
+    },
+    {
+      "gri_id": "202",
+      "topic": "市場地位",
+      "domain": "經濟",
+      "description": "雇用當地居民為高階管理階層的比例",
+      "gri_name": "市場地位 2016",
+      "sdgs": ["8"],
+      "tcfd": null,
+      "sasb": null
+    }
+  ],
+}

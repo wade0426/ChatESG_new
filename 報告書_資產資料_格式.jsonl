@@ -9,7 +9,7 @@
         "subChapters": [
           {
             "subChapterTitle": "永續治理架構", // 中章節名稱
-            "UUID": "UUID", // 小章節UUID 內容 (BlockID)
+            "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
             "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
           }
         ]
@@ -19,12 +19,12 @@
         "subChapters": [
           {
             "subChapterTitle": "營運財務概況",
-            "UUID": "UUID", 
+            "BlockID": "UUID", 
             "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
           },
           {
             "subChapterTitle": "收入概況",
-            "UUID": "UUID",
+            "BlockID": "UUID",
             "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
           }
         ]

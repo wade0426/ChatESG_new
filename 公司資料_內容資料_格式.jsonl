@@ -1,0 +1,19 @@
+內容資料(公司資料)JSON定義
+
+需求：要有BlockID、subChapterTitle、content，包含文字和註解。
+
+{
+  "BlockID": "UUID",
+  "subChapterTitle": "公司名稱",
+  "content": {
+    "text": "這裡是公司名稱的文字內容...",
+    "comments": [
+      {
+        "content": "請補充說明永續委員會的運作機制",
+        "status": "open", // open, resolved
+        "creator": "user123",
+        "updatedAt": "2024-01-15T10:30:00Z"
+      }
+    ]
+  }
+}

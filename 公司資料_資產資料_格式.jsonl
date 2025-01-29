@@ -1,0 +1,54 @@
+資產資料(公司資料)JSON定義
+
+需求：要有AssetID(資產唯一標識)、大章節、中章節、小章節的UUID(去找資料庫放內容的地方)、access_permissions章節權限識別標籤(UUID)
+
+{
+  "AssetID": "UUID",
+  "chapters": [
+    {
+      "chapterTitle": "關於本報告書", // 大章節名稱
+      "subChapters": [
+        {
+          "subChapterTitle": "關於本報告書", // 中章節名稱
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公司名稱", // 小章節名稱
+              "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
+              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "永續發展策略", // 大章節名稱
+      "subChapters": [
+        {
+          "subChapterTitle": "永續治理架構", // 中章節名稱
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續發展委員會", // 小章節名稱
+              "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
+              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "永續發展藍圖", // 中章節名稱
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續策略主軸", // 小章節名稱
+              "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
+              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+            },
+            {
+              "subSubChapterTitle": "永續目標", // 小章節名稱
+              "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
+              "access_permissions": "ChapterUUID" // 章節權限識別標籤(UUID)
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

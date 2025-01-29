@@ -1,0 +1,8 @@
+資產資料(準則模板)JSON定義
+
+需求：要有AssetID、BlockID
+
+{
+    "AssetID": "UUID", // 資產唯一標識(UUID)
+    "BlockID": "UUID", // 內容(UUID)
+}

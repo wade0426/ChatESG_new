@@ -117,7 +117,7 @@ CREATE TABLE OrganizationAssets (
     AssetID BINARY(16) PRIMARY KEY COMMENT '資產唯一標識(UUID)',
     OrganizationID BINARY(16) NOT NULL COMMENT '組織(UUID)',
     AssetName VARCHAR(100) NOT NULL COMMENT '資產名稱',
-    AssetType ENUM('report', 'template', 'company_info') NOT NULL COMMENT '資產類型',
+    AssetType ENUM('report', 'standard_template', 'company_info') NOT NULL COMMENT '資產類型',
     CreatorID BINARY(16) COMMENT '資產創建者(UUID)',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
