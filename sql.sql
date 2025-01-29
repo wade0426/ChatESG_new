@@ -100,7 +100,7 @@ CREATE TABLE UserRoles (
 CREATE TABLE RolePermissionMappings (
     RoleID BINARY(16) NOT NULL COMMENT '角色(UUID)',
     PermissionID BINARY(16) NOT NULL COMMENT '權限(UUID)',
-    ChapterUUID BINARY(16) DEFAULT NULL COMMENT '章節識別標籤(UUID)',
+    ChapterUUID BINARY(16) DEFAULT NULL COMMENT '章節權限識別標籤(UUID)',
     ResourceType VARCHAR(50) DEFAULT 'report/template/company_info' COMMENT '資源類型',
     ActionType VARCHAR(50) DEFAULT 'read' COMMENT '操作類型', -- 例如：read/read_write/no_access/create/update/delete
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
@@ -137,12 +137,12 @@ CREATE TABLE ReportContentBlocks (
     BlockID BINARY(16) PRIMARY KEY COMMENT '內容(UUID)',
     status ENUM('editing', 'archived') NOT NULL DEFAULT 'editing' COMMENT '內容狀態',
     content JSON COMMENT '內容(文字、圖片、內容檢驗、註解)',
-    LastModified TIMESTAMP,
-    ModifiedBy BINARY(16) COMMENT '內容修改者(UUID)',
-    version INT DEFAULT 1,
+    LastModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後修改時間',
+    ModifiedBy BINARY(16) DEFAULT NULL COMMENT '內容修改者(UUID)',
     IsLocked BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否被鎖定',
-    LockedBy BINARY(16) COMMENT '鎖定者(UUID)',
-    LockedAt TIMESTAMP COMMENT '鎖定時間'
+    LockedBy BINARY(16) DEFAULT NULL COMMENT '鎖定者(UUID)',
+    LockedAt TIMESTAMP DEFAULT NULL COMMENT '鎖定時間',
+    version INT DEFAULT 1
 ) COMMENT '組織資產內容資料表';
 
 -- 在所有表創建完成後加入外鍵約束

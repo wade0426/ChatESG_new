@@ -1,0 +1,58 @@
+內容資料(報告書)JSON定義
+
+需求：要有BlockID、章節名稱、章節內容、章節內容的圖片、章節內容的文字、章節內容的註解
+
+
+{
+  "BlockID": "UUID",
+  "subChapterTitle": "永續治理架構",
+  "content": {
+    "text": "這裡是永續治理架構的文字內容...",
+    "images": [
+      {
+        "url": "image1.jpg",
+        "title": "永續治理組織架構",
+        "subtitle": "2024年組織架構與各委員會職責",
+      }
+    ],
+    "guidelines": {
+      "inspection content": "檢查內容測試"
+    },
+    "comments": [
+      {
+        "content": "請補充說明永續委員會的運作機制",
+        "status": "open", // open, resolved
+        "creator": "user123",
+        "updatedAt": "2024-01-15T10:30:00Z"
+      }
+    ]
+  }
+}
+
+// ---------
+
+{
+  "BlockID": "UUID",
+  "subChapterTitle": "營運財務概況",
+  "content": {
+    "text": "組織所產生及分配的直接經濟價值...",
+    "images": [
+      {
+        "url": "finance1.jpg",
+        "title": "年度營運財務表現", 
+        "subtitle": "2023年度各季度營收與獲利分析",
+      }
+    ],
+    "guidelines": {
+      "inspection content": "NULL"
+    },
+    "comments": [
+      {
+        "content": "需要更新2023年第四季財務數據",
+        "status": "resolved",
+        "creator": "user456", 
+        "updatedAt": "2024-01-10T15:45:00Z"
+      }
+    ]
+  }
+}
