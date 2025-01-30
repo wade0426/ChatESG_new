@@ -103,22 +103,18 @@ export default {
         }
 
         // 使用 Pinia store 更新登入狀態
-        this.userStore.login(data.userID, data.username);
-        
-        // 將用戶信息保存到本地存儲
-        localStorage.setItem('user', JSON.stringify({
-          userID: data.userID,
-          username: data.username,
-          token: data.access_token
-        }));
+        this.userStore.login(data.userID, data.username, data.access_token);
         
         // 顯示登入成功提示
         this.showToast('登入成功!', true);
         
         // 如果用戶選擇記住我，保存用戶名
         if(this.rememberMe) {
-          localStorage.setItem('username', this.username);
+          sessionStorage.setItem('username', this.username);
         }
+        
+        // 等待一下確保狀態更新完成
+        await this.$nextTick();
         
         // 登入成功後導航到首頁
         this.$router.push('/home');
@@ -142,7 +138,7 @@ export default {
     },
 
     init() { //初始化
-      this.username = localStorage.getItem('username') || '';
+      this.username = sessionStorage.getItem('username') || '';
       if (this.username) {
         this.rememberMe = true;
       }

@@ -91,13 +91,19 @@ const router = createRouter({
                 }
             ]
         },
+        {
+            path: '/create-major-issues-list',
+            name: 'CreateMajorIssuesList',
+            component: () => import('../components/CreateMajorIssuesList.vue'),
+            meta: { requiresAuth: true }
+        }
     ]
 })
 
 // 在每次路由變更前執行
 router.beforeEach((to, from, next) => {
-    // 從 localStorage 中獲取用戶認證信息
-    const isAuthenticated = localStorage.getItem('user')
+    // 從 sessionStorage 中獲取用戶認證訊息
+    const isAuthenticated = sessionStorage.getItem('access_token')
 
     // 如果目標路由需要認證且用戶未認證，則重定向到登入頁面
     if (to.meta.requiresAuth && !isAuthenticated) {

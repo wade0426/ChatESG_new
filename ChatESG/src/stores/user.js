@@ -11,13 +11,13 @@ export const useUserStore = defineStore('user', {
         organizationName: '',
         email: '',
         avatarUrl: '',
-        organizationRole: '一般用戶'
+        organizationRole: 'NULL'
     }),
 
     // 定義行為
     actions: {
         // 登入方法
-        login(userID, username) {
+        login(userID, username, access_token) {
             this.userID = userID
             this.username = username
             this.isAuthenticated = true
@@ -25,6 +25,7 @@ export const useUserStore = defineStore('user', {
             // 保存用戶訊息到 sessionStorage
             sessionStorage.setItem('userID', userID)
             sessionStorage.setItem('username', username)
+            sessionStorage.setItem('access_token', access_token)
         },
 
         // 登出方法
@@ -35,20 +36,22 @@ export const useUserStore = defineStore('user', {
             this.organizationName = ''
             this.email = ''
             this.avatarUrl = ''
-            this.organizationRole = '一般用戶'
+            this.organizationRole = 'NULL'
 
             // 清除 sessionStorage 中的用戶訊息
             sessionStorage.removeItem('userID')
             sessionStorage.removeItem('username')
+            sessionStorage.removeItem('access_token')
         },
 
         // 從 sessionStorage 初始化用戶訊息
         initializeFromStorage() {
             const userID = sessionStorage.getItem('userID')
             const username = sessionStorage.getItem('username')
+            const access_token = sessionStorage.getItem('access_token')
 
-            if (userID && username) {
-                this.login(userID, username)
+            if (userID && username && access_token) {
+                this.login(userID, username, access_token)
                 this.fetchUserProfile()  // 獲取完整的用戶資料
             }
         },

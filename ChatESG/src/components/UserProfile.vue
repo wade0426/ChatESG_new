@@ -1,6 +1,6 @@
 <template>
-  <Sidebar :isOpen="isSidebarOpen" @close="closeNav" />
-  <Header @openNav="openNav" />
+  <Sidebar :isOpen="uiState.isSidebarOpen" @close="navigationControls.closeNav" />
+  <Header @openNav="navigationControls.openNav" />
   
   <div class="profile-container">
     <div class="profile-header">
@@ -16,7 +16,7 @@
             <label>姓名</label>
             <div class="info-value">
                 {{ userInfo.userName }}
-                <button class="edit-btn" @click="showUsernameModal = true">
+                <button class="edit-btn" @click="uiState.showUsernameModal = true">
                     <i class="fas fa-pencil-alt"></i>
                 </button>
             </div>
@@ -37,7 +37,7 @@
       <div class="info-group">
         <label>密碼</label>
         <div class="info-value">
-          <button class="modify-btn" @click="showPasswordModal = true">修改</button>
+          <button class="modify-btn" @click="uiState.showPasswordModal = true">修改</button>
         </div>
       </div>
 
@@ -48,7 +48,7 @@
 
       <div class="info-group">
         <label>組織角色</label>
-        <div class="info-value">一般用戶</div>
+        <div class="info-value">{{ userInfo.organizationRole }}</div>
       </div>
 
       <div class="info-group">
@@ -57,64 +57,112 @@
       </div>
     </div>
 
-    <!-- 姓名修改彈出框 -->
-    <div v-if="showUsernameModal" class="modal-overlay">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>修改姓名</h2>
-          <button class="close-btn" @click="closeUsernameModal">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>新姓名</label>
-            <input type="text" v-model="usernameForm.newUsername" placeholder="請輸入新姓名" />
-          </div>
-          <div class="error-message" v-if="usernameErrorMessage">{{ usernameErrorMessage }}</div>
-        </div>
-        <div class="modal-footer">
-          <button class="cancel-btn" @click="closeUsernameModal">取消</button>
-          <button class="save-btn" @click="submitUsernameChange" :disabled="isSubmittingUsername">確定修改</button>
-        </div>
-      </div>
-    </div>
-
     <!-- 密碼修改彈出框 -->
-    <div v-if="showPasswordModal" class="modal-overlay">
+    <div v-if="uiState.showPasswordModal" class="modal-overlay">
       <div class="modal-content">
         <div class="modal-header">
           <h2>修改密碼</h2>
           <button class="close-btn" @click="closePasswordModal">×</button>
         </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>目前密碼</label>
-            <input type="password" v-model="passwordForm.currentPassword" placeholder="請輸入目前密碼" />
+        <form @submit.prevent="submitPasswordChange" class="modal-body">
+          <div class="form-group" style="display: none;">
+            <label for="username">用戶名</label>
+            <input 
+              type="text"
+              id="username" 
+              name="username" 
+              :value="userInfo.userName"
+              autocomplete="username"
+              readonly
+            />
           </div>
           <div class="form-group">
-            <label>新密碼</label>
-            <input type="password" v-model="passwordForm.newPassword" placeholder="請輸入新密碼" />
+            <label for="currentPassword">目前密碼</label>
+            <input 
+              id="currentPassword"
+              type="password" 
+              v-model="forms.password.currentPassword" 
+              placeholder="請輸入目前密碼"
+              autocomplete="current-password"
+            />
           </div>
           <div class="form-group">
-            <label>確認新密碼</label>
-            <input type="password" v-model="passwordForm.confirmPassword" placeholder="請再次輸入新密碼" />
+            <label for="newPassword">新密碼</label>
+            <input 
+              id="newPassword"
+              type="password" 
+              v-model="forms.password.newPassword" 
+              placeholder="請輸入新密碼"
+              autocomplete="new-password"
+            />
           </div>
-          <div class="error-message" v-if="errorMessage">{{ errorMessage }}</div>
+          <div class="form-group">
+            <label for="confirmPassword">確認新密碼</label>
+            <input 
+              id="confirmPassword"
+              type="password" 
+              v-model="forms.password.confirmPassword" 
+              placeholder="請再次輸入新密碼"
+              autocomplete="new-password"
+            />
+          </div>
+          <div class="error-message" v-if="uiState.passwordError">{{ uiState.passwordError }}</div>
+          <div class="modal-footer">
+            <button type="button" class="cancel-btn" @click="closePasswordModal">取消</button>
+            <button type="submit" class="save-btn" :disabled="uiState.isSubmittingPassword">確定修改</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 姓名修改彈出框 -->
+    <div v-if="uiState.showUsernameModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>修改姓名</h2>
+          <button class="close-btn" @click="closeUsernameModal">×</button>
         </div>
-        <div class="modal-footer">
-          <button class="cancel-btn" @click="closePasswordModal">取消</button>
-          <button class="save-btn" @click="submitPasswordChange" :disabled="isSubmitting">確定修改</button>
-        </div>
+        <form @submit.prevent="submitUsernameChange" class="modal-body">
+          <div class="form-group">
+            <label for="newUsername">新姓名</label>
+            <input 
+              id="newUsername"
+              type="text" 
+              v-model="forms.username.newUsername" 
+              placeholder="請輸入新姓名"
+            />
+          </div>
+          <div class="error-message" v-if="uiState.usernameError">{{ uiState.usernameError }}</div>
+          <div class="modal-footer">
+            <button type="button" class="cancel-btn" @click="closeUsernameModal">取消</button>
+            <button type="submit" class="save-btn" :disabled="uiState.isSubmittingUsername">確定修改</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, reactive } from 'vue'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import { useUserStore } from '@/stores/user'
 import { useRouter, useRoute } from 'vue-router'
+
+// 表单验证工具函数
+const validatePassword = (form) => {
+  if (!form.currentPassword || !form.newPassword || !form.confirmPassword) {
+    return '請填寫所有欄位'
+  }
+  if (form.newPassword !== form.confirmPassword) {
+    return '新密碼與確認密碼不符'
+  }
+  if (form.newPassword.length < 6) {
+    return '新密碼長度至少需要6個字符'
+  }
+  return ''
+}
 
 export default {
   name: 'UserProfile',
@@ -123,11 +171,46 @@ export default {
     Header
   },
   setup() {
-    const isSidebarOpen = ref(false)
     const userStore = useUserStore()
     const router = useRouter()
     const route = useRoute()
 
+    // 使用reactive管理表单状态
+    const forms = reactive({
+      password: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      },
+      username: {
+        newUsername: ''
+      }
+    })
+
+    // 统一管理UI状态
+    const uiState = reactive({
+      isSidebarOpen: false,
+      showPasswordModal: false,
+      showUsernameModal: false,
+      isSubmittingPassword: false,
+      isSubmittingUsername: false,
+      passwordError: '',
+      usernameError: ''
+    })
+
+    // 缓存用户信息计算属性
+    const userInfo = computed(() => ({
+      userName: userStore.username,
+      userID: userStore.userID,
+      avatarUrl: userStore.avatarUrl,
+      email: userStore.email,
+      organizationName: userStore.organizationName,
+      organizationRole: userStore.organizationRole
+    }))
+
+    const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
+
+    // 初始化函数
     const initializeUser = async () => {
       if (!userStore.isAuthenticated) {
         userStore.initializeFromStorage()
@@ -139,12 +222,89 @@ export default {
       await userStore.fetchUserProfile()
     }
 
-    // 在組件掛載時初始化
+    // 导航控制
+    const navigationControls = {
+      openNav: () => uiState.isSidebarOpen = true,
+      closeNav: () => uiState.isSidebarOpen = false
+    }
+
+    // 模态框控制
+    const modalControls = {
+      closePasswordModal: () => {
+        uiState.showPasswordModal = false
+        forms.password = {
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        }
+        uiState.passwordError = ''
+      },
+      closeUsernameModal: () => {
+        uiState.showUsernameModal = false
+        forms.username.newUsername = ''
+        uiState.usernameError = ''
+      }
+    }
+
+    // 表单提交处理
+    const submitHandlers = {
+      async submitPasswordChange() {
+        const validationError = validatePassword(forms.password)
+        if (validationError) {
+          uiState.passwordError = validationError
+          return
+        }
+
+        try {
+          uiState.isSubmittingPassword = true
+          const result = await userStore.updatePassword(
+            forms.password.currentPassword,
+            forms.password.newPassword
+          )
+
+          if (result.success) {
+            alert('密碼修改成功')
+            modalControls.closePasswordModal()
+          } else {
+            uiState.passwordError = result.error
+          }
+        } catch (error) {
+          uiState.passwordError = '發生錯誤，請稍後再試'
+        } finally {
+          uiState.isSubmittingPassword = false
+        }
+      },
+
+      async submitUsernameChange() {
+        if (!forms.username.newUsername) {
+          uiState.usernameError = '請填寫新姓名'
+          return
+        }
+
+        try {
+          uiState.isSubmittingUsername = true
+          const result = await userStore.updateUsername(forms.username.newUsername)
+
+          if (result.success) {
+            alert('姓名修改成功')
+            modalControls.closeUsernameModal()
+          } else {
+            uiState.usernameError = result.error
+          }
+        } catch (error) {
+          uiState.usernameError = '發生錯誤，請稍後再試'
+        } finally {
+          uiState.isSubmittingUsername = false
+        }
+      }
+    }
+
+    // 生命周期钩子
     onMounted(async () => {
       await initializeUser()
     })
 
-    // 監聽路由變化
+    // 路由监听
     watch(
       () => route.fullPath,
       async () => {
@@ -152,138 +312,16 @@ export default {
       }
     )
 
-    // 使用 computed 屬性來獲取用戶信息
-    const userInfo = computed(() => ({
-      userName: userStore.username,
-      userID: userStore.userID,
-      avatarUrl: userStore.avatarUrl,
-      email: userStore.email,
-      organizationName: userStore.organizationName,
-      organizationRole: userStore.organizationRole
-    }))
-
-    const openNav = () => {
-      isSidebarOpen.value = true
-    }
-
-    const closeNav = () => {
-      isSidebarOpen.value = false
-    }
-
-    const showPasswordModal = ref(false)
-    const errorMessage = ref('')
-    const isSubmitting = ref(false)
-    const passwordForm = ref({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    })
-
-    const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
-
-    const closePasswordModal = () => {
-      showPasswordModal.value = false
-      passwordForm.value = {
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }
-      errorMessage.value = ''
-    }
-
-    const submitPasswordChange = async () => {
-      // 驗證表單
-      if (!passwordForm.value.currentPassword || !passwordForm.value.newPassword || !passwordForm.value.confirmPassword) {
-        errorMessage.value = '請填寫所有欄位'
-        return
-      }
-
-      if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-        errorMessage.value = '新密碼與確認密碼不符'
-        return
-      }
-
-      if (passwordForm.value.newPassword.length < 6) {
-        errorMessage.value = '新密碼長度至少需要6個字符'
-        return
-      }
-
-      try {
-        isSubmitting.value = true
-        const result = await userStore.updatePassword(
-          passwordForm.value.currentPassword,
-          passwordForm.value.newPassword
-        )
-
-        if (result.success) {
-          alert('密碼修改成功')
-          closePasswordModal()
-        } else {
-          errorMessage.value = result.error
-        }
-      } catch (error) {
-        errorMessage.value = '發生錯誤，請稍後再試'
-      } finally {
-        isSubmitting.value = false
-      }
-    }
-
-    const showUsernameModal = ref(false)
-    const usernameErrorMessage = ref('')
-    const isSubmittingUsername = ref(false)
-    const usernameForm = ref({
-      newUsername: ''
-    })
-
-    const closeUsernameModal = () => {
-      showUsernameModal.value = false
-      usernameForm.value = {
-        newUsername: ''
-      }
-      usernameErrorMessage.value = ''
-    }
-
-    const submitUsernameChange = async () => {
-      if (!usernameForm.value.newUsername) {
-        usernameErrorMessage.value = '請填寫新姓名'
-        return
-      }
-
-      try {
-        isSubmittingUsername.value = true
-        const result = await userStore.updateUsername(usernameForm.value.newUsername)
-
-        if (result.success) {
-          alert('姓名修改成功')
-          closeUsernameModal()
-        } else {
-          usernameErrorMessage.value = result.error
-        }
-      } catch (error) {
-        usernameErrorMessage.value = '發生錯誤，請稍後再試'
-      } finally {
-        isSubmittingUsername.value = false
-      }
-    }
-
     return {
       userInfo,
       defaultAvatar,
-      showPasswordModal,
-      passwordForm,
-      errorMessage,
-      isSubmitting,
-      closePasswordModal,
-      submitPasswordChange,
-      isSidebarOpen,
-      openNav,
-      closeNav,
-      showUsernameModal,
-      usernameForm,
-      usernameErrorMessage,
-      isSubmittingUsername,
-      closeUsernameModal,
-      submitUsernameChange
+      uiState,
+      forms,
+      navigationControls,
+      modalControls,
+      closePasswordModal: modalControls.closePasswordModal,
+      closeUsernameModal: modalControls.closeUsernameModal,
+      ...submitHandlers
     }
   }
 }

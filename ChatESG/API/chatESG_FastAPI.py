@@ -128,8 +128,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def login(form_data: LoginUser):
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
+            # 查詢用戶信息，包含帳戶狀態
             await cur.execute(
-                "SELECT UserID, UserName, UserPassword, AvatarUrl, OrganizationID FROM Users WHERE UserName = %s",
+                """SELECT UserID, UserName, UserPassword, AvatarUrl, OrganizationID, 
+                   AccountStatus, LoginAttempts 
+                   FROM Users WHERE UserName = %s""",
                 (form_data.username,)
             )
             user = await cur.fetchone()
@@ -140,24 +143,75 @@ async def login(form_data: LoginUser):
                     detail="帳號或密碼錯誤"
                 )
             
-            if not verify_password(form_data.password, user[2]):  # user[2] 是 UserPassword
+            # 檢查帳戶狀態
+            if user[5] == 'locked':
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="帳戶已被鎖定，請聯繫管理員"
+                )
+            elif user[5] == 'disabled':
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="帳戶已被禁用"
+                )
+            
+            # 驗證密碼
+            if not verify_password(form_data.password, user[2]):
+                # 更新登錄嘗試次數
+                new_attempts = user[6] + 1
+                await cur.execute(
+                    "UPDATE Users SET LoginAttempts = %s WHERE UserID = %s",
+                    (new_attempts, user[0])
+                )
+                await conn.commit()
+                
+                # 如果登錄嘗試次數過多，鎖定帳戶
+                if new_attempts >= 5:  # 可以根據需求調整次數
+                    await cur.execute(
+                        "UPDATE Users SET AccountStatus = 'locked' WHERE UserID = %s",
+                        (user[0],)
+                    )
+                    await conn.commit()
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="登錄嘗試次數過多，帳戶已被鎖定"
+                    )
+                
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="帳號或密碼錯誤"
                 )
             
+            # 登錄成功，重置登錄嘗試次數並更新最後登錄時間
+            current_time = datetime.now(timezone.utc)
+            await cur.execute(
+                """UPDATE Users 
+                   SET LoginAttempts = 0, 
+                       LastLoginAt = %s,
+                       UpdatedAt = %s
+                   WHERE UserID = %s""",
+                (current_time, current_time, user[0])
+            )
+            await conn.commit()
+            
+            # 生成訪問令牌
             access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
             access_token = create_access_token(
                 data={"sub": user[1]},  # user[1] 是 UserName
                 expires_delta=access_token_expires
             )
             
+            # 將 BINARY(16) 格式的 UUID 轉換為字符串
+            user_id_str = uuid.UUID(bytes=user[0]).hex if user[0] else None
+            organization_id_str = uuid.UUID(bytes=user[4]).hex if user[4] else None
+            
             return {
                 "status": "success",
                 "access_token": access_token,
                 "token_type": "bearer",
-                "userID": user[0],  # UserID
-                "username": user[1]  # UserName
+                "userID": user_id_str,
+                "username": user[1],
+                "organizationID": organization_id_str
             }
 
 
@@ -204,50 +258,55 @@ async def register(user: User):
             return {"status": "success", "message": "註冊成功"}
 
 
-@app.post("/api/user/profile")
-async def get_user_profile(user_data: dict):
-    user_id = user_data.get("user_id")
-    async with db_pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("""
-                SELECT UserID, UserName, AvatarUrl, OrganizationID
-                FROM Users WHERE UserID = %s
-            """, (user_id,))
+# @app.post("/api/user/profile")
+# async def get_user_profile(user_data: dict):
+#     user_id = user_data.get("user_id")
+#     async with db_pool.acquire() as conn:
+#         async with conn.cursor() as cur:
+#             await cur.execute("""
+#                 SELECT UserID, UserName, AvatarUrl, OrganizationID
+#                 FROM Users WHERE UserID = %s
+#             """, (user_id,))
             
-            user = await cur.fetchone()
-            if not user:
-                raise HTTPException(status_code=404, detail="未找到使用者")
+#             user = await cur.fetchone()
+#             if not user:
+#                 raise HTTPException(status_code=404, detail="未找到使用者")
             
-            # 獲取組織名稱
-            organization_name = "尚未加入組織"
-            if user[3]:  # 如果有組織ID
-                await cur.execute("""
-                    SELECT OrganizationName 
-                    FROM Organizations 
-                    WHERE OrganizationID = %s
-                """, (user[3],))
-                org = await cur.fetchone()
-                if org:
-                    organization_name = org[0]
+#             # 獲取組織名稱
+#             organization_name = "尚未加入組織"
+#             if user[3]:  # 如果有組織ID
+#                 await cur.execute("""
+#                     SELECT OrganizationName 
+#                     FROM Organizations 
+#                     WHERE OrganizationID = %s
+#                 """, (user[3],))
+#                 org = await cur.fetchone()
+#                 if org:
+#                     organization_name = org[0]
             
-            return {
-                "userName": user[1],
-                "userID": user[0],
-                "avatarUrl": user[2] or "",
-                "organizationID": user[3] or "",
-                "organizationName": organization_name
-            }
+#             return {
+#                 "userName": user[1],
+#                 "userID": user[0],
+#                 "avatarUrl": user[2] or "",
+#                 "organizationID": user[3] or "",
+#                 "organizationName": organization_name
+#             }
 
 
 @app.post("/api/user/profile/Personal_Information")
 async def get_user_profile_Personal_Information(user_data: dict):
-    user_id = user_data.get("user_id")
+    try:
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        user_id = uuid.UUID(user_data.get("user_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
+
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
             # 獲取用戶基本信息
             await cur.execute("""
                 SELECT u.UserID, u.UserName, u.AvatarUrl, u.OrganizationID, u.UserEmail,
-                       o.OrganizationName
+                       o.OrganizationName, u.AccountStatus, u.LastLoginAt
                 FROM Users u
                 LEFT JOIN Organizations o ON u.OrganizationID = o.OrganizationID
                 WHERE u.UserID = %s
@@ -257,15 +316,21 @@ async def get_user_profile_Personal_Information(user_data: dict):
             if not user:
                 raise HTTPException(status_code=404, detail="未找到使用者")
             
+            # 將BINARY(16)格式的UUID轉換為字符串
+            user_id_str = uuid.UUID(bytes=user[0]).hex if user[0] else None
+            organization_id_str = uuid.UUID(bytes=user[3]).hex if user[3] else None
+            
             return {
                 "status": "success",
                 "data": {
-                    "userID": user[0],
+                    "userID": user_id_str,
                     "userName": user[1],
                     "avatarUrl": user[2] or DEFAULT_USER_AVATAR,
-                    "organizationID": user[3] or "",
+                    "organizationID": organization_id_str,
                     "organizationName": user[5] or "尚未加入組織",
-                    "email": user[4]
+                    "email": user[4],
+                    "accountStatus": user[6],
+                    "lastLoginAt": user[7].isoformat() if user[7] else None
                 }
             }
 
@@ -506,7 +571,6 @@ async def get_organization_info(data: dict):
                     o.PurchaseType,
                     o.APICallQuota,
                     o.MaxMembers,
-                    o.RoleInfo,
                     o.CreatedAt,
                     o.UpdatedAt,
                     u.UserName as OwnerName,
@@ -520,34 +584,45 @@ async def get_organization_info(data: dict):
             if not org:
                 raise HTTPException(status_code=404, detail="未找到組織")
             
-            # 獲取組織成員列表
+            # 獲取組織成員列表及其角色
             await cur.execute("""
                 SELECT 
                     u.UserID,
                     u.UserName,
                     u.AvatarUrl,
                     u.UserEmail,
-                    om.Role,
+                    GROUP_CONCAT(r.RoleName) as Roles,
                     om.CreatedAt
                 FROM OrganizationMembers om
                 JOIN Users u ON om.UserID = u.UserID
+                LEFT JOIN UserRoles ur ON ur.UserID = u.UserID AND ur.OrganizationID = om.OrganizationID
+                LEFT JOIN Roles r ON r.RoleID = ur.RoleID
                 WHERE om.OrganizationID = %s
+                GROUP BY u.UserID
             """, (organization_id,))
             
             members = await cur.fetchall()
             members_list = []
             for member in members:
+                roles = member[4].split(',') if member[4] else []
                 members_list.append({
                     "userID": member[0],
                     "name": member[1],
                     "avatarUrl": member[2],
                     "email": member[3],
-                    "role": member[4],
+                    "roles": roles,
                     "joinedAt": member[5].isoformat() if member[5] else None
                 })
             
-            # 解析 RoleInfo JSON
-            role_info = json.loads(org[9]) if org[9] else {"organization_roles": []}
+            # 獲取組織的所有可用角色
+            await cur.execute("""
+                SELECT RoleName
+                FROM Roles
+                WHERE OrganizationID = %s
+                ORDER BY CreatedAt
+            """, (organization_id,))
+            
+            available_roles = [role[0] for role in await cur.fetchall()]
             
             return {
                 "status": "success",
@@ -559,16 +634,16 @@ async def get_organization_info(data: dict):
                     "code": org[4],
                     "owner": {
                         "id": org[5],
-                        "name": org[12]
+                        "name": org[11]
                     },
                     "purchaseType": org[6],
                     "apiCallQuota": org[7],
                     "maxMembers": org[8],
-                    "roles": role_info["organization_roles"],
-                    "memberCount": org[13],
+                    "roles": available_roles,
+                    "memberCount": org[12],
                     "members": members_list,
-                    "createdAt": org[10].isoformat() if org[10] else None,
-                    "updatedAt": org[11].isoformat() if org[11] else None
+                    "createdAt": org[9].isoformat() if org[9] else None,
+                    "updatedAt": org[10].isoformat() if org[10] else None
                 }
             }
 
@@ -610,15 +685,16 @@ async def update_member_roles(data: dict):
     if not all([user_id, roles, organization_id]):
         raise HTTPException(status_code=400, detail="缺少必要參數")
     
-    # 確保 roles 是列表並轉換為 JSON 字符串
+    # 確保 roles 是列表
     if not isinstance(roles, list):
         raise HTTPException(status_code=400, detail="roles 必須是列表")
-    
-    roles_json = json.dumps(roles)
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
             try:
+                # 開始事務
+                await conn.begin()
+                
                 # 檢查用戶是否屬於該組織
                 await cur.execute("""
                     SELECT OrganizationMemberID 
@@ -629,12 +705,37 @@ async def update_member_roles(data: dict):
                 if not await cur.fetchone():
                     raise HTTPException(status_code=404, detail="找不到該組織成員")
                 
-                # 更新成員角色
+                # 刪除用戶現有的角色
                 await cur.execute("""
-                    UPDATE OrganizationMembers 
-                    SET Role = %s 
+                    DELETE FROM UserRoles 
                     WHERE UserID = %s AND OrganizationID = %s
-                """, (roles_json, user_id, organization_id))
+                """, (user_id, organization_id))
+                
+                # 獲取角色ID並添加新的角色
+                for role_name in roles:
+                    # 檢查角色是否存在，如果不存在則創建
+                    await cur.execute("""
+                        SELECT RoleID 
+                        FROM Roles 
+                        WHERE OrganizationID = %s AND RoleName = %s
+                    """, (organization_id, role_name))
+                    
+                    role = await cur.fetchone()
+                    if not role:
+                        # 如果角色不存在，創建新角色
+                        role_id = uuid.uuid4().bytes
+                        await cur.execute("""
+                            INSERT INTO Roles (RoleID, OrganizationID, RoleName)
+                            VALUES (%s, %s, %s)
+                        """, (role_id, organization_id, role_name))
+                    else:
+                        role_id = role[0]
+                    
+                    # 添加用戶角色關聯
+                    await cur.execute("""
+                        INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
+                        VALUES (%s, %s, %s)
+                    """, (user_id, role_id, organization_id))
                 
                 await conn.commit()
                 return {"status": "success", "message": "成員身份組更新成功"}
