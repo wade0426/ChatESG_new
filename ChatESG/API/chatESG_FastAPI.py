@@ -453,27 +453,46 @@ async def change_password(user_data: dict):
 
 @app.post("/api/user/profile/Change_Username")
 async def change_username(user_data: dict):
-    user_id = user_data.get("user_id")
+    try:
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        user_id = uuid.UUID(user_data.get("user_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
+        
     new_username = user_data.get("new_username")
     
-    if not all([user_id, new_username]):
-        raise HTTPException(status_code=400, detail="缺少必要參數")
+    if not new_username:
+        raise HTTPException(status_code=400, detail="缺少新用戶名")
+    
+    # 驗證用戶名長度
+    if len(new_username) > 100:
+        raise HTTPException(status_code=400, detail="用戶名長度不能超過100個字符")
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # 檢查新用戶名是否已存在
-            await cur.execute("SELECT UserID FROM Users WHERE UserName = %s AND UserID != %s", (new_username, user_id))
-            if await cur.fetchone():
-                raise HTTPException(status_code=400, detail="用戶名已存在")
-            
-            # 更新用戶名
-            await cur.execute(
-                "UPDATE Users SET UserName = %s WHERE UserID = %s",
-                (new_username, user_id)
-            )
-            await conn.commit()
-            
-            return {"status": "success", "message": "用戶名修改成功"}
+            try:
+                # 檢查用戶是否存在
+                await cur.execute("SELECT UserID FROM Users WHERE UserID = %s", (user_id,))
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="用戶不存在")
+                
+                # 檢查新用戶名是否已存在
+                await cur.execute("SELECT UserID FROM Users WHERE UserName = %s AND UserID != %s", (new_username, user_id))
+                if await cur.fetchone():
+                    raise HTTPException(status_code=400, detail="用戶名已存在")
+                
+                # 更新用戶名
+                await cur.execute(
+                    "UPDATE Users SET UserName = %s WHERE UserID = %s",
+                    (new_username, user_id)
+                )
+                await conn.commit()
+                
+                return {"status": "success", "message": "用戶名修改成功"}
+                
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"修改用戶名失敗: {str(e)}")
 
 
 # 加入組織

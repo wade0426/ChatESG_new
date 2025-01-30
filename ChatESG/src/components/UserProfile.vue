@@ -175,7 +175,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
 
-    // 使用reactive管理表单状态
+    // 使用reactive管理表單狀態
     const forms = reactive({
       password: {
         currentPassword: '',
@@ -187,7 +187,7 @@ export default {
       }
     })
 
-    // 统一管理UI状态
+    // 統一管理UI狀態
     const uiState = reactive({
       isSidebarOpen: false,
       showPasswordModal: false,
@@ -198,7 +198,7 @@ export default {
       usernameError: ''
     })
 
-    // 缓存用户信息计算属性
+    // 緩存用戶信息計算屬性
     const userInfo = computed(() => ({
       userName: userStore.username,
       userID: userStore.userID,
@@ -210,7 +210,7 @@ export default {
 
     const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
 
-    // 初始化函数
+    // 初始化函數
     const initializeUser = async () => {
       if (!userStore.isAuthenticated) {
         userStore.initializeFromStorage()
@@ -222,13 +222,13 @@ export default {
       await userStore.fetchUserProfile()
     }
 
-    // 导航控制
+    // 導航控制
     const navigationControls = {
       openNav: () => uiState.isSidebarOpen = true,
       closeNav: () => uiState.isSidebarOpen = false
     }
 
-    // 模态框控制
+    // 模態框控制
     const modalControls = {
       closePasswordModal: () => {
         uiState.showPasswordModal = false
@@ -246,7 +246,7 @@ export default {
       }
     }
 
-    // 表单提交处理
+    // 表單提交處理
     const submitHandlers = {
       async submitPasswordChange() {
         const validationError = validatePassword(forms.password)
