@@ -17,6 +17,8 @@ import uvicorn
 import aiomysql
 import uuid
 import json
+import random
+import string
 from contextlib import asynccontextmanager
 
 # 資料庫配置
@@ -321,7 +323,7 @@ async def create_organization(organization: Organization):
                 # 生成組織ID (BINARY(16)格式)
                 organization_id = uuid.uuid4().bytes
                 # 生成組織加入代碼（8位大小寫字母和數字）
-                organization_code = str(uuid.uuid4())[:8].upper()
+                organization_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
                 
                 # 插入新組織
                 await cur.execute("""
@@ -574,11 +576,14 @@ async def join_organization(join_data: dict):
                 raise HTTPException(status_code=500, detail=f"加入組織失敗: {str(e)}")
 
 
+# 獲取組織訊息
 @app.post("/api/organizations/info")
 async def get_organization_info(data: dict):
-    organization_id = data.get("organization_id")
-    if not organization_id:
-        raise HTTPException(status_code=400, detail="缺少組織ID")
+    try:
+        # 將字符串格式的organization_id轉換為BINARY(16)格式
+        organization_id = uuid.UUID(data.get("organization_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -596,11 +601,12 @@ async def get_organization_info(data: dict):
                     o.MaxMembers,
                     o.CreatedAt,
                     o.UpdatedAt,
+                    o.ExpiryDate,
                     u.UserName as OwnerName,
                     (SELECT COUNT(*) FROM OrganizationMembers WHERE OrganizationID = o.OrganizationID) as MemberCount
                 FROM Organizations o
                 LEFT JOIN Users u ON o.OwnerID = u.UserID
-                WHERE o.OrganizationID = %s
+                WHERE o.OrganizationID = %s AND o.IsDeleted = FALSE
             """, (organization_id,))
             
             org = await cur.fetchone()
@@ -614,14 +620,14 @@ async def get_organization_info(data: dict):
                     u.UserName,
                     u.AvatarUrl,
                     u.UserEmail,
-                    GROUP_CONCAT(r.RoleName) as Roles,
+                    GROUP_CONCAT(DISTINCT r.RoleName) as Roles,
                     om.CreatedAt
                 FROM OrganizationMembers om
                 JOIN Users u ON om.UserID = u.UserID
                 LEFT JOIN UserRoles ur ON ur.UserID = u.UserID AND ur.OrganizationID = om.OrganizationID
                 LEFT JOIN Roles r ON r.RoleID = ur.RoleID
                 WHERE om.OrganizationID = %s
-                GROUP BY u.UserID
+                GROUP BY u.UserID, u.UserName, u.AvatarUrl, u.UserEmail, om.CreatedAt
             """, (organization_id,))
             
             members = await cur.fetchall()
@@ -629,9 +635,9 @@ async def get_organization_info(data: dict):
             for member in members:
                 roles = member[4].split(',') if member[4] else []
                 members_list.append({
-                    "userID": member[0],
+                    "userID": uuid.UUID(bytes=member[0]).hex,
                     "name": member[1],
-                    "avatarUrl": member[2],
+                    "avatarUrl": member[2] or DEFAULT_USER_AVATAR,
                     "email": member[3],
                     "roles": roles,
                     "joinedAt": member[5].isoformat() if member[5] else None
@@ -650,20 +656,21 @@ async def get_organization_info(data: dict):
             return {
                 "status": "success",
                 "data": {
-                    "id": org[0],
+                    "id": uuid.UUID(bytes=org[0]).hex,
                     "name": org[1],
                     "description": org[2],
-                    "avatarUrl": org[3],
+                    "avatarUrl": org[3] or DEFAULT_ORGANIZATION_LOGO,
                     "code": org[4],
                     "owner": {
-                        "id": org[5],
-                        "name": org[11]
+                        "id": uuid.UUID(bytes=org[5]).hex if org[5] else None,
+                        "name": org[12]
                     },
                     "purchaseType": org[6],
                     "apiCallQuota": org[7],
                     "maxMembers": org[8],
+                    "expiryDate": org[11].isoformat() if org[11] else None,
                     "roles": available_roles,
-                    "memberCount": org[12],
+                    "memberCount": org[13],
                     "members": members_list,
                     "createdAt": org[9].isoformat() if org[9] else None,
                     "updatedAt": org[10].isoformat() if org[10] else None
@@ -671,19 +678,22 @@ async def get_organization_info(data: dict):
             }
 
 
+# 通過用戶ID獲取組織訊息
 @app.post("/api/organizations/get_by_user")
 async def get_organization_by_user(data: dict):
-    user_id = data.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="缺少用戶ID")
+    try:
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        user_id = uuid.UUID(data.get("user_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute("""
-                SELECT om.OrganizationID, o.OrganizationName
+                SELECT o.OrganizationID, o.OrganizationName, o.OrganizationCode, o.AvatarUrl
                 FROM OrganizationMembers om
                 LEFT JOIN Organizations o ON om.OrganizationID = o.OrganizationID
-                WHERE om.UserID = %s
+                WHERE om.UserID = %s AND o.IsDeleted = FALSE
             """, (user_id,))
             
             result = await cur.fetchone()
@@ -693,8 +703,10 @@ async def get_organization_by_user(data: dict):
             return {
                 "status": "success",
                 "data": {
-                    "organization_id": result[0],
-                    "organization_name": result[1]
+                    "organization_id": uuid.UUID(bytes=result[0]).hex,
+                    "organization_name": result[1],
+                    "organization_code": result[2],
+                    "avatar_url": result[3] or DEFAULT_ORGANIZATION_LOGO
                 }
             }
 

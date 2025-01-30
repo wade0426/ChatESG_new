@@ -34,15 +34,15 @@ export const organizationStore = defineStore('organization', {
                     return false
                 }
 
-                // 先獲取用戶的組織信息
+                // 先獲取用戶的組織訊息
                 const orgInfo = await this.getOrganizationByUserId()
                 if (!orgInfo || !orgInfo.organization_id) {
-                    console.error('未找到組織信息')
+                    console.error('未找到組織訊息')
                     router.push('/home')
                     return false
                 }
 
-                // 獲取組織詳細信息
+                // 獲取組織詳細訊息
                 const success = await this.fetchOrganizationInfo(orgInfo.organization_id)
                 if (!success) {
                     console.error('獲取組織資訊失敗')
@@ -131,7 +131,7 @@ export const organizationStore = defineStore('organization', {
             this.roles = roles
         },
 
-        // 通過用戶ID獲取組織信息
+        // 通過用戶ID獲取組織訊息
         async getOrganizationByUserId() {
             try {
                 const userID = sessionStorage.getItem('userID')
@@ -149,7 +149,7 @@ export const organizationStore = defineStore('organization', {
                 }
                 return null
             } catch (error) {
-                console.error('通過用戶ID獲取組織信息失敗:', error)
+                console.error('通過用戶ID獲取組織訊息失敗:', error)
                 return null
             }
         }

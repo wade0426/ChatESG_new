@@ -8,7 +8,7 @@
       <div class="info-card">
         <div class="org-info">
           <div class="org-avatar">
-            <img :src="avatarUrl || 'https://via.placeholder.com/100'" alt="Organization Avatar">
+            <img :src="avatarUrl" alt="Organization Avatar">
           </div>
           <div class="org-details">
             <h2>{{ organizationName || '組織名稱' }}</h2>
@@ -34,13 +34,11 @@
 <script>
 import { organizationStore } from '../stores/organization'
 import { onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
 
 export default {
   name: 'OrganizationDashboard',
   setup() {
     const store = organizationStore()
-    const router = useRouter()
 
     onMounted(async () => {
       await store.initializeOrganization()
