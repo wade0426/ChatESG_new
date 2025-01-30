@@ -420,31 +420,50 @@ async def create_organization(organization: Organization):
 
 @app.post("/api/user/profile/Change_Password")
 async def change_password(user_data: dict):
-    user_id = user_data.get("user_id")
+    try:
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        user_id = uuid.UUID(user_data.get("user_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
+        
     current_password = user_data.get("current_password")
     new_password = user_data.get("new_password")
     
-    if not all([user_id, current_password, new_password]):
+    if not all([current_password, new_password]):
         raise HTTPException(status_code=400, detail="缺少必要參數")
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # 驗證當前密碼
-            await cur.execute("SELECT UserPassword FROM Users WHERE UserID = %s", (user_id,))
+            # 驗證當前密碼和檢查帳戶狀態
+            await cur.execute(
+                "SELECT UserPassword, AccountStatus FROM Users WHERE UserID = %s",
+                (user_id,)
+            )
             user = await cur.fetchone()
             
             if not user:
                 raise HTTPException(status_code=404, detail="未找到使用者")
             
+            # 檢查帳戶狀態
+            if user[1] == 'locked':
+                raise HTTPException(status_code=400, detail="帳戶已被鎖定，無法修改密碼")
+            elif user[1] == 'disabled':
+                raise HTTPException(status_code=400, detail="帳戶已被禁用")
+            
             stored_password = user[0]
             if not verify_password(current_password, stored_password):
                 raise HTTPException(status_code=400, detail="當前密碼錯誤")
             
-            # 更新新密碼
+            # 更新新密碼和密碼修改時間
+            current_time = datetime.now(timezone.utc)
             hashed_new_password = get_password_hash(new_password)
             await cur.execute(
-                "UPDATE Users SET UserPassword = %s WHERE UserID = %s",
-                (hashed_new_password, user_id)
+                """UPDATE Users 
+                   SET UserPassword = %s,
+                       PasswordChangedAt = %s,
+                       UpdatedAt = %s
+                   WHERE UserID = %s""",
+                (hashed_new_password, current_time, current_time, user_id)
             )
             await conn.commit()
             
