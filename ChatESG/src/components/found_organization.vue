@@ -1,5 +1,7 @@
 <!-- 創建組織組件 -->
 <template>
+  <Sidebar :isOpen="isSidebarOpen" @close="closeNav" />
+  <Header @openNav="openNav" />
   <div class="found-organization">
     <div class="organization-container">
       <h1 class="title">創建新組織</h1>
@@ -11,9 +13,12 @@
             id="organizationName"
             v-model="formData.organizationName"
             required
-            placeholder="請輸入組織名稱"
+            :maxlength="50"
+            placeholder="請輸入組織名稱（2-50字）"
             class="form-input"
+            @input="validateOrganizationName"
           />
+          <span class="error-message" v-if="errors.organizationName">{{ errors.organizationName }}</span>
         </div>
 
         <div class="form-group">
@@ -28,7 +33,7 @@
         </div>
 
         <div class="form-group">
-          <label for="organizationLogo">組織標誌</label>
+          <label for="organizationLogo">組織標誌 (最大2MB，支持jpg、png格式)</label>
           <div class="logo-upload">
             <img :src="previewImage || defaultLogo" class="logo-preview" alt="組織標誌預覽" />
             <input
@@ -53,11 +58,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import debounce from 'lodash/debounce'
+import Sidebar from './Sidebar.vue'
+import Header from './Header.vue'
 
 const router = useRouter()
+const isSidebarOpen = ref(false)
+
+const openNav = () => {
+  isSidebarOpen.value = true
+}
+
+const closeNav = () => {
+  isSidebarOpen.value = false
+}
+
 const isSubmitting = ref(false)
 const defaultLogo = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/organization.png'
 const previewImage = ref(null)
@@ -69,16 +87,79 @@ const formData = ref({
   avatarUrl: ''
 })
 
-const handleImageUpload = (event) => {
+const errors = ref({
+  organizationName: '',
+  organizationDescription: '',
+  avatarUrl: ''
+})
+
+const validateOrganizationName = debounce(() => {
+  if (formData.value.organizationName.length < 2) {
+    errors.value.organizationName = '組織名稱至少需要2個字符'
+  } else if (formData.value.organizationName.length > 50) {
+    errors.value.organizationName = '組織名稱不能超過50個字符'
+  } else {
+    errors.value.organizationName = ''
+  }
+}, 300)
+
+const handleImageUpload = async (event) => {
   const file = event.target.files[0]
   if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      previewImage.value = e.target.result
-      formData.value.avatarUrl = e.target.result
+    // 驗證文件大小
+    if (file.size > 2 * 1024 * 1024) {
+      errors.value.avatarUrl = '圖片大小不能超過2MB'
+      return
     }
-    reader.readAsDataURL(file)
+    
+    // 驗證文件類型
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      errors.value.avatarUrl = '只支持JPG和PNG格式的圖片'
+      return
+    }
+
+    // 壓縮圖片
+    try {
+      const compressedFile = await compressImage(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        previewImage.value = e.target.result
+        formData.value.avatarUrl = e.target.result
+        errors.value.avatarUrl = ''
+      }
+      reader.readAsDataURL(compressedFile)
+    } catch (error) {
+      errors.value.avatarUrl = '圖片處理失敗'
+    }
   }
+}
+
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.src = URL.createObjectURL(file)
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const maxWidth = 800
+      let width = img.width
+      let height = img.height
+
+      if (width > maxWidth) {
+        height = (maxWidth * height) / width
+        width = maxWidth
+      }
+
+      canvas.width = width
+      canvas.height = height
+      ctx.drawImage(img, 0, 0, width, height)
+
+      canvas.toBlob((blob) => {
+        resolve(new File([blob], file.name, { type: file.type }))
+      }, file.type, 0.8)
+    }
+    img.onerror = reject
+  })
 }
 
 const triggerFileInput = () => {
@@ -86,6 +167,11 @@ const triggerFileInput = () => {
 }
 
 const handleSubmit = async () => {
+  // 验证表单
+  if (!validateForm()) {
+    return
+  }
+
   try {
     isSubmitting.value = true
     const response = await fetch('http://localhost:8000/api/organizations', {
@@ -94,8 +180,8 @@ const handleSubmit = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        organizationName: formData.value.organizationName,
-        organizationDescription: formData.value.organizationDescription,
+        organizationName: formData.value.organizationName.trim(),
+        organizationDescription: formData.value.organizationDescription.trim(),
         avatarUrl: formData.value.avatarUrl,
         user_id: userStore.userID
       })
@@ -107,14 +193,40 @@ const handleSubmit = async () => {
       throw new Error(data.detail || '創建組織失敗')
     }
 
-    // 成功後顯示提示並跳轉
-    alert('組織創建成功！')
+    showNotification('success', '組織創建成功！')
     router.push('/dashboard')
   } catch (error) {
     console.error('創建組織失敗:', error)
-    alert(error.message)
+    showNotification('error', error.message)
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const validateForm = () => {
+  let isValid = true
+  
+  // 验证组织名称
+  if (!formData.value.organizationName.trim()) {
+    errors.value.organizationName = '請輸入組織名稱'
+    isValid = false
+  }
+
+  // 验证组织描述
+  if (formData.value.organizationDescription.length > 500) {
+    errors.value.organizationDescription = '組織描述不能超過500個字符'
+    isValid = false
+  }
+
+  return isValid
+}
+
+const showNotification = (type, message) => {
+  // 这里可以集成你喜欢的通知组件
+  if (type === 'error') {
+    console.error(message)
+  } else {
+    console.log(message)
   }
 }
 </script>
@@ -229,6 +341,31 @@ label {
 .submit-btn:disabled {
   background-color: #999;
   cursor: not-allowed;
+}
+
+.error-message {
+  color: #ff3b30;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem;
+  border-radius: 8px;
+  z-index: 1000;
+}
+
+.notification.success {
+  background-color: #34c759;
+  color: white;
+}
+
+.notification.error {
+  background-color: #ff3b30;
+  color: white;
 }
 
 @media (max-width: 768px) {
