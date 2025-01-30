@@ -102,7 +102,7 @@ const handleClickOutside = (event) => {
 // 初始化函數
 const initializeUser = async () => {
     if (!userStore.isAuthenticated) {
-        userStore.initializeFromStorage()
+        await userStore.initializeFromStorage()
         if (!userStore.isAuthenticated && route.path !== '/login' && route.path !== '/signup') {
             window.location.href = '/login'
             return

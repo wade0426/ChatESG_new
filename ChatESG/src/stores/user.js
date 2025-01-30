@@ -45,19 +45,19 @@ export const useUserStore = defineStore('user', {
         },
 
         // 從 sessionStorage 初始化用戶訊息
-        initializeFromStorage() {
+        async initializeFromStorage() {
             const userID = sessionStorage.getItem('userID')
             const username = sessionStorage.getItem('username')
             const access_token = sessionStorage.getItem('access_token')
 
             if (userID && username && access_token) {
                 this.login(userID, username, access_token)
-                this.fetchUserProfile()  // 獲取完整的用戶資料
+                await this.fetchUserProfile()  // 添加 await 等待获取完整用户资料
             }
         },
 
         // 更新用戶資料
-        async fetchUserProfile() {
+        async fetchUserProfile(retryCount = 3) {
             try {
                 const response = await fetch('http://localhost:8000/api/user/profile/Personal_Information', {
                     method: 'POST',
@@ -73,10 +73,18 @@ export const useUserStore = defineStore('user', {
                     console.error('API請求失敗:', response.status, response.statusText)
                     const errorText = await response.text()
                     console.error('錯誤詳情:', errorText)
+                    
+                    // 如果還有重試次數，則等待後重試
+                    if (retryCount > 0) {
+                        console.log(`重試獲取用戶資料，剩餘重試次數: ${retryCount - 1}`)
+                        await new Promise(resolve => setTimeout(resolve, 1000)) // 等待1秒後重試
+                        return this.fetchUserProfile(retryCount - 1)
+                    }
                     return
                 }
 
                 const data = await response.json()
+                console.log('從API獲取的資料:', data)
                 if (data.status === 'success') {
                     this.updateUserInfo(data.data)
                 }
@@ -84,6 +92,13 @@ export const useUserStore = defineStore('user', {
                 console.error('獲取用戶資料失敗:', error)
                 if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
                     console.error('無法連接到後端服務器，請確保服務器正在運行')
+                }
+                
+                // 如果還有重試次數，則等待後重試
+                if (retryCount > 0) {
+                    console.log(`重試獲取用戶資料，剩餘重試次數: ${retryCount - 1}`)
+                    await new Promise(resolve => setTimeout(resolve, 1000)) // 等待1秒後重試
+                    return this.fetchUserProfile(retryCount - 1)
                 }
             }
         },

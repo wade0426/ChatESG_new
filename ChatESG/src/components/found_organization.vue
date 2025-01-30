@@ -194,7 +194,7 @@ const handleSubmit = async () => {
     }
 
     showNotification('success', '組織創建成功！')
-    router.push('/dashboard')
+    router.push('/home')
   } catch (error) {
     console.error('創建組織失敗:', error)
     showNotification('error', error.message)
