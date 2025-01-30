@@ -142,7 +142,7 @@ CREATE TABLE ReportContentBlocks (
     ModifiedBy BINARY(16) DEFAULT NULL COMMENT '內容修改者(UUID)',
     IsLocked BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否被鎖定',
     LockedBy BINARY(16) DEFAULT NULL COMMENT '鎖定者(UUID)',
-    LockedAt TIMESTAMP(6) DEFAULT NULL COMMENT '鎖定時間',
+    LockedAt TIMESTAMP(6) NULL DEFAULT NULL COMMENT '鎖定時間',
     version INT DEFAULT 1
 ) COMMENT '組織資產內容資料表';
 
@@ -153,20 +153,21 @@ ADD CONSTRAINT fk_user_organization
 FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE SET NULL;
 
 -- Users 表索引優化
-ALTER TABLE Users ADD INDEX idx_user_name (UserName); --登入使用 UserName
-ALTER TABLE Users ADD INDEX idx_password_security (AccountStatus, PasswordChangedAt); -- 密碼安全相關查詢
+-- 登入使用 UserName
+ALTER TABLE Users ADD INDEX idx_user_name (UserName);
+-- 密碼安全相關查詢
+ALTER TABLE Users ADD INDEX idx_password_security (AccountStatus, PasswordChangedAt); 
 
 -- OrganizationMembers 表索引優化
 ALTER TABLE OrganizationMembers ADD INDEX idx_membership_time (OrganizationID, CreatedAt);
 
 -- OrganizationAssets 表索引優化
-DROP INDEX idx_createdat_desc ON OrganizationAssets; -- 移除可能重複的索引
+-- DROP INDEX idx_createdat_desc ON OrganizationAssets; -- 不需要這行，因為索引本來就不存在
 ALTER TABLE OrganizationAssets ADD INDEX idx_active_assets (OrganizationID, IsDeleted, Status); -- 優化活躍資產查詢
 
 -- ReportContentBlocks 表索引優化
 ALTER TABLE ReportContentBlocks 
 ADD INDEX idx_lock_status (IsLocked, LockedBy, LockedAt); -- 鎖定狀態查詢
-DROP INDEX idx_content_state ON ReportContentBlocks; -- 簡化現有索引，去掉較少使用的LastModified
 ALTER TABLE ReportContentBlocks ADD INDEX idx_content_state (status, IsLocked); -- 簡化現有索引，去掉較少使用的LastModified
 
 -- Roles 表索引優化
@@ -180,7 +181,7 @@ ALTER TABLE RolePermissionMappings ADD INDEX idx_resource_action (ResourceType, 
 
 -- Organizations 表索引優化
 ALTER TABLE Organizations 
-ADD INDEX idx_org_code (OrganizationCode); -- 加入代碼查詢優化
+ADD INDEX idx_org_code (OrganizationCode),  -- 加入代碼查詢優化
 ADD INDEX idx_active_orgs (IsDeleted, OrganizationName); -- 活躍組織查詢
 
 -- OrganizationAssets 軟刪除索引優化
