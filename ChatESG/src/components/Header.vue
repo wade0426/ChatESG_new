@@ -113,9 +113,6 @@ const initializeUser = async () => {
 
 // 生命週期鉤子
 onMounted(async () => {
-    if (userStore.isAuthenticated) {
-        await userStore.fetchUserProfile()
-    }
     await initializeUser()
     document.addEventListener('click', handleClickOutside)
 })
@@ -127,8 +124,11 @@ onUnmounted(() => {
 // 監聽路由變化
 watch(
     () => route.fullPath,
-    async () => {
-        await initializeUser()
+    async (newPath, oldPath) => {
+        // 只在路由實際發生變化且不是首次加載時才調用
+        if (newPath !== oldPath && oldPath !== undefined) {
+            await initializeUser()
+        }
     }
 )
 </script>

@@ -210,18 +210,6 @@ export default {
 
     const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
 
-    // 初始化函數
-    const initializeUser = async () => {
-      if (!userStore.isAuthenticated) {
-        userStore.initializeFromStorage()
-        if (!userStore.isAuthenticated) {
-          router.push('/login')
-          return
-        }
-      }
-      await userStore.fetchUserProfile()
-    }
-
     // 導航控制
     const navigationControls = {
       openNav: () => uiState.isSidebarOpen = true,
@@ -300,9 +288,9 @@ export default {
     }
 
     // 生命周期钩子
-    onMounted(async () => {
-      await initializeUser()
-    })
+    // onMounted(async () => {
+      // await initializeUser()
+    // })
 
     // 路由监听
     watch(
