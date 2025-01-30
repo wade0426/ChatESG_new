@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import debounce from 'lodash/debounce'
@@ -67,6 +67,7 @@ import Header from './Header.vue'
 
 const router = useRouter()
 const isSidebarOpen = ref(false)
+const userStore = useUserStore()
 
 const openNav = () => {
   isSidebarOpen.value = true
@@ -79,7 +80,6 @@ const closeNav = () => {
 const isSubmitting = ref(false)
 const defaultLogo = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/organization.png'
 const previewImage = ref(null)
-const userStore = useUserStore()
 
 const formData = ref({
   organizationName: '',
@@ -174,7 +174,7 @@ const handleSubmit = async () => {
 
   try {
     isSubmitting.value = true
-    const response = await fetch('http://localhost:8000/api/organizations', {
+    const response = await fetch('http://localhost:8000/api/organizations/found', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -378,4 +378,3 @@ label {
   }
 }
 </style>
-

@@ -50,8 +50,13 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useRoute, RouterLink } from 'vue-router'
 
+// 定義 emit 事件
 const emit = defineEmits(['openNav'])
+
+// 使用 userStore 來管理用戶資料
 const userStore = useUserStore()
+
+// 使用 route 來獲取當前路由
 const route = useRoute()
 
 const isDropdownVisible = ref(false)
@@ -59,9 +64,13 @@ const searchQuery = ref('')
 
 const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
 
-// 計算屬性
+// 計算屬性，用於獲取用戶名稱
 const userName = computed(() => userStore.username)
+
+// 計算屬性，用於獲取用戶所屬組織名稱
 const userOrganizationName = computed(() => userStore.organizationName)
+
+// 計算屬性，用於設置用戶頭像的背景樣式，若無頭像則使用預設頭像
 const avatarStyle = computed(() => ({
     backgroundImage: `url(${userStore.avatarUrl || defaultAvatar})`
 }))
@@ -90,11 +99,24 @@ const handleClickOutside = (event) => {
     }
 }
 
-// 生命週期鉤子
-onMounted(() => {
-    if (userStore.isAuthenticated) {
-        userStore.fetchUserProfile()
+// 初始化函數
+const initializeUser = async () => {
+    if (!userStore.isAuthenticated) {
+        userStore.initializeFromStorage()
+        if (!userStore.isAuthenticated && route.path !== '/login' && route.path !== '/signup') {
+            window.location.href = '/login'
+            return
+        }
     }
+    await userStore.fetchUserProfile()
+}
+
+// 生命週期鉤子
+onMounted(async () => {
+    if (userStore.isAuthenticated) {
+        await userStore.fetchUserProfile()
+    }
+    await initializeUser()
     document.addEventListener('click', handleClickOutside)
 })
 
@@ -106,9 +128,7 @@ onUnmounted(() => {
 watch(
     () => route.fullPath,
     async () => {
-        if (userStore.isAuthenticated) {
-            await userStore.fetchUserProfile()
-        }
+        await initializeUser()
     }
 )
 </script>
