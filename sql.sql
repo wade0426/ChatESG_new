@@ -2,6 +2,7 @@
 -- 資料庫名稱：ChatESG_new
 -- 創建時間：{當前日期}
 -- 資料庫說明：ESG 永續報告書生成系統資料庫
+-- 資料庫版本：10.4.32-MariaDB
 -- --------------------------------------------------------
 
 -- 創建資料庫（如果不存在）
@@ -18,14 +19,14 @@ USE ChatESG_new;
 -- --------------------------------------------------------
 CREATE TABLE Users (
     UserID BINARY(16) PRIMARY KEY COMMENT '使用者唯一標識 (UUID)',
-    UserName VARCHAR(100) NOT NULL COMMENT '使用者名稱',
+    UserName VARCHAR(100) NOT NULL UNIQUE COMMENT '使用者名稱',
     UserPassword VARCHAR(255) NOT NULL COMMENT '使用者密碼（使用 bcrypt 或 Argon2 加密）',
-    UserEmail VARCHAR(100) NOT NULL UNIQUE COMMENT '使用者電子郵件（用於登錄和通知）',
+    UserEmail VARCHAR(100) NOT NULL UNIQUE COMMENT '使用者電子郵件',
     AvatarUrl VARCHAR(255) COMMENT '使用者頭像URL',
     OrganizationID BINARY(16) DEFAULT NULL COMMENT '使用者所屬組織(UUID)',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
-    LastLoginAt TIMESTAMP COMMENT '最後登入時間',
+    LastLoginAt TIMESTAMP(6) COMMENT '最後登入時間',
     LoginAttempts INT DEFAULT 0 COMMENT '登入嘗試次數',
     AccountStatus ENUM('active', 'locked', 'disabled') DEFAULT 'active' COMMENT '帳號狀態',
     PasswordChangedAt TIMESTAMP COMMENT '密碼最後修改時間'
@@ -38,12 +39,14 @@ CREATE TABLE Users (
 CREATE TABLE Organizations (
     OrganizationID BINARY(16) PRIMARY KEY COMMENT '組織唯一標識 (UUID)',
     OrganizationName VARCHAR(100) NOT NULL COMMENT '組織名稱',
-    OrganizationCode VARCHAR(8) NOT NULL UNIQUE COMMENT '組織加入代碼（8位大小寫字母和數字）',
+    OrganizationCode CHAR(8) COLLATE utf8mb4_bin NOT NULL UNIQUE COMMENT '組織加入代碼（8位大小寫字母和數字）',
     OrganizationDescription VARCHAR(255) COMMENT '組織描述',
     AvatarUrl VARCHAR(255) COMMENT '組織標誌URL',
     OwnerID BINARY(16) DEFAULT NULL COMMENT '組織擁有者(UUID)',
     PurchaseType ENUM('Free', 'Basic', 'Pro', 'Premium', 'Enterprise', 'Test') NOT NULL COMMENT '組織的購買類型',
     APICallQuota INT DEFAULT 10000 COMMENT 'API 呼叫配額',
+    MaxMembers INT DEFAULT 5 COMMENT '最大成員數限制',
+    ExpiryDate TIMESTAMP NULL COMMENT '訂閱到期時間',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
     IsDeleted BOOLEAN DEFAULT FALSE COMMENT '是否已刪除',
@@ -135,11 +138,11 @@ CREATE TABLE ReportContentBlocks (
     BlockID BINARY(16) PRIMARY KEY COMMENT '內容(UUID)',
     status ENUM('editing', 'archived') NOT NULL DEFAULT 'editing' COMMENT '內容狀態',
     content JSON COMMENT '內容(文字、圖片、內容檢驗、註解)',
-    LastModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後修改時間',
+    LastModified TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後修改時間',
     ModifiedBy BINARY(16) DEFAULT NULL COMMENT '內容修改者(UUID)',
     IsLocked BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否被鎖定',
     LockedBy BINARY(16) DEFAULT NULL COMMENT '鎖定者(UUID)',
-    LockedAt TIMESTAMP DEFAULT NULL COMMENT '鎖定時間',
+    LockedAt TIMESTAMP(6) DEFAULT NULL COMMENT '鎖定時間',
     version INT DEFAULT 1
 ) COMMENT '組織資產內容資料表';
 
@@ -149,22 +152,36 @@ ALTER TABLE Users
 ADD CONSTRAINT fk_user_organization
 FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE SET NULL;
 
--- 建議加入索引
-ALTER TABLE Users ADD INDEX idx_email (UserEmail);
-ALTER TABLE Users ADD INDEX idx_org (OrganizationID);
-ALTER TABLE Users ADD INDEX idx_login_status (AccountStatus, LastLoginAt);
-ALTER TABLE OrganizationMembers ADD INDEX idx_user (UserID);
-ALTER TABLE OrganizationMembers ADD INDEX idx_org (OrganizationID);
-ALTER TABLE OrganizationAssets ADD INDEX idx_org_type (OrganizationID, AssetType);
-ALTER TABLE OrganizationAssets ADD INDEX idx_creator (CreatorID, CreatedAt);
-ALTER TABLE ReportContentBlocks ADD INDEX idx_status (status);
-ALTER TABLE ReportContentBlocks ADD INDEX idx_modified (LastModified);
-ALTER TABLE RolePermissions ADD INDEX idx_role_permission (RoleID, PermissionType);
-ALTER TABLE Roles ADD INDEX idx_org_role (OrganizationID, RoleName);
+-- Users 表索引優化
+ALTER TABLE Users ADD INDEX idx_user_name (UserName); --登入使用 UserName
+ALTER TABLE Users ADD INDEX idx_password_security (AccountStatus, PasswordChangedAt); -- 密碼安全相關查詢
 
--- 建議加入的複合索引
-ALTER TABLE OrganizationAssets 
-ADD INDEX idx_org_status_type_cover (OrganizationID, Status, AssetType)
-INCLUDE (AssetName, CreatorID, CreatedAt);
-ALTER TABLE ReportContentBlocks ADD INDEX idx_status_version (Status, Version);
-ALTER TABLE UserRoles ADD INDEX idx_org_role (OrganizationID, RoleID);
+-- OrganizationMembers 表索引優化
+ALTER TABLE OrganizationMembers ADD INDEX idx_membership_time (OrganizationID, CreatedAt);
+
+-- OrganizationAssets 表索引優化
+DROP INDEX idx_createdat_desc ON OrganizationAssets; -- 移除可能重複的索引
+ALTER TABLE OrganizationAssets ADD INDEX idx_active_assets (OrganizationID, IsDeleted, Status); -- 優化活躍資產查詢
+
+-- ReportContentBlocks 表索引優化
+ALTER TABLE ReportContentBlocks 
+ADD INDEX idx_lock_status (IsLocked, LockedBy, LockedAt); -- 鎖定狀態查詢
+DROP INDEX idx_content_state ON ReportContentBlocks; -- 簡化現有索引，去掉較少使用的LastModified
+ALTER TABLE ReportContentBlocks ADD INDEX idx_content_state (status, IsLocked); -- 簡化現有索引，去掉較少使用的LastModified
+
+-- Roles 表索引優化
+ALTER TABLE Roles ADD INDEX idx_org_management (OrganizationID, RoleName, CreatedAt);
+
+-- UserRoles 表索引優化
+ALTER TABLE UserRoles ADD INDEX idx_role_assignment (OrganizationID, RoleID, CreatedAt);
+
+-- RolePermissionMappings 表索引
+ALTER TABLE RolePermissionMappings ADD INDEX idx_resource_action (ResourceType, ActionType);
+
+-- Organizations 表索引優化
+ALTER TABLE Organizations 
+ADD INDEX idx_org_code (OrganizationCode); -- 加入代碼查詢優化
+ADD INDEX idx_active_orgs (IsDeleted, OrganizationName); -- 活躍組織查詢
+
+-- OrganizationAssets 軟刪除索引優化
+ALTER TABLE OrganizationAssets ADD INDEX idx_deleted_status (IsDeleted, DeletedAt);
