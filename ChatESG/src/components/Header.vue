@@ -19,104 +19,88 @@
                 @input="handleSearchInput"
             >
         </div>
-        <div class="user-profile" @click="toggleDropdown">
-            <div class="user-avatar" id="user-avatar"></div>
+        <div class="user-profile" @click="isDropdownVisible = !isDropdownVisible">
+            <div class="user-avatar" :style="avatarStyle"></div>
             <div class="user-info">
-                <span class="organization-name" id="organization-name"></span>
-                <span class="user-name" id="user-name"></span>
+                <span class="organization-name">{{ userOrganizationName }}</span>
+                <span class="user-name">{{ userName }}</span>
             </div>
             <span class="dropdown-arrow">▼</span>
-            <div class="dropdown-menu" id="userDropdown">
-                <div class="dropdown-menu-content">
-                    <a href="/user-profile"><span>帳號</span></a>
-                    <a href="/organization/details"><span>管理組織</span></a>
-                    <div class="menu-divider"></div>
-                    <a href="#"><span>設定</span></a>
-                    <a href="#"><span>最新消息</span></a>
-                    <a href="#"><span>方案和定價</span></a>
-                    <a href="#"><span>隱私權政策</span></a>
-                    <div class="menu-divider"></div>
-                    <a href="#" @click="logout"><span>登出</span></a>
+            <Transition name="fade">
+                <div v-show="isDropdownVisible" class="dropdown-menu">
+                    <div class="dropdown-menu-content">
+                        <RouterLink to="/user-profile"><span>帳號</span></RouterLink>
+                        <RouterLink to="/organization/details"><span>管理組織</span></RouterLink>
+                        <div class="menu-divider"></div>
+                        <RouterLink to="/settings"><span>設定</span></RouterLink>
+                        <RouterLink to="/news"><span>最新消息</span></RouterLink>
+                        <RouterLink to="/pricing"><span>方案和定價</span></RouterLink>
+                        <RouterLink to="/privacy"><span>隱私權政策</span></RouterLink>
+                        <div class="menu-divider"></div>
+                        <a href="#" @click.prevent="logout"><span>登出</span></a>
+                    </div>
                 </div>
-            </div>
+            </Transition>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { useRoute } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 
 const emit = defineEmits(['openNav'])
-
 const userStore = useUserStore()
 const route = useRoute()
 
-// 使用 ref 函式建立可被監聽的變數
-const userName = computed(() => userStore.username)
-const userAvatarUrl = computed(() => userStore.avatarUrl)
-const userOrganizationName = computed(() => userStore.organizationName)
+const isDropdownVisible = ref(false)
+const searchQuery = ref('')
 
 const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
 
-// 定義更新界面的函數
-const updateUserInterface = () => {
-    const userAvatarElement = document.getElementById('user-avatar')
-    if (userAvatarElement) {
-        userAvatarElement.style.backgroundImage = `url(${userStore.avatarUrl || defaultAvatar})`
-    }
+// 計算屬性
+const userName = computed(() => userStore.username)
+const userOrganizationName = computed(() => userStore.organizationName)
+const avatarStyle = computed(() => ({
+    backgroundImage: `url(${userStore.avatarUrl || defaultAvatar})`
+}))
 
-    const organizationElement = document.getElementById('organization-name')
-    if (organizationElement) {
-        organizationElement.textContent = userStore.organizationName
-    }
+// 方法
+const handleOpenNav = () => emit('openNav')
 
-    const userNameElement = document.getElementById('user-name')
-    if (userNameElement) {
-        userNameElement.textContent = userStore.username
-    }
-}
-
-// 新增搜索相關的響應式變量
-const searchQuery = ref('')
-
-// 監聽搜索輸入
 const handleSearchInput = () => {
     console.log('搜索內容:', searchQuery.value)
 }
 
-// 監聽搜索內容的變化
-watch(searchQuery, (newValue) => {
-    console.log('搜索內容更新為:', newValue)
-})
-
-const handleOpenNav = () => {
-    emit('openNav')
-}
-
-const toggleDropdown = () => {
-    document.getElementById("userDropdown").classList.toggle("show");
-}
-
 const logout = async () => {
     try {
-        userStore.logout()  // 調用 Pinia store 的登出方法
-        // 重整頁面
-        window.location.reload();
+        await userStore.logout()
+        window.location.reload()
     } catch (error) {
         console.error('登出時發生錯誤:', error)
     }
 }
 
-// 監聽用戶資料變化並更新界面
-watch(
-    () => [userStore.username, userStore.avatarUrl, userStore.organizationName],
-    () => {
-        updateUserInterface()
-    },
-    { immediate: true }
-)
+// 點擊外部關閉下拉選單
+const handleClickOutside = (event) => {
+    const userProfile = event.target.closest('.user-profile')
+    if (!userProfile && isDropdownVisible.value) {
+        isDropdownVisible.value = false
+    }
+}
+
+// 生命週期鉤子
+onMounted(() => {
+    if (userStore.isAuthenticated) {
+        userStore.fetchUserProfile()
+    }
+    document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+})
 
 // 監聽路由變化
 watch(
@@ -127,13 +111,6 @@ watch(
         }
     }
 )
-
-onMounted(() => {
-    // 確保用戶資料已加載
-    if (userStore.isAuthenticated) {
-        userStore.fetchUserProfile()
-    }
-})
 </script>
 
 
@@ -212,6 +189,11 @@ onMounted(() => {
     margin-right: 10px;
     background-size: cover;
     background-position: center;
+    transition: transform 0.2s ease;
+}
+
+.user-profile:hover .user-avatar {
+    transform: scale(1.05);
 }
 
 .user-info {
@@ -241,7 +223,6 @@ onMounted(() => {
 }
 
 .dropdown-menu {
-    display: none;
     position: absolute;
     right: 0;
     top: 100%;
@@ -250,10 +231,8 @@ onMounted(() => {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     margin-top: 5px;
     min-width: 200px;
-}
-
-.dropdown-menu.show {
-    display: block;
+    transform-origin: top right;
+    transition: all 0.3s ease;
 }
 
 .dropdown-menu-content {
@@ -265,6 +244,7 @@ onMounted(() => {
     padding: 8px 16px;
     color: white;
     text-decoration: none;
+    transition: background-color 0.2s ease;
 }
 
 .dropdown-menu a:hover {
@@ -275,5 +255,17 @@ onMounted(() => {
     height: 1px;
     background-color: #3A3B3C;
     margin: 8px 0;
+}
+
+/* 添加过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
 }
 </style> 
