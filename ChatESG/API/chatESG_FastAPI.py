@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import bcrypt
 import uvicorn
 import aiomysql
@@ -94,6 +94,9 @@ class Organization(BaseModel):
     organizationDescription: Optional[str] = None
     avatarUrl: Optional[str] = None
     user_id: str
+    purchaseType: str = "Free"  # 默認為免費版
+    apiCallQuota: Optional[int] = 10000  # 默認API配額
+    maxMembers: Optional[int] = 5  # 默認最大成員數
 
 class OrganizationResponse(BaseModel):
     status: str
@@ -179,13 +182,22 @@ async def register(user: User):
                 )
             
             # 創建新用戶
-            user_id = str(uuid.uuid4())
+            user_id = uuid.uuid4().bytes  # 轉換為BINARY(16)格式
             hashed_password = get_password_hash(user.password)
+            current_time = datetime.now(timezone.utc)  # 使用timezone.utc
             
             await cur.execute("""
-                INSERT INTO Users (UserID, UserName, UserPassword, UserEmail, AvatarUrl)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (user_id, user.username, hashed_password, user.userEmail, DEFAULT_USER_AVATAR))
+                INSERT INTO Users (
+                    UserID, UserName, UserPassword, UserEmail, AvatarUrl,
+                    CreatedAt, UpdatedAt, LastLoginAt, LoginAttempts, 
+                    AccountStatus, PasswordChangedAt
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                user_id, user.username, hashed_password, user.userEmail, DEFAULT_USER_AVATAR,
+                current_time, current_time, None, 0, 
+                'active', current_time
+            ))
             
             await conn.commit()
             
@@ -295,8 +307,11 @@ async def create_organization(organization: Organization):
                         AvatarUrl,
                         OrganizationCode,
                         OwnerID,
+                        PurchaseType,
+                        APICallQuota,
+                        MaxMembers,
                         RoleInfo
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     organization_id,
                     organization.organizationName,
@@ -304,6 +319,9 @@ async def create_organization(organization: Organization):
                     organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO,
                     organization_code,
                     organization.user_id,
+                    organization.purchaseType,
+                    organization.apiCallQuota,
+                    organization.maxMembers,
                     json.dumps(default_roles)
                 ))
 
@@ -316,8 +334,8 @@ async def create_organization(organization: Organization):
                 # 更新組織成員資料表
                 await cur.execute("""
                     INSERT INTO OrganizationMembers 
-                    (OrganizationID, UserID, Permission, Role, CreatedAt) 
-                    VALUES (%s, %s, 'admin', '["資訊部"]', CURRENT_TIMESTAMP)
+                    (OrganizationID, UserID, Role, CreatedAt) 
+                    VALUES (%s, %s, '["資訊部"]', CURRENT_TIMESTAMP)
                 """, (organization_id, organization.user_id))
                 
                 await conn.commit()
@@ -485,7 +503,9 @@ async def get_organization_info(data: dict):
                     o.AvatarUrl,
                     o.OrganizationCode,
                     o.OwnerID,
-                    o.ReportCount,
+                    o.PurchaseType,
+                    o.APICallQuota,
+                    o.MaxMembers,
                     o.RoleInfo,
                     o.CreatedAt,
                     o.UpdatedAt,
@@ -507,7 +527,6 @@ async def get_organization_info(data: dict):
                     u.UserName,
                     u.AvatarUrl,
                     u.UserEmail,
-                    om.Permission,
                     om.Role,
                     om.CreatedAt
                 FROM OrganizationMembers om
@@ -523,32 +542,33 @@ async def get_organization_info(data: dict):
                     "name": member[1],
                     "avatarUrl": member[2],
                     "email": member[3],
-                    "permission": member[4],
-                    "role": member[5],
-                    "joinedAt": member[6].isoformat() if member[6] else None
+                    "role": member[4],
+                    "joinedAt": member[5].isoformat() if member[5] else None
                 })
             
             # 解析 RoleInfo JSON
-            role_info = json.loads(org[7]) if org[7] else {"organization_roles": []}
+            role_info = json.loads(org[9]) if org[9] else {"organization_roles": []}
             
             return {
                 "status": "success",
                 "data": {
                     "id": org[0],
-                    "code": org[4],
                     "name": org[1],
                     "description": org[2],
                     "avatarUrl": org[3],
+                    "code": org[4],
                     "owner": {
                         "id": org[5],
-                        "name": org[10]
+                        "name": org[12]
                     },
-                    "reportCount": org[6],
+                    "purchaseType": org[6],
+                    "apiCallQuota": org[7],
+                    "maxMembers": org[8],
                     "roles": role_info["organization_roles"],
-                    "memberCount": org[11],
+                    "memberCount": org[13],
                     "members": members_list,
-                    "createdAt": org[8].isoformat() if org[8] else None,
-                    "updatedAt": org[9].isoformat() if org[9] else None
+                    "createdAt": org[10].isoformat() if org[10] else None,
+                    "updatedAt": org[11].isoformat() if org[11] else None
                 }
             }
 
@@ -615,7 +635,7 @@ async def update_member_roles(data: dict):
                     SET Role = %s 
                     WHERE UserID = %s AND OrganizationID = %s
                 """, (roles_json, user_id, organization_id))
-                print(roles_json)
+                
                 await conn.commit()
                 return {"status": "success", "message": "成員身份組更新成功"}
                 
