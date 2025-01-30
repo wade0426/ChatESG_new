@@ -258,41 +258,6 @@ async def register(user: User):
             return {"status": "success", "message": "註冊成功"}
 
 
-# @app.post("/api/user/profile")
-# async def get_user_profile(user_data: dict):
-#     user_id = user_data.get("user_id")
-#     async with db_pool.acquire() as conn:
-#         async with conn.cursor() as cur:
-#             await cur.execute("""
-#                 SELECT UserID, UserName, AvatarUrl, OrganizationID
-#                 FROM Users WHERE UserID = %s
-#             """, (user_id,))
-            
-#             user = await cur.fetchone()
-#             if not user:
-#                 raise HTTPException(status_code=404, detail="未找到使用者")
-            
-#             # 獲取組織名稱
-#             organization_name = "尚未加入組織"
-#             if user[3]:  # 如果有組織ID
-#                 await cur.execute("""
-#                     SELECT OrganizationName 
-#                     FROM Organizations 
-#                     WHERE OrganizationID = %s
-#                 """, (user[3],))
-#                 org = await cur.fetchone()
-#                 if org:
-#                     organization_name = org[0]
-            
-#             return {
-#                 "userName": user[1],
-#                 "userID": user[0],
-#                 "avatarUrl": user[2] or "",
-#                 "organizationID": user[3] or "",
-#                 "organizationName": organization_name
-#             }
-
-
 @app.post("/api/user/profile/Personal_Information")
 async def get_user_profile_Personal_Information(user_data: dict):
     try:
@@ -303,12 +268,13 @@ async def get_user_profile_Personal_Information(user_data: dict):
 
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # 獲取用戶基本信息
+            # 獲取用戶基本信息，加入 OrganizationMembers 表的關聯
             await cur.execute("""
                 SELECT u.UserID, u.UserName, u.AvatarUrl, u.OrganizationID, u.UserEmail,
                        o.OrganizationName, u.AccountStatus, u.LastLoginAt
                 FROM Users u
-                LEFT JOIN Organizations o ON u.OrganizationID = o.OrganizationID
+                LEFT JOIN OrganizationMembers om ON u.UserID = om.UserID
+                LEFT JOIN Organizations o ON om.OrganizationID = o.OrganizationID
                 WHERE u.UserID = %s
             """, (user_id,))
             user = await cur.fetchone()
@@ -336,14 +302,14 @@ async def get_user_profile_Personal_Information(user_data: dict):
 
 
 # 建立組織
-@app.post("/api/organizations", response_model=OrganizationResponse)
+@app.post("/api/organizations/found", response_model=OrganizationResponse)
 async def create_organization(organization: Organization):
     try:
         async with db_pool.acquire() as conn:
             async with conn.cursor() as cur:
                 # 檢查組織名稱是否已存在
                 await cur.execute(
-                    "SELECT OrganizationID FROM Organizations WHERE OrganizationName = %s",
+                    "SELECT OrganizationID FROM Organizations WHERE OrganizationName = %s AND IsDeleted = FALSE",
                     (organization.organizationName,)
                 )
                 if await cur.fetchone():
@@ -352,16 +318,10 @@ async def create_organization(organization: Organization):
                         detail="組織名稱已存在"
                     )
                 
-                # 生成組織ID
-                organization_id = str(uuid.uuid4())
+                # 生成組織ID (BINARY(16)格式)
+                organization_id = uuid.uuid4().bytes
                 # 生成組織加入代碼（8位大小寫字母和數字）
                 organization_code = str(uuid.uuid4())[:8].upper()
-                
-                # 預設身份組
-                default_roles = {
-                    "number_of_organization_roles": 3,
-                    "organization_roles": ["一般", "資訊部", "行銷部"]
-                }
                 
                 # 插入新組織
                 await cur.execute("""
@@ -375,40 +335,59 @@ async def create_organization(organization: Organization):
                         PurchaseType,
                         APICallQuota,
                         MaxMembers,
-                        RoleInfo
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ExpiryDate,
+                        IsDeleted
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     organization_id,
                     organization.organizationName,
                     organization.organizationDescription,
                     organization.avatarUrl or DEFAULT_ORGANIZATION_LOGO,
                     organization_code,
-                    organization.user_id,
+                    uuid.UUID(organization.user_id).bytes,  # 轉換為 BINARY(16)
                     organization.purchaseType,
                     organization.apiCallQuota,
                     organization.maxMembers,
-                    json.dumps(default_roles)
+                    None,  # ExpiryDate，預設為 None
+                    False  # IsDeleted
                 ))
 
                 # 將創建者的組織ID設置為組織ID
                 await cur.execute(
                     "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
-                    (organization_id, organization.user_id)
+                    (organization_id, uuid.UUID(organization.user_id).bytes)
                 )
+
+                # 創建預設角色
+                default_roles = ["一般", "資訊部", "行銷部"]
+                for role_name in default_roles:
+                    role_id = uuid.uuid4().bytes
+                    # 創建角色
+                    await cur.execute("""
+                        INSERT INTO Roles (RoleID, OrganizationID, RoleName)
+                        VALUES (%s, %s, %s)
+                    """, (role_id, organization_id, role_name))
+                    
+                    # 如果是資訊部角色，將其分配給創建者
+                    if role_name == "資訊部":
+                        await cur.execute("""
+                            INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
+                            VALUES (%s, %s, %s)
+                        """, (uuid.UUID(organization.user_id).bytes, role_id, organization_id))
 
                 # 更新組織成員資料表
                 await cur.execute("""
                     INSERT INTO OrganizationMembers 
-                    (OrganizationID, UserID, Role, CreatedAt) 
-                    VALUES (%s, %s, '["資訊部"]', CURRENT_TIMESTAMP)
-                """, (organization_id, organization.user_id))
+                    (OrganizationID, UserID, CreatedAt) 
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                """, (organization_id, uuid.UUID(organization.user_id).bytes))
                 
                 await conn.commit()
                 
                 return {
                     "status": "success",
                     "message": "組織創建成功",
-                    "organization_id": organization_id
+                    "organization_id": uuid.UUID(bytes=organization_id).hex
                 }
                 
     except Exception as e:
@@ -517,10 +496,15 @@ async def change_username(user_data: dict):
 # 加入組織
 @app.post("/api/organizations/join")
 async def join_organization(join_data: dict):
-    user_id = join_data.get("user_id")
+    try:
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        user_id = uuid.UUID(join_data.get("user_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
+    
     organization_code = join_data.get("organization_code")
     
-    if not all([user_id, organization_code]):
+    if not organization_code:
         raise HTTPException(status_code=400, detail="缺少必要參數")
     
     async with db_pool.acquire() as conn:
@@ -562,21 +546,22 @@ async def join_organization(join_data: dict):
                 # 更新組織成員資料表
                 await cur.execute("""
                     INSERT INTO OrganizationMembers 
-                    (OrganizationID, UserID, Role, CreatedAt) 
-                    VALUES (%s, %s, 'PendingReview', CURRENT_TIMESTAMP)
+                    (OrganizationID, UserID, CreatedAt) 
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
                 """, (organization[0], user_id))
 
-                # 更新組織成員數量
-                await cur.execute(
-                    "SELECT COUNT(*) FROM OrganizationMembers WHERE OrganizationID = %s",
-                    (organization[0],)
-                )
-                member_count = await cur.fetchone()
+                # 為新成員分配預設角色（一般）
+                await cur.execute("""
+                    SELECT RoleID FROM Roles 
+                    WHERE OrganizationID = %s AND RoleName = '一般'
+                """, (organization[0],))
+                default_role = await cur.fetchone()
                 
-                await cur.execute(
-                    "UPDATE Organizations SET MemberCount = %s WHERE OrganizationID = %s",
-                    (member_count[0], organization[0])
-                )
+                if default_role:
+                    await cur.execute("""
+                        INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
+                        VALUES (%s, %s, %s)
+                    """, (user_id, default_role[0], organization[0]))
                 
                 # 提交事務
                 await conn.commit()
