@@ -68,30 +68,31 @@
   const submitForm = () => {
     if (validateForm()) {
       // 呼叫 API 加入組織
-      fetch('http://localhost:8000/api/organizations/join', {
+      fetch('http://localhost:8000/api/organizations/apply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           user_id: userStore.userID,
+          application_message: "暫無",
           organization_code: organizationId.value
         })
       })
       .then(response => response.json())
       .then(data => {
         if (data.status === 'success') {
-          alert('成功加入組織！')
+          alert('已成功送出申請！')
           hideModal()
           // 重新加載用戶資料
           userStore.fetchUserProfile()
         } else {
-          errors.organizationId = data.detail || '加入組織失敗'
+          errors.organizationId = data.detail || '申請加入組織失敗'
         }
       })
       .catch(error => {
         console.error('Error:', error)
-        errors.organizationId = '加入組織時發生錯誤'
+        errors.organizationId = '申請加入組織時發生錯誤'
       })
     }
   }

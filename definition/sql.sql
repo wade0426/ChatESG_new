@@ -147,6 +147,25 @@ CREATE TABLE ReportContentBlocks (
     version INT DEFAULT 1
 ) COMMENT '組織資產內容資料表';
 
+-- --------------------------------------------------------
+-- 組織申請資料表
+-- 用於記錄使用者申請加入組織的資料
+-- --------------------------------------------------------
+CREATE TABLE OrganizationApplications (
+    ApplicationID INT AUTO_INCREMENT PRIMARY KEY COMMENT '申請唯一標識(流水號)',
+    ApplicantID BINARY(16) NOT NULL COMMENT '申請者(UUID)',
+    OrganizationID BINARY(16) NOT NULL COMMENT '目標組織(UUID)',
+    ApplicationStatus ENUM('pending', 'approved', 'rejected') DEFAULT 'pending' COMMENT '申請狀態',
+    ApplicationMessage TEXT COMMENT '申請訊息',
+    ReviewerID BINARY(16) DEFAULT NULL COMMENT '審核者(UUID)',
+    ReviewMessage TEXT COMMENT '審核回覆訊息',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申請時間',
+    ReviewedAt TIMESTAMP NULL DEFAULT NULL COMMENT '審核時間',
+    FOREIGN KEY (ApplicantID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE CASCADE,
+    FOREIGN KEY (ReviewerID) REFERENCES Users(UserID) ON DELETE SET NULL
+) COMMENT '組織申請資料表';
+
 -- 在所有表創建完成後加入外鍵約束
 -- 保護組織不會因為擁有者被刪除而消失，同時允許組織解散後讓用戶保持獨立狀態(NULL)
 ALTER TABLE Users
@@ -187,3 +206,8 @@ ADD INDEX idx_active_orgs (IsDeleted, OrganizationName); -- 活躍組織查詢
 
 -- OrganizationAssets 軟刪除索引優化
 ALTER TABLE OrganizationAssets ADD INDEX idx_deleted_status (IsDeleted, DeletedAt);
+
+-- OrganizationApplications 表索引優化
+ALTER TABLE OrganizationApplications 
+ADD INDEX idx_application_status (OrganizationID, ApplicationStatus, CreatedAt),
+ADD INDEX idx_applicant_history (ApplicantID, ApplicationStatus, CreatedAt);

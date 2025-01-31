@@ -516,8 +516,8 @@ async def change_username(user_data: dict):
                 raise HTTPException(status_code=500, detail=f"修改用戶名失敗: {str(e)}")
 
 
-# 加入組織
-@app.post("/api/organizations/join")
+# 審核後加入組織
+@app.post("/api/organizations/check_join")
 async def join_organization(join_data: dict):
     try:
         # 將字符串格式的user_id轉換為BINARY(16)格式
@@ -595,6 +595,88 @@ async def join_organization(join_data: dict):
                 # 發生錯誤時回滾事務
                 await conn.rollback()
                 raise HTTPException(status_code=500, detail=f"加入組織失敗: {str(e)}")
+
+
+# 申請加入組織
+@app.post("/api/organizations/apply")
+async def apply_to_organization(data: dict):
+    try:
+        # 獲取必要參數
+        user_id = data.get("user_id")
+        organization_code = data.get("organization_code")
+        application_message = data.get("application_message", "")
+
+        if not all([user_id, organization_code]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        user_id_binary = uuid.UUID(user_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查用戶是否已經在組織中
+                    await cur.execute(
+                        "SELECT OrganizationID FROM Users WHERE UserID = %s",
+                        (user_id_binary,)
+                    )
+                    user = await cur.fetchone()
+                    if user and user[0]:
+                        raise HTTPException(status_code=400, detail="您已經是其他組織的成員")
+
+                    # 查找組織代碼對應的組織
+                    await cur.execute(
+                        "SELECT OrganizationID FROM Organizations WHERE OrganizationCode = %s AND IsDeleted = FALSE",
+                        (organization_code,)
+                    )
+                    organization = await cur.fetchone()
+                    if not organization:
+                        raise HTTPException(status_code=404, detail="無效的組織代碼")
+
+                    # 檢查是否已經有待處理的申請
+                    await cur.execute("""
+                        SELECT ApplicationStatus 
+                        FROM OrganizationApplications 
+                        WHERE ApplicantID = %s AND OrganizationID = %s 
+                        AND ApplicationStatus = 'pending'
+                    """, (user_id_binary, organization[0]))
+
+                    if await cur.fetchone():
+                        raise HTTPException(status_code=400, detail="您已經有一個待處理的申請")
+
+                    # 檢查是否已經是組織成員
+                    await cur.execute(
+                        "SELECT OrganizationMemberID FROM OrganizationMembers WHERE OrganizationID = %s AND UserID = %s",
+                        (organization[0], user_id_binary)
+                    )
+                    if await cur.fetchone():
+                        raise HTTPException(status_code=400, detail="您已經是該組織的成員")
+
+                    # 創建新的申請記錄
+                    await cur.execute("""
+                        INSERT INTO OrganizationApplications 
+                        (ApplicantID, OrganizationID, ApplicationStatus, ApplicationMessage, CreatedAt)
+                        VALUES (%s, %s, 'pending', %s, CURRENT_TIMESTAMP)
+                    """, (user_id_binary, organization[0], application_message))
+
+                    # 提交事務
+                    await conn.commit()
+
+                    return {
+                        "status": "success",
+                        "message": "申請已成功提交，請等待組織管理員審核"
+                    }
+
+                except Exception as e:
+                    # 發生錯誤時回滾事務
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"申請失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
 
 
 # 獲取組織訊息
