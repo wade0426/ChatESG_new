@@ -1,6 +1,5 @@
 <template>
   <div class="membership-application-review">
-    <Toasts ref="toasts" />
     <div class="page-header">
       <h1>人員申請審核 ({{ applications.length }})</h1>
     </div>
@@ -52,14 +51,10 @@
 <script>
 import axios from 'axios'
 import { organizationStore } from '../stores/organization'
-import { useUserStore } from '../stores/user'
-import Toasts from './Toasts.vue'
+import { storeToRefs } from 'pinia'
 
 export default {
   name: 'MembershipApplicationReview',
-  components: {
-    Toasts
-  },
   data() {
     return {
       applications: [],
@@ -140,87 +135,12 @@ export default {
       })
     },
     async approveApplication(application) {
-      try {
-        const userStore = useUserStore()
-        const userId = userStore.userID
-        
-        if (!userId) {
-          throw new Error('未找到用戶ID，請重新登入')
-        }
-
-        // console.log('Debug - Response:', application.id) // 18
-        
-        const response = await axios.post('http://localhost:8000/api/organizations/check_join', {
-          application_id: application.id,
-          reviewer_id: userId,
-          status: 'approved'
-        })
-
-        if (response.data.status === 'success') {
-          this.$refs.toasts.show(`已成功允許 ${application.name} 加入組織`, 'success')
-          // 從列表中移除該申請
-          this.applications = this.applications.filter(app => app.id !== application.id)
-          // 重新獲取申請列表以確保數據同步
-          await this.fetchApplications()
-        } else {
-          throw new Error('審核失敗')
-        }
-      } catch (error) {
-        console.error('審核失敗:', error)
-        let errorMessage = '審核失敗，請稍後再試'
-        
-        if (error.message === '未找到用戶ID，請重新登入') {
-          errorMessage = error.message
-        } else if (error.response?.data?.detail) {
-          const detail = error.response.data.detail
-          if (detail.includes('Duplicate entry')) {
-            errorMessage = '該用戶可能已經是組織成員，請刷新頁面重試'
-          } else if (detail.includes('該用戶已經屬於其他組織')) {
-            errorMessage = '該用戶已經屬於其他組織'
-          } else {
-            errorMessage = detail
-          }
-        }
-        
-        this.$refs.toasts.show(errorMessage, 'error')
-        // 如果是重複數據的錯誤，重新獲取申請列表
-        if (errorMessage.includes('已經是組織成員')) {
-          await this.fetchApplications()
-        }
-      }
+      // TODO: 實現允許加入的邏輯
+      console.log('Approved application:', application.id)
     },
     async rejectApplication(application) {
-      try {
-        const userStore = useUserStore()
-        const userId = userStore.userID
-        
-        if (!userId) {
-          throw new Error('未找到用戶ID，請重新登入')
-        }
-        
-        const response = await axios.post('http://localhost:8000/api/organizations/check_join', {
-          application_id: application.id,
-          reviewer_id: userId,
-          status: 'rejected'
-        })
-
-        if (response.data.status === 'success') {
-          this.$refs.toasts.show(`已拒絕 ${application.name} 的加入申請`, 'warning')
-          // 從列表中移除該申請
-          this.applications = this.applications.filter(app => app.id !== application.id)
-          // 重新獲取申請列表以確保數據同步
-          await this.fetchApplications()
-        } else {
-          throw new Error('審核失敗')
-        }
-      } catch (error) {
-        console.error('審核失敗:', error)
-        if (error.message === '未找到用戶ID，請重新登入') {
-          this.$refs.toasts.show(error.message, 'error')
-        } else {
-          this.$refs.toasts.show(error.response?.data?.detail || '審核失敗，請稍後再試', 'error')
-        }
-      }
+      // TODO: 實現拒絕加入的邏輯
+      console.log('Rejected application:', application.id)
     }
   }
 }
