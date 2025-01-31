@@ -48,7 +48,22 @@
 
       <div class="info-group">
         <label>組織角色</label>
-        <div class="info-value">{{ userInfo.organizationRole }}</div>
+        <div class="info-value">
+          <div class="role-tags" v-if="userInfo.organizationRoles && userInfo.organizationRoles.length">
+            <span
+              v-for="role in userInfo.organizationRoles"
+              :key="role.roleID"
+              class="role-tag"
+              :style="{
+                backgroundColor: role.roleColor,
+                color: getContrastColor(role.roleColor)
+              }"
+            >
+              {{ role.roleName }}
+            </span>
+          </div>
+          <span v-else>無角色</span>
+        </div>
       </div>
 
       <div class="info-group">
@@ -205,7 +220,7 @@ export default {
       avatarUrl: userStore.avatarUrl,
       email: userStore.email,
       organizationName: userStore.organizationName,
-      organizationRole: userStore.organizationRole
+      organizationRoles: userStore.organizationRoles || []
     }))
 
     const defaultAvatar = 'https://raw.githubusercontent.com/wade0426/ChatESG_new/refs/heads/main/userPhoto/user-icons.png'
@@ -300,6 +315,23 @@ export default {
       }
     )
 
+    // 根據背景顏色計算文字顏色
+    const getContrastColor = (hexColor) => {
+      // 移除 # 符號（如果有的話）
+      const hex = hexColor.replace('#', '')
+      
+      // 將顏色轉換為 RGB
+      const r = parseInt(hex.substr(0, 2), 16)
+      const g = parseInt(hex.substr(2, 2), 16)
+      const b = parseInt(hex.substr(4, 2), 16)
+      
+      // 計算亮度
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000
+      
+      // 根據亮度返回黑色或白色
+      return brightness > 128 ? '#000000' : '#ffffff'
+    }
+
     return {
       userInfo,
       defaultAvatar,
@@ -309,7 +341,8 @@ export default {
       modalControls,
       closePasswordModal: modalControls.closePasswordModal,
       closeUsernameModal: modalControls.closeUsernameModal,
-      ...submitHandlers
+      ...submitHandlers,
+      getContrastColor
     }
   }
 }
@@ -532,5 +565,23 @@ export default {
 
 .edit-btn i {
   font-size: 16px;
+}
+
+.role-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.role-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: all 0.3s ease;
 }
 </style>

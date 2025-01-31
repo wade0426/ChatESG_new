@@ -11,7 +11,7 @@ export const useUserStore = defineStore('user', {
         organizationName: '',
         email: '',
         avatarUrl: '',
-        organizationRole: 'NULL'
+        organizationRoles: []
     }),
 
     // 定義行為
@@ -36,7 +36,7 @@ export const useUserStore = defineStore('user', {
             this.organizationName = ''
             this.email = ''
             this.avatarUrl = ''
-            this.organizationRole = 'NULL'
+            this.organizationRoles = []
 
             // 清除 sessionStorage 中的用戶訊息
             sessionStorage.removeItem('userID')
@@ -109,7 +109,7 @@ export const useUserStore = defineStore('user', {
             this.email = data.email || this.email
             this.avatarUrl = data.avatarUrl || this.avatarUrl
             this.organizationName = data.organizationName || this.organizationName
-            this.organizationRole = data.organizationRole || this.organizationRole
+            this.organizationRoles = data.organizationRoles || this.organizationRoles
         },
 
         // 更新用戶名

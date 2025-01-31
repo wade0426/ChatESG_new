@@ -260,6 +260,7 @@ async def register(user: User):
             return {"status": "success", "message": "註冊成功"}
 
 
+# 獲取使用者個人資料
 @app.post("/api/user/profile/Personal_Information")
 async def get_user_profile_Personal_Information(user_data: dict):
     try:
@@ -284,9 +285,28 @@ async def get_user_profile_Personal_Information(user_data: dict):
             if not user:
                 raise HTTPException(status_code=404, detail="未找到使用者")
             
+            # 獲取用戶的所有角色信息
+            await cur.execute("""
+                SELECT r.RoleID, r.RoleName, r.Color
+                FROM UserRoles ur
+                JOIN Roles r ON ur.RoleID = r.RoleID
+                WHERE ur.UserID = %s
+            """, (user_id,))
+            roles = await cur.fetchall()
+            
             # 將BINARY(16)格式的UUID轉換為字符串
             user_id_str = uuid.UUID(bytes=user[0]).hex if user[0] else None
             organization_id_str = uuid.UUID(bytes=user[3]).hex if user[3] else None
+            
+            # 處理角色信息
+            user_roles = []
+            for role in roles:
+                role_id_str = uuid.UUID(bytes=role[0]).hex if role[0] else None
+                user_roles.append({
+                    "roleID": role_id_str,
+                    "roleName": role[1],
+                    "roleColor": role[2]
+                })
             
             return {
                 "status": "success",
@@ -298,7 +318,8 @@ async def get_user_profile_Personal_Information(user_data: dict):
                     "organizationName": user[5] or "尚未加入組織",
                     "email": user[4],
                     "accountStatus": user[6],
-                    "lastLoginAt": user[7].isoformat() if user[7] else None
+                    "lastLoginAt": user[7].isoformat() if user[7] else None,
+                    "organizationRoles": user_roles
                 }
             }
 
