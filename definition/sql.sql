@@ -74,9 +74,10 @@ CREATE TABLE OrganizationMembers (
 -- --------------------------------------------------------
 CREATE TABLE Roles (
     RoleID BINARY(16) PRIMARY KEY COMMENT '角色唯一標識(UUID)',
-    OrganizationID BINARY(16) NOT NULL COMMENT '組織(UUID)',
+    OrganizationID BINARY(16) NOT NULL COMMENT '角色所屬組織(UUID)', 
     RoleName VARCHAR(50) NOT NULL COMMENT '角色名稱',
     Description VARCHAR(255) COMMENT '角色描述',
+    Color CHAR(7) DEFAULT '#808080' COMMENT '角色顏色(16進制,如:#FF0000)',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE CASCADE
 ) COMMENT '角色資料表';

@@ -67,6 +67,7 @@ export const organizationStore = defineStore('organization', {
 
                 if (response.data.status === 'success') {
                     const data = response.data.data
+                    console.log('Info_API：',data)
                     this.setOrganizationInfo({
                         orgID: data.id,
                         code: data.code,
