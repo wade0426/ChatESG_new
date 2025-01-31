@@ -520,81 +520,114 @@ async def change_username(user_data: dict):
 @app.post("/api/organizations/check_join")
 async def join_organization(join_data: dict):
     try:
-        # 將字符串格式的user_id轉換為BINARY(16)格式
-        user_id = uuid.UUID(join_data.get("user_id")).bytes
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=400, detail="無效的用戶ID格式")
-    
-    organization_code = join_data.get("organization_code")
-    
-    if not organization_code:
-        raise HTTPException(status_code=400, detail="缺少必要參數")
-    
-    async with db_pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            try:
-                # 開始事務
-                await conn.begin()
-                
-                # 檢查用戶是否已經在組織中
-                await cur.execute("SELECT OrganizationID FROM Users WHERE UserID = %s", (user_id,))
-                user = await cur.fetchone()
-                if user and user[0]:
-                    raise HTTPException(status_code=400, detail="使用者已經在其他組織中")
-                
-                # 查找組織代碼對應的組織
-                await cur.execute(
-                    "SELECT OrganizationID FROM Organizations WHERE OrganizationCode = %s",
-                    (organization_code,)
-                )
-                organization = await cur.fetchone()
-                
-                if not organization:
-                    raise HTTPException(status_code=404, detail="無效的組織代碼")
-                
-                # 檢查是否已經是組織成員
-                await cur.execute(
-                    "SELECT OrganizationMemberID FROM OrganizationMembers WHERE OrganizationID = %s AND UserID = %s",
-                    (organization[0], user_id)
-                )
-                if await cur.fetchone():
-                    raise HTTPException(status_code=400, detail="使用者已經是該組織的成員")
-                
-                # 更新用戶的組織ID
-                await cur.execute(
-                    "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
-                    (organization[0], user_id)
-                )
-
-                # 更新組織成員資料表
-                await cur.execute("""
-                    INSERT INTO OrganizationMembers 
-                    (OrganizationID, UserID, CreatedAt) 
-                    VALUES (%s, %s, CURRENT_TIMESTAMP)
-                """, (organization[0], user_id))
-
-                # 為新成員分配預設角色（一般）
-                await cur.execute("""
-                    SELECT RoleID FROM Roles 
-                    WHERE OrganizationID = %s AND RoleName = '一般'
-                """, (organization[0],))
-                default_role = await cur.fetchone()
-                
-                if default_role:
+        # 獲取必要參數
+        application_id = join_data.get("application_id") #流水號
+        reviewer_id = join_data.get("reviewer_id") #審核者ID
+        is_approved = join_data.get("is_approved", False) #是否通過
+        review_message = join_data.get("review_message", "無") #審核回覆訊息
+        
+        if not all([application_id, reviewer_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+            
+        # 將字符串格式的reviewer_id轉換為BINARY(16)格式
+        reviewer_id_binary = uuid.UUID(reviewer_id).bytes
+        
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+                    
+                    # 獲取申請信息
                     await cur.execute("""
-                        INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
-                        VALUES (%s, %s, %s)
-                    """, (user_id, default_role[0], organization[0]))
-                
-                # 提交事務
-                await conn.commit()
-                
-                return {"status": "success", "message": "成功加入組織"}
-                
-            except Exception as e:
-                # 發生錯誤時回滾事務
-                await conn.rollback()
-                raise HTTPException(status_code=500, detail=f"加入組織失敗: {str(e)}")
+                        SELECT a.ApplicantID, a.OrganizationID, a.ApplicationStatus
+                        FROM OrganizationApplications a
+                        WHERE a.ApplicationID = %s
+                    """, (application_id,))
+                    
+                    application = await cur.fetchone()
+                    if not application:
+                        raise HTTPException(status_code=404, detail="找不到該申請記錄")
+                    
+                    if application[2] != 'pending':
+                        raise HTTPException(status_code=400, detail="該申請已經被處理過")
+                    
+                    # 更新申請狀態
+                    new_status = 'approved' if is_approved else 'rejected'
+                    current_time = datetime.now(timezone.utc)
+                    
+                    await cur.execute("""
+                        UPDATE OrganizationApplications
+                        SET ApplicationStatus = %s,
+                            ReviewerID = %s,
+                            ReviewMessage = %s,
+                            ReviewedAt = %s
+                        WHERE ApplicationID = %s
+                    """, (new_status, reviewer_id_binary, review_message, current_time, application_id))
+                    
+                    if is_approved:
+                        # 檢查用戶是否已經在其他組織中
+                        await cur.execute(
+                            "SELECT OrganizationID FROM Users WHERE UserID = %s",
+                            (application[0],)
+                        )
+                        user_org = await cur.fetchone()
+                        if user_org and user_org[0]:
+                            raise HTTPException(status_code=400, detail="該用戶已經是其他組織的成員")
+                        
+                        # 檢查用戶是否已經在組織成員表中
+                        await cur.execute("""
+                            SELECT OrganizationMemberID 
+                            FROM OrganizationMembers 
+                            WHERE OrganizationID = %s AND UserID = %s
+                        """, (application[1], application[0]))
+                        
+                        if not await cur.fetchone():
+                            # 將用戶加入組織
+                            await cur.execute(
+                                "UPDATE Users SET OrganizationID = %s WHERE UserID = %s",
+                                (application[1], application[0])
+                            )
+                            
+                            # 添加到組織成員表
+                            await cur.execute("""
+                                INSERT INTO OrganizationMembers (OrganizationID, UserID)
+                                VALUES (%s, %s)
+                            """, (application[1], application[0]))
+                        
+                        # 為新成員添加默認角色（一般）
+                        await cur.execute("""
+                            SELECT RoleID FROM Roles 
+                            WHERE OrganizationID = %s AND RoleName = '一般'
+                        """, (application[1],))
+                        
+                        default_role = await cur.fetchone()
+                        if default_role:
+                            # 檢查用戶是否已經有這個角色
+                            await cur.execute("""
+                                SELECT 1 FROM UserRoles 
+                                WHERE UserID = %s AND RoleID = %s AND OrganizationID = %s
+                            """, (application[0], default_role[0], application[1]))
+                            
+                            if not await cur.fetchone():
+                                await cur.execute("""
+                                    INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
+                                    VALUES (%s, %s, %s)
+                                """, (application[0], default_role[0], application[1]))
+                    
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "申請審核完成",
+                        "approved": is_approved
+                    }
+                    
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"審核失敗: {str(e)}")
+                    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
 
 
 # 申請加入組織

@@ -52,6 +52,8 @@
 import axios from 'axios'
 import { organizationStore } from '../stores/organization'
 import { storeToRefs } from 'pinia'
+import { useUserStore } from '../stores/user'
+import { useToast } from 'vue-toastification'
 
 export default {
   name: 'MembershipApplicationReview',
@@ -59,7 +61,8 @@ export default {
     return {
       applications: [],
       loading: true,
-      error: null
+      error: null,
+      toast: useToast()
     }
   },
   async created() {
@@ -135,12 +138,52 @@ export default {
       })
     },
     async approveApplication(application) {
-      // TODO: 實現允許加入的邏輯
-      console.log('Approved application:', application.id)
+      try {
+        const store = organizationStore()
+        const userStore = useUserStore()
+        
+        const response = await axios.post('http://localhost:8000/api/organizations/check_join', {
+          application_id: application.id,
+          reviewer_id: userStore.userID,
+          is_approved: true
+        })
+
+        if (response.data.status === 'success') {
+          // 從列表中移除該申請
+          this.applications = this.applications.filter(app => app.id !== application.id)
+          // 顯示成功消息
+          this.toast.success('已允許加入組織')
+        } else {
+          throw new Error('審核失敗')
+        }
+      } catch (error) {
+        console.error('審核申請錯誤:', error)
+        this.toast.error(error.response?.data?.detail || '審核失敗，請稍後再試')
+      }
     },
     async rejectApplication(application) {
-      // TODO: 實現拒絕加入的邏輯
-      console.log('Rejected application:', application.id)
+      try {
+        const store = organizationStore()
+        const userStore = useUserStore()
+        
+        const response = await axios.post('http://localhost:8000/api/organizations/check_join', {
+          application_id: application.id,
+          reviewer_id: userStore.userID,
+          is_approved: false
+        })
+
+        if (response.data.status === 'success') {
+          // 從列表中移除該申請
+          this.applications = this.applications.filter(app => app.id !== application.id)
+          // 顯示成功消息
+          this.toast.success('已拒絕加入申請')
+        } else {
+          throw new Error('審核失敗')
+        }
+      } catch (error) {
+        console.error('審核申請錯誤:', error)
+        this.toast.error(error.response?.data?.detail || '審核失敗，請稍後再試')
+      }
     }
   }
 }
