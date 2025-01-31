@@ -679,6 +679,61 @@ async def apply_to_organization(data: dict):
         raise HTTPException(status_code=400, detail="無效的用戶ID格式")
 
 
+# 取得組織申請列表
+@app.post("/api/organizations/get_applications")
+async def get_applications(data: dict):
+    try:
+        # 將字符串格式的organization_id轉換為BINARY(16)格式
+        organization_id = uuid.UUID(data.get("organization_id")).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
+    
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                # 獲取待處理的申請列表
+                await cur.execute("""
+                    SELECT 
+                        oa.ApplicationID,
+                        oa.ApplicantID,
+                        u.UserName,
+                        u.UserEmail,
+                        u.AvatarUrl,
+                        u.CreatedAt,
+                        oa.ApplicationMessage,
+                        oa.CreatedAt as ApplicationDate
+                    FROM OrganizationApplications oa
+                    JOIN Users u ON oa.ApplicantID = u.UserID
+                    WHERE oa.OrganizationID = %s 
+                    AND oa.ApplicationStatus = 'pending'
+                    ORDER BY oa.CreatedAt DESC
+                """, (organization_id,))
+                
+                applications = await cur.fetchall()
+                
+                # 格式化返回數據
+                application_list = []
+                for app in applications:
+                    application_list.append({
+                        "id": app[0],  # ApplicationID
+                        "applicantId": uuid.UUID(bytes=app[1]).hex,  # ApplicantID
+                        "name": app[2],  # UserName
+                        "email": app[3],  # UserEmail
+                        "avatarUrl": app[4] or DEFAULT_USER_AVATAR,  # AvatarUrl
+                        "userCreatedAt": app[5].isoformat() if app[5] else None,  # User CreatedAt
+                        "applicationMessage": app[6],  # ApplicationMessage
+                        "applicationDate": app[7].isoformat() if app[7] else None  # Application CreatedAt
+                    })
+                
+                return {
+                    "status": "success",
+                    "data": application_list
+                }
+                
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"獲取申請列表失敗: {str(e)}")
+
+
 # 獲取組織訊息
 @app.post("/api/organizations/info")
 async def get_organization_info(data: dict):

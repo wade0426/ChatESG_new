@@ -4,30 +4,40 @@
       <h1>人員申請審核 ({{ applications.length }})</h1>
     </div>
     <div class="application-list">
-      <table class="application-table">
+      <div v-if="loading" class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i> 載入中...
+      </div>
+      <div v-else-if="error" class="error-state">
+        <i class="fas fa-exclamation-circle"></i> {{ error }}
+      </div>
+      <table v-else class="application-table">
         <thead>
           <tr>
             <th>申請人</th>
             <th>電子郵件</th>
-            <th>帳號建立時間</th>
+            <th>申請訊息</th>
+            <th>申請時間</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="application in applications" :key="application.email">
+          <tr v-for="application in applications" :key="application.id">
             <td class="name-cell">
-              <div class="avatar" :style="{ backgroundColor: application.avatarColor }">
+              <span style="width: auto;"></span>
+              <img v-if="application.avatarUrl" :src="application.avatarUrl" class="avatar" :alt="application.name">
+              <div v-else class="avatar" :style="{ backgroundColor: getAvatarColor(application.name) }">
                 {{ application.name.charAt(0).toUpperCase() }}
               </div>
               <span>{{ application.name }}</span>
             </td>
             <td>{{ application.email }}</td>
-            <td>{{ application.createdAt }}</td>
+            <td>{{ application.applicationMessage || '無' }}</td>
+            <td>{{ formatDate(application.applicationDate) }}</td>
             <td class="action-cell">
-              <button class="approve-btn" @click="approveApplication(application.id)" title="允許加入">
+              <button class="approve-btn" @click="approveApplication(application)" title="允許加入">
                 <i class="fas fa-check"></i>
               </button>
-              <button class="reject-btn" @click="rejectApplication(application.id)" title="不允許加入">
+              <button class="reject-btn" @click="rejectApplication(application)" title="不允許加入">
                 <i class="fas fa-times"></i>
               </button>
             </td>
@@ -39,36 +49,98 @@
 </template>
 
 <script>
+import axios from 'axios'
+import { organizationStore } from '../stores/organization'
+import { storeToRefs } from 'pinia'
+
 export default {
   name: 'MembershipApplicationReview',
   data() {
     return {
-      applications: [
-        {
-          id: 1,
-          name: 'John Doe',
-          email: 'john@example.com',
-          createdAt: '2024-01-15 14:30',
-          avatarColor: '#4834d4'
-        },
-        {
-          id: 2,
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          createdAt: '2024-01-15 15:45',
-          avatarColor: '#6ab04c'
-        }
-      ]
+      applications: [],
+      loading: true,
+      error: null
+    }
+  },
+  async created() {
+    const store = organizationStore()
+    
+    // 如果 store 中沒有 organizationId，先等待初始化
+    if (!store.organizationId) {
+      try {
+        await store.initializeOrganization()
+      } catch (error) {
+        console.error('初始化組織失敗:', error)
+        this.error = '載入組織資訊失敗，請重新登入'
+        this.loading = false
+        return
+      }
+    }
+    
+    // 確保有 organizationId 後再獲取申請列表
+    if (store.organizationId) {
+      await this.fetchApplications()
+    } else {
+      this.error = '無法獲取組織資訊，請確認您已登入並屬於某個組織'
+      this.loading = false
     }
   },
   methods: {
-    approveApplication(id) {
-      // TODO: 實現允許加入的邏輯
-      console.log('Approved application:', id)
+    async fetchApplications() {
+      try {
+        this.loading = true
+        this.error = null
+        const store = organizationStore()
+        
+        if (!store.organizationId) {
+          throw new Error('未找到組織ID')
+        }
+        
+        const response = await axios.post('http://localhost:8000/api/organizations/get_applications', {
+          organization_id: store.organizationId
+        })
+
+        if (response.data.status === 'success') {
+          this.applications = response.data.data
+        } else {
+          throw new Error('獲取申請列表失敗')
+        }
+      } catch (error) {
+        console.error('獲取申請列表錯誤:', error)
+        this.error = error.message === '未找到組織ID' 
+          ? '請確認您已登入並屬於某個組織'
+          : '獲取申請列表失敗，請稍後再試'
+      } finally {
+        this.loading = false
+      }
     },
-    rejectApplication(id) {
+    getAvatarColor(name) {
+      // 根據名字生成固定的顏色
+      let hash = 0
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash)
+      }
+      const hue = Math.abs(hash % 360)
+      return `hsl(${hue}, 70%, 50%)`
+    },
+    formatDate(dateString) {
+      if (!dateString) return '未知'
+      const date = new Date(dateString)
+      return date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    async approveApplication(application) {
+      // TODO: 實現允許加入的邏輯
+      console.log('Approved application:', application.id)
+    },
+    async rejectApplication(application) {
       // TODO: 實現拒絕加入的邏輯
-      console.log('Rejected application:', id)
+      console.log('Rejected application:', application.id)
     }
   }
 }
@@ -97,36 +169,73 @@ export default {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  overflow-x: auto;
 }
 
 .application-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   color: #ffffff;
 }
 
-.application-table th {
-  text-align: left;
-  padding: 12px;
+.application-table tr {
   border-bottom: 1px solid #444;
-  color: #888;
-  font-weight: normal;
 }
 
+.application-table th,
 .application-table td {
-  padding: 12px;
-  border-bottom: 1px solid #444;
+  text-align: center;
+  vertical-align: middle;
+  height: 60px;
+  padding: 0;
+}
+
+.application-table th {
+  color: #888;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 設置列寬和對齊 */
+.application-table th:first-child,
+.application-table td:first-child {
+  width: auto;
+  padding: 0;
+  text-align: center;
+}
+
+.application-table th:last-child,
+.application-table td:last-child {
+  width: 120px;
+  padding: 0;
+}
+
+/* 中間列自適應 */
+.application-table th:not(:first-child):not(:last-child),
+.application-table td:not(:first-child):not(:last-child) {
+  padding: 0 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .name-cell {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 0 16px;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -134,23 +243,37 @@ export default {
   color: white;
   font-weight: bold;
   font-size: 18px;
+  background-color: var(--avatar-color, #666);
+}
+
+.name-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
 
 .action-cell {
-  display: flex;
-  gap: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
 }
 
 .approve-btn, .reject-btn {
-  padding: 8px;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  transition: all 0.2s ease;
+  font-size: 16px;
 }
 
 .approve-btn {
@@ -165,9 +288,34 @@ export default {
 
 .approve-btn:hover {
   background-color: #219a52;
+  transform: scale(1.05);
 }
 
 .reject-btn:hover {
   background-color: #c0392b;
+  transform: scale(1.05);
+}
+
+/* 響應式設計 */
+@media screen and (max-width: 768px) {
+  .application-table {
+    font-size: 14px;
+  }
+
+  .application-table th:first-child,
+  .application-table td:first-child {
+    min-width: 140px;
+    max-width: 200px;
+  }
+
+  .application-table th:last-child,
+  .application-table td:last-child {
+    width: 100px;
+  }
+
+  .name-cell {
+    padding: 0 8px;
+    gap: 6px;
+  }
 }
 </style> 
