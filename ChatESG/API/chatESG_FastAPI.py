@@ -641,38 +641,45 @@ async def get_organization_info(data: dict):
                     u.UserName,
                     u.AvatarUrl,
                     u.UserEmail,
-                    GROUP_CONCAT(DISTINCT r.RoleName) as Roles,
                     om.CreatedAt
                 FROM OrganizationMembers om
                 JOIN Users u ON om.UserID = u.UserID
-                LEFT JOIN UserRoles ur ON ur.UserID = u.UserID AND ur.OrganizationID = om.OrganizationID
-                LEFT JOIN Roles r ON r.RoleID = ur.RoleID
                 WHERE om.OrganizationID = %s
-                GROUP BY u.UserID, u.UserName, u.AvatarUrl, u.UserEmail, om.CreatedAt
             """, (organization_id,))
             
             members = await cur.fetchall()
             members_list = []
             for member in members:
-                roles = member[4].split(',') if member[4] else []
+                # 單獨查詢每個成員的角色
+                await cur.execute("""
+                    SELECT DISTINCT r.RoleName, r.Color
+                    FROM UserRoles ur
+                    JOIN Roles r ON r.RoleID = ur.RoleID
+                    WHERE ur.UserID = %s AND ur.OrganizationID = %s
+                    ORDER BY r.CreatedAt
+                """, (member[0], organization_id))
+                
+                roles = await cur.fetchall()
+                roles_info = [{"roleName": role[0], "roleColor": role[1]} for role in roles]
+                
                 members_list.append({
                     "userID": uuid.UUID(bytes=member[0]).hex,
                     "name": member[1],
                     "avatarUrl": member[2] or DEFAULT_USER_AVATAR,
                     "email": member[3],
-                    "roles": roles,
-                    "joinedAt": member[5].isoformat() if member[5] else None
+                    "roles": roles_info,
+                    "joinedAt": member[4].isoformat() if member[4] else None
                 })
             
             # 獲取組織的所有可用角色
             await cur.execute("""
-                SELECT RoleName
+                SELECT RoleName, Color
                 FROM Roles
                 WHERE OrganizationID = %s
                 ORDER BY CreatedAt
             """, (organization_id,))
             
-            available_roles = [role[0] for role in await cur.fetchall()]
+            available_roles = [{"roleName": role[0], "roleColor": role[1]} for role in await cur.fetchall()]
             
             return {
                 "status": "success",
@@ -732,6 +739,7 @@ async def get_organization_by_user(data: dict):
             }
 
 
+# 更新組織成員角色
 @app.post("/api/organizations/update_member_roles")
 async def update_member_roles(data: dict):
     user_id = data.get("user_id")
@@ -745,6 +753,13 @@ async def update_member_roles(data: dict):
     if not isinstance(roles, list):
         raise HTTPException(status_code=400, detail="roles 必須是列表")
     
+    try:
+        # 將字符串格式的 ID 轉換為 BINARY(16)
+        user_id_binary = uuid.UUID(user_id).bytes
+        organization_id_binary = uuid.UUID(organization_id).bytes
+    except ValueError:
+        raise HTTPException(status_code=400, detail="無效的 ID 格式")
+    
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
             try:
@@ -756,7 +771,7 @@ async def update_member_roles(data: dict):
                     SELECT OrganizationMemberID 
                     FROM OrganizationMembers 
                     WHERE UserID = %s AND OrganizationID = %s
-                """, (user_id, organization_id))
+                """, (user_id_binary, organization_id_binary))
                 
                 if not await cur.fetchone():
                     raise HTTPException(status_code=404, detail="找不到該組織成員")
@@ -765,25 +780,25 @@ async def update_member_roles(data: dict):
                 await cur.execute("""
                     DELETE FROM UserRoles 
                     WHERE UserID = %s AND OrganizationID = %s
-                """, (user_id, organization_id))
+                """, (user_id_binary, organization_id_binary))
                 
                 # 獲取角色ID並添加新的角色
                 for role_name in roles:
                     # 檢查角色是否存在，如果不存在則創建
                     await cur.execute("""
-                        SELECT RoleID 
+                        SELECT RoleID, Color, Description
                         FROM Roles 
                         WHERE OrganizationID = %s AND RoleName = %s
-                    """, (organization_id, role_name))
+                    """, (organization_id_binary, role_name))
                     
                     role = await cur.fetchone()
                     if not role:
                         # 如果角色不存在，創建新角色
                         role_id = uuid.uuid4().bytes
                         await cur.execute("""
-                            INSERT INTO Roles (RoleID, OrganizationID, RoleName)
-                            VALUES (%s, %s, %s)
-                        """, (role_id, organization_id, role_name))
+                            INSERT INTO Roles (RoleID, OrganizationID, RoleName, Color, Description)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (role_id, organization_id_binary, role_name, '#808080', None))
                     else:
                         role_id = role[0]
                     
@@ -791,7 +806,7 @@ async def update_member_roles(data: dict):
                     await cur.execute("""
                         INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
                         VALUES (%s, %s, %s)
-                    """, (user_id, role_id, organization_id))
+                    """, (user_id_binary, role_id, organization_id_binary))
                 
                 await conn.commit()
                 return {"status": "success", "message": "成員身份組更新成功"}
