@@ -29,8 +29,12 @@
             <td>{{ formatDate(member.joinedAt) }}</td>
             <td>
               <div class="roles-cell">
-                <span v-for="role in getMemberRoles(member)" :key="role" class="role-tag">
-                  {{ role }}
+                <span v-for="role in getMemberRoles(member)" :key="role.roleName" class="role-tag" 
+                      :style="{ 
+                        backgroundColor: role.roleColor,
+                        color: getContrastColor(role.roleColor)
+                      }">
+                  {{ role.roleName }}
                 </span>
                 <button class="edit-groups-btn" @click="editMemberRoles(member)">
                   編輯身份組
@@ -70,7 +74,6 @@
 import { organizationStore } from '../stores/organization'
 import { storeToRefs } from 'pinia'
 import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import RoleManagementModal from './RoleManagementModal.vue'
 import EditMemberRoleModal from './EditMemberRoleModal.vue'
 
@@ -82,7 +85,6 @@ export default {
   },
   setup() {
     const store = organizationStore()
-    const router = useRouter()
     const { members, roles, organizationId } = storeToRefs(store)
 
     // 創建計算屬性來確保返回數組
@@ -108,8 +110,8 @@ export default {
     })
 
     const getMemberRoles = (member) => {
-      if (!member?.role) return [];
-      return typeof member.role === 'string' ? JSON.parse(member.role) : member.role;
+      if (!member?.roles) return [];
+      return member.roles;
     }
 
     const formatDate = (date) => {
@@ -151,7 +153,15 @@ export default {
             // 更新本地狀態
             const memberIndex = members.value.findIndex(m => m.email === selectedMember.value.email);
             if (memberIndex !== -1) {
-              members.value[memberIndex].role = newRoles;
+              // 將新的角色轉換為正確的格式
+              const updatedRoles = newRoles.map(roleName => {
+                const roleInfo = roles.value.find(r => r.roleName === roleName);
+                return {
+                  roleName: roleName,
+                  roleColor: roleInfo ? roleInfo.roleColor : '#3498db'
+                };
+              });
+              members.value[memberIndex].roles = updatedRoles;
             }
           } else {
             throw new Error(data.detail || '更新失敗');
@@ -173,6 +183,24 @@ export default {
       }
     }
 
+    const getContrastColor = (hexColor) => {
+      if (!hexColor) return '#ffffff';
+      
+      // 移除 # 符號
+      const hex = hexColor.replace('#', '');
+      
+      // 轉換為 RGB
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      
+      // 計算亮度
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      
+      // 根據亮度返回黑色或白色
+      return brightness > 128 ? '#000000' : '#ffffff';
+    }
+
     return { 
       members: membersList,
       roles: rolesList,
@@ -187,7 +215,8 @@ export default {
       editMemberRoles,
       saveMemberRoles,
       editRole,
-      deleteRole
+      deleteRole,
+      getContrastColor
     }
   }
 }

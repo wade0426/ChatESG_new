@@ -7,12 +7,27 @@
         <span> ({{ member?.email }})</span>
       </div>
       <div class="roles-selection">
-        <label v-for="role in roles" :key="role" class="role-checkbox">
-          <input type="checkbox" 
-                 :value="role" 
-                 v-model="selectedRoles">
-          {{ role }}
-        </label>
+        <div v-if="roles.length === 0" class="no-roles-message">
+          目前沒有可用的身份組
+        </div>
+        <div v-else class="roles-grid">
+          <label v-for="role in roles" :key="role.roleName" class="role-checkbox">
+            <input type="checkbox" 
+                   :value="role.roleName" 
+                   v-model="selectedRoles">
+            <span class="role-tag" 
+                  :style="{
+                    backgroundColor: role.roleColor || '#3498db',
+                    color: getContrastColor(role.roleColor)
+                  }"
+                  :class="{ 'role-tag-selected': selectedRoles.includes(role.roleName) }">
+              {{ role.roleName }}
+              <span class="checkmark" v-if="selectedRoles.includes(role.roleName)">
+                ✓
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="save-btn" @click="saveMemberRoles">保存</button>
@@ -60,10 +75,8 @@ export default {
     member: {
       immediate: true,
       handler(newMember) {
-        if (newMember?.role) {
-          this.selectedRoles = typeof newMember.role === 'string' 
-            ? JSON.parse(newMember.role) 
-            : newMember.role;
+        if (newMember?.roles) {
+          this.selectedRoles = newMember.roles.map(role => role.roleName);
         } else {
           this.selectedRoles = [];
         }
@@ -71,6 +84,24 @@ export default {
     }
   },
   methods: {
+    // 根據背景色計算文字顏色
+    getContrastColor(hexColor) {
+      if (!hexColor) return '#ffffff';
+      
+      // 移除 # 符號
+      const hex = hexColor.replace('#', '');
+      
+      // 轉換為 RGB
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      
+      // 計算亮度
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      
+      // 根據亮度返回黑色或白色
+      return brightness > 128 ? '#000000' : '#ffffff';
+    },
     async saveMemberRoles() {
       try {
         this.isLoading = true;
@@ -151,15 +182,67 @@ export default {
 
 .roles-selection {
   margin: 20px 0;
+  width: 100%;
+}
+
+.roles-grid {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .role-checkbox {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.role-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.role-tag {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid transparent;
+}
+
+.role-tag-selected {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+}
+
+.checkmark {
+  font-size: 14px;
+  margin-left: 4px;
+  font-weight: bold;
+}
+
+.role-checkbox input[type="checkbox"]:checked + .role-tag {
+  transform: scale(1.02);
+}
+
+.role-checkbox:hover .role-tag {
+  filter: brightness(1.1);
+}
+
+.no-roles-message {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
 }
 
 .modal-actions {
