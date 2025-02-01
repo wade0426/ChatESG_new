@@ -17,12 +17,22 @@
       <button class="add-role-btn" @click="$emit('add-role')">新增身份組</button>
       <button class="close-btn" @click="$emit('update:modelValue', false)">關閉</button>
     </div>
+    <EditRoleModal
+      v-model="showEditModal"
+      :role="selectedRole"
+      @save="handleRoleSave"
+    />
   </div>
 </template>
 
 <script>
+import EditRoleModal from './EditRoleModal.vue'
+
 export default {
   name: 'RoleManagementModal',
+  components: {
+    EditRoleModal
+  },
   props: {
     modelValue: {
       type: Boolean,
@@ -40,6 +50,12 @@ export default {
     }
   },
   emits: ['update:modelValue', 'add-role', 'edit-role', 'delete-role'],
+  data() {
+    return {
+      showEditModal: false,
+      selectedRole: null
+    }
+  },
   // 頁面載入時，顯示成員資料
   mounted() {
     console.log("roles",this.roles)
@@ -59,7 +75,8 @@ export default {
       }).length;
     },
     editRole(role) {
-      this.$emit('edit-role', role);
+      this.selectedRole = role;
+      this.showEditModal = true;
     },
     deleteRole(role) {
       if (confirm(`確定要刪除 ${role.roleName} 身份組嗎？`)) {
@@ -82,6 +99,15 @@ export default {
       
       // 根據亮度返回黑色或白色
       return brightness > 128 ? '#000000' : '#ffffff';
+    },
+    handleRoleSave(updatedRole) {
+      const roleUpdate = {
+        ...updatedRole,
+        // originalColor: updatedRole.originalRoleColor, (不使用)
+        // newColor: updatedRole.roleColor (不使用)
+      };
+      this.$emit('edit-role', roleUpdate);
+      this.showEditModal = false;
     }
   }
 }

@@ -176,7 +176,8 @@ export default {
     }
 
     const editRole = (role) => {
-      console.log(role)
+      // console.log("編輯角色", role.roleName)
+      console.log("編輯角色", role)
     }
 
     const deleteRole = (role) => {
