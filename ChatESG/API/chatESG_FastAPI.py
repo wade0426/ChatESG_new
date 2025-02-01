@@ -778,102 +778,122 @@ async def get_organization_info(data: dict):
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # 獲取組織基本信息
-            await cur.execute("""
-                SELECT 
-                    o.OrganizationID,
-                    o.OrganizationName,
-                    o.OrganizationDescription,
-                    o.AvatarUrl,
-                    o.OrganizationCode,
-                    o.OwnerID,
-                    o.PurchaseType,
-                    o.APICallQuota,
-                    o.MaxMembers,
-                    o.CreatedAt,
-                    o.UpdatedAt,
-                    o.ExpiryDate,
-                    u.UserName as OwnerName,
-                    (SELECT COUNT(*) FROM OrganizationMembers WHERE OrganizationID = o.OrganizationID) as MemberCount
-                FROM Organizations o
-                LEFT JOIN Users u ON o.OwnerID = u.UserID
-                WHERE o.OrganizationID = %s AND o.IsDeleted = FALSE
-            """, (organization_id,))
-            
-            org = await cur.fetchone()
-            if not org:
-                raise HTTPException(status_code=404, detail="未找到組織")
-            
-            # 獲取組織成員列表及其角色
-            await cur.execute("""
-                SELECT 
-                    u.UserID,
-                    u.UserName,
-                    u.AvatarUrl,
-                    u.UserEmail,
-                    om.CreatedAt
-                FROM OrganizationMembers om
-                JOIN Users u ON om.UserID = u.UserID
-                WHERE om.OrganizationID = %s
-            """, (organization_id,))
-            
-            members = await cur.fetchall()
-            members_list = []
-            for member in members:
-                # 單獨查詢每個成員的角色
+            try:
+                # 開始事務並設置隔離級別為REPEATABLE READ
+                await conn.begin()
+                await cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+                
+                # 獲取組織基本信息
                 await cur.execute("""
-                    SELECT DISTINCT r.RoleName, r.Color
-                    FROM UserRoles ur
-                    JOIN Roles r ON r.RoleID = ur.RoleID
-                    WHERE ur.UserID = %s AND ur.OrganizationID = %s
-                    ORDER BY r.CreatedAt
-                """, (member[0], organization_id))
+                    SELECT 
+                        o.OrganizationID,
+                        o.OrganizationName,
+                        o.OrganizationDescription,
+                        o.AvatarUrl,
+                        o.OrganizationCode,
+                        o.OwnerID,
+                        o.PurchaseType,
+                        o.APICallQuota,
+                        o.MaxMembers,
+                        o.CreatedAt,
+                        o.UpdatedAt,
+                        o.ExpiryDate,
+                        u.UserName as OwnerName,
+                        (SELECT COUNT(*) FROM OrganizationMembers WHERE OrganizationID = o.OrganizationID) as MemberCount
+                    FROM Organizations o
+                    LEFT JOIN Users u ON o.OwnerID = u.UserID
+                    WHERE o.OrganizationID = %s AND o.IsDeleted = FALSE
+                    FOR UPDATE
+                """, (organization_id,))
                 
-                roles = await cur.fetchall()
-                roles_info = [{"roleName": role[0], "roleColor": role[1]} for role in roles]
+                org = await cur.fetchone()
+                if not org:
+                    await conn.rollback()
+                    raise HTTPException(status_code=404, detail="未找到組織")
                 
-                members_list.append({
-                    "userID": uuid.UUID(bytes=member[0]).hex,
-                    "name": member[1],
-                    "avatarUrl": member[2] or DEFAULT_USER_AVATAR,
-                    "email": member[3],
-                    "roles": roles_info,
-                    "joinedAt": member[4].isoformat() if member[4] else None
-                })
-            
-            # 獲取組織的所有可用角色
-            await cur.execute("""
-                SELECT RoleName, Color
-                FROM Roles
-                WHERE OrganizationID = %s
-                ORDER BY CreatedAt
-            """, (organization_id,))
-            
-            available_roles = [{"roleName": role[0], "roleColor": role[1]} for role in await cur.fetchall()]
-            
-            return {
-                "status": "success",
-                "data": {
-                    "id": uuid.UUID(bytes=org[0]).hex,
-                    "name": org[1],
-                    "description": org[2],
-                    "avatarUrl": org[3] or DEFAULT_ORGANIZATION_LOGO,
-                    "code": org[4],
-                    "owner": {
-                        "id": uuid.UUID(bytes=org[5]).hex if org[5] else None,
-                        "name": org[12]
-                    },
-                    "purchaseType": org[6],
-                    "apiCallQuota": org[7],
-                    "maxMembers": org[8],
-                    "expiryDate": org[11].isoformat() if org[11] else None,
-                    "roles": available_roles,
-                    "memberCount": org[13],
-                    "members": members_list,
-                    "createdAt": org[9].isoformat() if org[9] else None,
-                    "updatedAt": org[10].isoformat() if org[10] else None
+                # 獲取組織成員列表及其角色
+                await cur.execute("""
+                    SELECT 
+                        u.UserID,
+                        u.UserName,
+                        u.AvatarUrl,
+                        u.UserEmail,
+                        om.CreatedAt
+                    FROM OrganizationMembers om
+                    JOIN Users u ON om.UserID = u.UserID
+                    WHERE om.OrganizationID = %s
+                    ORDER BY om.CreatedAt ASC, u.UserID ASC
+                    FOR UPDATE
+                """, (organization_id,))
+                
+                members = await cur.fetchall()
+                members_list = []
+                
+                for member in members:
+                    # 使用 FOR UPDATE 鎖定查詢結果
+                    await cur.execute("""
+                        SELECT DISTINCT r.RoleName, r.Color
+                        FROM UserRoles ur
+                        JOIN Roles r ON r.RoleID = ur.RoleID
+                        WHERE ur.UserID = %s AND ur.OrganizationID = %s
+                        ORDER BY r.CreatedAt ASC, r.RoleName ASC, r.RoleID ASC
+                        FOR UPDATE
+                    """, (member[0], organization_id))
+                    
+                    roles = await cur.fetchall()
+                    roles_info = [{"roleName": role[0], "roleColor": role[1]} for role in roles]
+                    
+                    members_list.append({
+                        "userID": uuid.UUID(bytes=member[0]).hex,
+                        "name": member[1],
+                        "avatarUrl": member[2] or DEFAULT_USER_AVATAR,
+                        "email": member[3],
+                        "roles": roles_info,
+                        "joinedAt": member[4].isoformat() if member[4] else None
+                    })
+                
+                # 獲取組織的所有可用角色
+                await cur.execute("""
+                    SELECT RoleName, Color
+                    FROM Roles
+                    WHERE OrganizationID = %s
+                    ORDER BY CreatedAt ASC, RoleName ASC, RoleID ASC
+                    FOR UPDATE
+                """, (organization_id,))
+                
+                available_roles = [{"roleName": role[0], "roleColor": role[1]} for role in await cur.fetchall()]
+                
+                # 提交事務
+                await conn.commit()
+                
+                return {
+                    "status": "success",
+                    "data": {
+                        "id": uuid.UUID(bytes=org[0]).hex,
+                        "name": org[1],
+                        "description": org[2],
+                        "avatarUrl": org[3] or DEFAULT_ORGANIZATION_LOGO,
+                        "code": org[4],
+                        "owner": {
+                            "id": uuid.UUID(bytes=org[5]).hex if org[5] else None,
+                            "name": org[12]
+                        },
+                        "purchaseType": org[6],
+                        "apiCallQuota": org[7],
+                        "maxMembers": org[8],
+                        "expiryDate": org[11].isoformat() if org[11] else None,
+                        "roles": available_roles,
+                        "memberCount": org[13],
+                        "members": members_list,
+                        "createdAt": org[9].isoformat() if org[9] else None,
+                        "updatedAt": org[10].isoformat() if org[10] else None
+                    }
                 }
-            }
+                
+            except Exception as e:
+                # 如果發生錯誤，回滾事務
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"獲取組織信息失敗: {str(e)}")
 
 
 # 通過用戶ID獲取組織訊息
@@ -1124,6 +1144,12 @@ async def add_role(data: dict):
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的組織ID格式")
+
+
+# 刪除身份組
+@app.post("/api/organizations/delete_role")
+async def delete_role(data: dict):
+    pass
 
 
 if __name__ == "__main__":
