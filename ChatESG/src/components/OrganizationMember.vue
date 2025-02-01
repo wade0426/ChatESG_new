@@ -10,6 +10,7 @@
       <table class="member-table">
         <thead>
           <tr>
+            <th>頭像</th>
             <th>姓名</th>
             <th>電子郵件</th>
             <th>加入時間</th>
@@ -19,12 +20,12 @@
         </thead>
         <tbody>
           <tr v-for="member in members" :key="member.email">
-            <td class="name-cell">
+            <td class="avatar-cell">
               <div class="avatar">
                 <img :src="member.avatarUrl" :alt="member.name">
               </div>
-              <span>{{ member.name }}</span>
             </td>
+            <td style="text-align: center;" width="10%">{{ member.name }}</td>
             <td>{{ member.email }}</td>
             <td>{{ formatDate(member.joinedAt) }}</td>
             <td>
@@ -255,7 +256,7 @@ export default {
 }
 
 .member-table th {
-  text-align: left;
+  text-align: center;
   padding: 12px;
   border-bottom: 1px solid #444;
   color: #888;
@@ -267,19 +268,17 @@ export default {
   border-bottom: 1px solid #444;
 }
 
-.name-cell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.avatar-cell {
+  width: 60px;
+  padding: 8px;
+  text-align: center;
 }
 
 .avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0 auto;
   overflow: hidden;
 }
 

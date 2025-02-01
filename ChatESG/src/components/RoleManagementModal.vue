@@ -51,7 +51,6 @@ export default {
     // @param {string} role - 要計算的身份組名稱
     // @returns {number} - 擁有該身份組的成員數量
     getMemberCountForRole(roleName) {
-      console.log("roleName", roleName)
       return this.members.filter(member => {
         // 如果成員沒有roles屬性或不是數組，返回false
         if (!Array.isArray(member?.roles)) return false;
