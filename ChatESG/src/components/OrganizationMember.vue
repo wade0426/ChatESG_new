@@ -78,6 +78,7 @@ import { storeToRefs } from 'pinia'
 import { onMounted, ref, computed } from 'vue'
 import RoleManagementModal from './RoleManagementModal.vue'
 import EditMemberRoleModal from './EditMemberRoleModal.vue'
+import { useToast } from 'vue-toastification'
 
 export default {
   name: 'OrganizationMember',
@@ -86,6 +87,7 @@ export default {
     EditMemberRoleModal
   },
   setup() {
+    const toast = useToast()
     const store = organizationStore()
     const { members, roles, organizationId } = storeToRefs(store)
 
@@ -197,7 +199,7 @@ export default {
         const result = await response.json();
 
         if (response.ok) {
-          console.log("角色更新成功:", role.originalRoleName, "->", role.roleName);
+          toast.success(`角色更新成功: ${role.originalRoleName} -> ${role.roleName}`)
           
           // 更新 roles 數組中的角色
           const roleIndex = roles.value.findIndex(r => r.roleName === role.originalRoleName);
