@@ -126,9 +126,32 @@ export default {
       })
     }
 
-    const removeMember = (member) => {
+    const removeMember = async (member) => {
       if (confirm(`確定要移除 ${member.name} 嗎？`)) {
-        members.value = members.value.filter(m => m.email !== member.email)
+        try {
+          const response = await fetch('http://localhost:8000/api/organizations/delete_member', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: member.userID,
+              organization_id: organizationId.value
+            })
+          });
+
+          const data = await response.json();
+          if (data.status === 'success') {
+            // 從本地狀態中移除該成員
+            members.value = members.value.filter(m => m.userID !== member.userID);
+            toast.success('成員已成功移除');
+          } else {
+            throw new Error(data.detail || '移除失敗');
+          }
+        } catch (error) {
+          console.error('移除成員失敗:', error);
+          toast.error('移除失敗: ' + error.message);
+        }
       }
     }
 

@@ -1228,10 +1228,72 @@ async def delete_role(data: dict):
 # 刪除組織成員
 @app.post("/api/organizations/delete_member")
 async def delete_member(data: dict):
-    # organizationmembers 要刪除
-    # users 的 OrganizationID 要刪除
-    # userroles 要刪除
-    pass
+    try:
+        # 獲取必要參數
+        user_id = data.get("user_id")
+        organization_id = data.get("organization_id")
+
+        if not all([user_id, organization_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        user_id_binary = uuid.UUID(user_id).bytes
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查用戶是否存在於組織中
+                    await cur.execute("""
+                        SELECT OrganizationMemberID 
+                        FROM OrganizationMembers 
+                        WHERE UserID = %s AND OrganizationID = %s
+                    """, (user_id_binary, organization_id_binary))
+
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到該組織成員")
+
+                    # 檢查是否為組織擁有者
+                    await cur.execute("""
+                        SELECT OwnerID 
+                        FROM Organizations 
+                        WHERE OrganizationID = %s AND OwnerID = %s
+                    """, (organization_id_binary, user_id_binary))
+
+                    if await cur.fetchone():
+                        raise HTTPException(status_code=400, detail="無法刪除組織擁有者")
+
+                    # 刪除用戶角色關聯
+                    await cur.execute("""
+                        DELETE FROM UserRoles 
+                        WHERE UserID = %s AND OrganizationID = %s
+                    """, (user_id_binary, organization_id_binary))
+
+                    # 刪除組織成員關係
+                    await cur.execute("""
+                        DELETE FROM OrganizationMembers 
+                        WHERE UserID = %s AND OrganizationID = %s
+                    """, (user_id_binary, organization_id_binary))
+
+                    # 更新用戶的組織ID為NULL
+                    await cur.execute("""
+                        UPDATE Users 
+                        SET OrganizationID = NULL 
+                        WHERE UserID = %s
+                    """, (user_id_binary,))
+
+                    await conn.commit()
+                    return {"status": "success", "message": "成員已成功從組織中移除"}
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"刪除成員失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
 
 
 if __name__ == "__main__":
