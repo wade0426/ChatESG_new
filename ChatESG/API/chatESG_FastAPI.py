@@ -986,5 +986,68 @@ async def update_member_roles(data: dict):
                 raise HTTPException(status_code=500, detail=f"更新失敗: {str(e)}")
 
 
-if __name__ == "__main__":
+# 更新組織身份組資訊
+@app.post("/api/organizations/update_role")
+async def update_role(data: dict):
+    try:
+        # 獲取必要參數
+        organization_id = data.get("organization_id")
+        original_role_name = data.get("original_role_name")
+        new_role_name = data.get("new_role_name")
+        new_role_color = data.get("new_role_color")
+
+        if not all([organization_id, original_role_name, new_role_name, new_role_color]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的organization_id轉換為BINARY(16)格式
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查原始角色是否存在
+                    await cur.execute("""
+                        SELECT RoleID 
+                        FROM Roles 
+                        WHERE OrganizationID = %s AND RoleName = %s
+                    """, (organization_id_binary, original_role_name))
+
+                    role = await cur.fetchone()
+                    if not role:
+                        raise HTTPException(status_code=404, detail="找不到指定的角色")
+
+                    # 如果要更改角色名稱，檢查新角色名稱是否已存在
+                    if original_role_name != new_role_name:
+                        await cur.execute("""
+                            SELECT RoleID 
+                            FROM Roles 
+                            WHERE OrganizationID = %s AND RoleName = %s
+                        """, (organization_id_binary, new_role_name))
+                        
+                        if await cur.fetchone():
+                            raise HTTPException(status_code=400, detail="新角色名稱已存在")
+
+                    # 更新角色資訊
+                    await cur.execute("""
+                        UPDATE Roles 
+                        SET RoleName = %s,
+                            Color = %s,
+                            Description = NULL
+                        WHERE OrganizationID = %s AND RoleName = %s
+                    """, (new_role_name, new_role_color, organization_id_binary, original_role_name))
+
+                    await conn.commit()
+                    print(f"角色更新成功: {original_role_name} -> {new_role_name}")
+                    return {"status": "success", "message": "角色更新成功"}
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"更新失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
+
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

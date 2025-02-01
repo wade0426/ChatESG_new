@@ -175,9 +175,38 @@ export default {
       }
     }
 
-    const editRole = (role) => {
-      // console.log("編輯角色", role.roleName)
-      console.log("編輯角色", role)
+    const editRole = async (role) => {
+      try {
+        // 準備要傳送的資料
+        const data = {
+          organization_id: store.organizationId,
+          original_role_name: role.originalRoleName,
+          new_role_name: role.roleName,
+          new_role_color: role.roleColor
+        }
+
+        // 呼叫 API
+        const response = await fetch("http://localhost:8000/api/organizations/update_role", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          console.log("角色更新成功:", role.originalRoleName, "->", role.roleName);
+          // 可以在這裡添加成功提示或更新頁面等操作
+        } else {
+          console.error("更新失敗:", result.detail);
+          // 可以在這裡添加錯誤提示
+        }
+      } catch (error) {
+        console.error("API 呼叫失敗:", error);
+        // 可以在這裡添加錯誤提示
+      }
     }
 
     const deleteRole = (role) => {
