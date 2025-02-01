@@ -101,12 +101,19 @@ export default {
       return brightness > 128 ? '#000000' : '#ffffff';
     },
     handleRoleSave(updatedRole) {
-      const roleUpdate = {
-        ...updatedRole,
-        // originalColor: updatedRole.originalRoleColor, (不使用)
-        // newColor: updatedRole.roleColor (不使用)
-      };
-      this.$emit('edit-role', roleUpdate);
+      // 找到並更新本地角色數組中的對應角色
+      const roleIndex = this.roles.findIndex(r => r.roleName === updatedRole.originalRoleName);
+      if (roleIndex !== -1) {
+        // 創建新的角色對象以確保響應式更新
+        const updatedRoleData = {
+          roleName: updatedRole.roleName,
+          roleColor: updatedRole.roleColor
+        };
+        // 更新本地數組
+        this.roles.splice(roleIndex, 1, updatedRoleData);
+      }
+      // 向父組件發送更新事件
+      this.$emit('edit-role', updatedRole);
       this.showEditModal = false;
     }
   }

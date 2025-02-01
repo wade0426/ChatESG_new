@@ -198,14 +198,39 @@ export default {
 
         if (response.ok) {
           console.log("角色更新成功:", role.originalRoleName, "->", role.roleName);
-          // 可以在這裡添加成功提示或更新頁面等操作
+          
+          // 更新 roles 數組中的角色
+          const roleIndex = roles.value.findIndex(r => r.roleName === role.originalRoleName);
+          if (roleIndex !== -1) {
+            roles.value[roleIndex] = {
+              roleName: role.roleName,
+              roleColor: role.roleColor
+            };
+          }
+
+          // 更新所有成員中的對應角色信息
+          members.value = members.value.map(member => {
+            if (member.roles) {
+              member.roles = member.roles.map(memberRole => {
+                if (memberRole.roleName === role.originalRoleName) {
+                  return {
+                    roleName: role.roleName,
+                    roleColor: role.roleColor
+                  };
+                }
+                return memberRole;
+              });
+            }
+            return member;
+          });
+          
         } else {
           console.error("更新失敗:", result.detail);
-          // 可以在這裡添加錯誤提示
+          alert("更新失敗: " + result.detail);
         }
       } catch (error) {
         console.error("API 呼叫失敗:", error);
-        // 可以在這裡添加錯誤提示
+        alert("API 呼叫失敗: " + error.message);
       }
     }
 
