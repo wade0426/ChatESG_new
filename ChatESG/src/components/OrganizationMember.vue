@@ -64,6 +64,7 @@
       v-model="showEditMemberRolesModal"
       :member="selectedMember"
       :roles="roles"
+      :members="members"
       :organization-id="organizationId"
       @save="saveMemberRoles"
     />

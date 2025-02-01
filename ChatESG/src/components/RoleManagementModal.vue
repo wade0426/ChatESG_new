@@ -5,8 +5,8 @@
       <div class="roles-list">
         <div v-for="role in roles" :key="role" class="role-item">
           <div class="role-info">
-            <span>{{ role }}</span>
-            <span class="member-count">({{ getMemberCountForRole(role) }} 位成員)</span>
+            <span class="role-name" :style="{ backgroundColor: role.roleColor, color: getContrastColor(role.roleColor) }">{{ role.roleName }}</span>
+            <span class="member-count">({{ getMemberCountForRole(role.roleName) }} 位成員)</span>
           </div>
           <div class="role-actions">
             <button class="edit-btn" @click="editRole(role)">編輯</button>
@@ -40,21 +40,49 @@ export default {
     }
   },
   emits: ['update:modelValue', 'add-role', 'edit-role', 'delete-role'],
+  // 頁面載入時，顯示成員資料
+  mounted() {
+    console.log("roles",this.roles)
+    console.log("members",this.members)
+  },
+  // 計算成員數量
   methods: {
-    getMemberCountForRole(role) {
+    // 計算擁有特定身份組的成員數量
+    // @param {string} role - 要計算的身份組名稱
+    // @returns {number} - 擁有該身份組的成員數量
+    getMemberCountForRole(roleName) {
+      console.log("roleName", roleName)
       return this.members.filter(member => {
-        if (!member?.role) return false;
-        const memberRoles = typeof member.role === 'string' ? JSON.parse(member.role) : member.role;
-        return memberRoles.includes(role);
+        // 如果成員沒有roles屬性或不是數組，返回false
+        if (!Array.isArray(member?.roles)) return false;
+        // 檢查該成員的roles數組中是否有匹配的roleName
+        return member.roles.some(role => role.roleName === roleName);
       }).length;
     },
     editRole(role) {
       this.$emit('edit-role', role);
     },
     deleteRole(role) {
-      if (confirm(`確定要刪除 ${role} 身份組嗎？`)) {
+      if (confirm(`確定要刪除 ${role.roleName} 身份組嗎？`)) {
         this.$emit('delete-role', role);
       }
+    },
+    getContrastColor(hexColor) {
+      if (!hexColor) return '#ffffff';
+      
+      // 移除 # 符號
+      const hex = hexColor.replace('#', '');
+      
+      // 轉換為 RGB
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      
+      // 計算亮度
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      
+      // 根據亮度返回黑色或白色
+      return brightness > 128 ? '#000000' : '#ffffff';
     }
   }
 }
@@ -147,5 +175,12 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   width: 100%;
+}
+
+.role-name{
+  padding: 4px 8px;
+  border-radius: 8px;
+  background-color: #007bff;
+  color: white;
 }
 </style>
