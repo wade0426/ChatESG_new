@@ -32,10 +32,10 @@
                         <RouterLink to="/user-profile"><span>帳號</span></RouterLink>
                         <RouterLink to="/organization/details"><span>管理組織</span></RouterLink>
                         <div class="menu-divider"></div>
-                        <RouterLink to="/settings"><span>設定</span></RouterLink>
-                        <RouterLink to="/news"><span>最新消息</span></RouterLink>
-                        <RouterLink to="/pricing"><span>方案和定價</span></RouterLink>
-                        <RouterLink to="/privacy"><span>隱私權政策</span></RouterLink>
+                        <RouterLink to="/user-profile"><span>設定</span></RouterLink>
+                        <RouterLink to="/user-profile"><span>最新消息</span></RouterLink>
+                        <RouterLink to="/user-profile"><span>方案和定價</span></RouterLink>
+                        <RouterLink to="/user-profile"><span>隱私權政策</span></RouterLink>
                         <div class="menu-divider"></div>
                         <a href="#" @click.prevent="logout"><span>登出</span></a>
                     </div>

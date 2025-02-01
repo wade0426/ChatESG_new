@@ -1050,4 +1050,6 @@ async def update_role(data: dict):
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的組織ID格式")
 
+
+if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
