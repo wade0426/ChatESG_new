@@ -14,7 +14,7 @@
           </div>
         </div>
       </div>
-      <button class="add-role-btn" @click="$emit('add-role')">新增身份組</button>
+      <button class="add-role-btn" @click="showAddModal = true">新增身份組</button>
       <button class="close-btn" @click="$emit('update:modelValue', false)">關閉</button>
     </div>
     <EditRoleModal
@@ -22,16 +22,22 @@
       :role="selectedRole"
       @save="handleRoleSave"
     />
+    <AddRoleModal
+      v-model="showAddModal"
+      @save="handleAddRole"
+    />
   </div>
 </template>
 
 <script>
 import EditRoleModal from './EditRoleModal.vue'
+import AddRoleModal from './AddRoleModal.vue'
 
 export default {
   name: 'RoleManagementModal',
   components: {
-    EditRoleModal
+    EditRoleModal,
+    AddRoleModal
   },
   props: {
     modelValue: {
@@ -53,6 +59,7 @@ export default {
   data() {
     return {
       showEditModal: false,
+      showAddModal: false,
       selectedRole: null
     }
   },
@@ -115,6 +122,11 @@ export default {
       // 向父組件發送更新事件
       this.$emit('edit-role', updatedRole);
       this.showEditModal = false;
+    },
+    handleAddRole(newRole) {
+      console.log('RoleManagementModal 收到新增身份組:', newRole);
+      this.$emit('add-role', newRole);
+      this.showAddModal = false;
     }
   }
 }

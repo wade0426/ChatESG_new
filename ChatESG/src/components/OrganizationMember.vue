@@ -55,7 +55,7 @@
       v-model="showRolesModal"
       :roles="roles"
       :members="members"
-      @add-role="showAddRoleModal = true"
+      @add-role="handleAddRole"
       @edit-role="editRole"
       @delete-role="deleteRole"
     />
@@ -260,6 +260,40 @@ export default {
       return brightness > 128 ? '#000000' : '#ffffff';
     }
 
+    const handleAddRole = async (newRole) => {
+      console.log('新增的身份組資料:', newRole);
+      try {
+        const response = await fetch('http://localhost:8000/api/organizations/add_role', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            organization_id: organizationId.value,
+            role_name: newRole.roleName,
+            role_description: newRole.description,
+            role_color: newRole.roleColor
+          })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          toast.success(`成功新增身份組: ${newRole.roleName}`);
+          // 更新本地角色列表
+          roles.value.push({
+            roleName: newRole.roleName,
+            roleColor: newRole.roleColor,
+            description: newRole.description
+          });
+        } else {
+          throw new Error(result.detail || '新增失敗');
+        }
+      } catch (error) {
+        console.error('新增身份組失敗:', error);
+        toast.error('新增失敗: ' + error.message);
+      }
+    }
+
     return { 
       members: membersList,
       roles: rolesList,
@@ -275,7 +309,8 @@ export default {
       saveMemberRoles,
       editRole,
       deleteRole,
-      getContrastColor
+      getContrastColor,
+      handleAddRole
     }
   }
 }

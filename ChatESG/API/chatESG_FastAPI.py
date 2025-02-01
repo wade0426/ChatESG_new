@@ -1051,5 +1051,80 @@ async def update_role(data: dict):
         raise HTTPException(status_code=400, detail="無效的組織ID格式")
 
 
+# 新增身份組
+@app.post("/api/organizations/add_role")
+async def add_role(data: dict):
+    try:
+        # 獲取必要參數
+        organization_id = data.get("organization_id")
+        role_name = data.get("role_name")
+        role_description = data.get("role_description")
+        role_color = data.get("role_color", "#808080")  # 如果未提供顏色，使用默認灰色
+
+        if not all([organization_id, role_name]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的organization_id轉換為BINARY(16)格式
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查組織是否存在
+                    await cur.execute("""
+                        SELECT OrganizationID 
+                        FROM Organizations 
+                        WHERE OrganizationID = %s AND IsDeleted = FALSE
+                    """, (organization_id_binary,))
+
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到指定的組織")
+
+                    # 檢查角色名稱是否已存在於該組織
+                    await cur.execute("""
+                        SELECT RoleID 
+                        FROM Roles 
+                        WHERE OrganizationID = %s AND RoleName = %s
+                    """, (organization_id_binary, role_name))
+
+                    if await cur.fetchone():
+                        raise HTTPException(status_code=400, detail="該角色名稱已存在")
+
+                    # 生成新的角色ID
+                    role_id = uuid.uuid4().bytes
+
+                    # 插入新角色
+                    await cur.execute("""
+                        INSERT INTO Roles (
+                            RoleID, 
+                            OrganizationID, 
+                            RoleName, 
+                            Description, 
+                            Color
+                        ) VALUES (%s, %s, %s, %s, %s)
+                    """, (role_id, organization_id_binary, role_name, role_description, role_color))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "角色創建成功",
+                        "data": {
+                            "role_id": uuid.UUID(bytes=role_id).hex,
+                            "role_name": role_name,
+                            "role_color": role_color
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"創建角色失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
