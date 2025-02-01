@@ -38,6 +38,10 @@
 </template>
 
 <script>
+import { useToast } from 'vue-toastification'
+
+const toast = useToast()
+
 export default {
   name: 'EditMemberRoleModal',
   props: {
@@ -139,6 +143,7 @@ export default {
         if (data.status === 'success') {
           this.$emit('save', this.selectedRoles);
           this.$emit('update:modelValue', false);
+          toast.success('身份組更新成功');
         } else {
           throw new Error(data.detail || '更新失敗');
         }
