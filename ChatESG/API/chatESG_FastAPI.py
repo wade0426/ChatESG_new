@@ -907,26 +907,37 @@ async def get_organization_by_user(data: dict):
     
     async with db_pool.acquire() as conn:
         async with conn.cursor() as cur:
-            await cur.execute("""
-                SELECT o.OrganizationID, o.OrganizationName, o.OrganizationCode, o.AvatarUrl
-                FROM OrganizationMembers om
-                LEFT JOIN Organizations o ON om.OrganizationID = o.OrganizationID
-                WHERE om.UserID = %s AND o.IsDeleted = FALSE
-            """, (user_id,))
-            
-            result = await cur.fetchone()
-            if not result:
-                return {"status": "success", "data": None}
-            
-            return {
-                "status": "success",
-                "data": {
-                    "organization_id": uuid.UUID(bytes=result[0]).hex,
-                    "organization_name": result[1],
-                    "organization_code": result[2],
-                    "avatar_url": result[3] or DEFAULT_ORGANIZATION_LOGO
+            await conn.begin()
+            # 設置事務隔離級別
+            await cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+            try:
+                await cur.execute("""
+                    SELECT o.OrganizationID, o.OrganizationName, o.OrganizationCode, o.AvatarUrl
+                    FROM OrganizationMembers om
+                    LEFT JOIN Organizations o ON om.OrganizationID = o.OrganizationID
+                    WHERE om.UserID = %s AND o.IsDeleted = FALSE
+                """, (user_id,))
+                
+                result = await cur.fetchone()
+                if not result:
+                    await conn.commit()
+                    return {"status": "success", "data": None}
+                
+                response = {
+                    "status": "success",
+                    "data": {
+                        "organization_id": uuid.UUID(bytes=result[0]).hex,
+                        "organization_name": result[1],
+                        "organization_code": result[2],
+                        "avatar_url": result[3] or DEFAULT_ORGANIZATION_LOGO
+                    }
                 }
-            }
+                await conn.commit()
+                return response
+                
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"獲取組織訊息失敗: {str(e)}")
 
 
 # 更新組織成員角色
@@ -1212,6 +1223,15 @@ async def delete_role(data: dict):
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的組織ID格式")
+
+
+# 刪除組織成員
+@app.post("/api/organizations/delete_member")
+async def delete_member(data: dict):
+    # organizationmembers 要刪除
+    # users 的 OrganizationID 要刪除
+    # userroles 要刪除
+    pass
 
 
 if __name__ == "__main__":
