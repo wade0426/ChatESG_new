@@ -1149,7 +1149,69 @@ async def add_role(data: dict):
 # 刪除身份組
 @app.post("/api/organizations/delete_role")
 async def delete_role(data: dict):
-    pass
+    try:
+        # 獲取必要參數
+        organization_id = data.get("organization_id")
+        role_name = data.get("role_name")
+
+        if not all([organization_id, role_name]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的organization_id轉換為BINARY(16)格式
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查組織是否存在
+                    await cur.execute("""
+                        SELECT OrganizationID 
+                        FROM Organizations 
+                        WHERE OrganizationID = %s AND IsDeleted = FALSE
+                    """, (organization_id_binary,))
+
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到指定的組織")
+
+                    # 檢查角色是否存在
+                    await cur.execute("""
+                        SELECT RoleID 
+                        FROM Roles 
+                        WHERE OrganizationID = %s AND RoleName = %s
+                    """, (organization_id_binary, role_name))
+
+                    role = await cur.fetchone()
+                    if not role:
+                        raise HTTPException(status_code=404, detail="找不到指定的角色")
+
+                    # 檢查是否為預設角色（一般、資訊部、行銷部）
+                    if role_name in ["一般", "資訊部", "行銷部"]:
+                        raise HTTPException(status_code=400, detail="無法刪除預設角色")
+
+                    # 先刪除用戶與該角色的關聯
+                    await cur.execute("""
+                        DELETE FROM UserRoles 
+                        WHERE RoleID = %s AND OrganizationID = %s
+                    """, (role[0], organization_id_binary))
+
+                    # 刪除角色
+                    await cur.execute("""
+                        DELETE FROM Roles 
+                        WHERE RoleID = %s AND OrganizationID = %s
+                    """, (role[0], organization_id_binary))
+
+                    await conn.commit()
+                    return {"status": "success", "message": "角色刪除成功"}
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"刪除角色失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
 
 
 if __name__ == "__main__":

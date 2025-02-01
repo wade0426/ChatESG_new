@@ -236,9 +236,42 @@ export default {
       }
     }
 
-    const deleteRole = (role) => {
+    const deleteRole = async (role) => {
       if (Array.isArray(roles.value)) {
+        // 先從角色列表中移除該角色
         roles.value = roles.value.filter(r => r !== role)
+        console.log('刪除角色:', role);
+
+        // 同時更新所有成員的角色列表
+        members.value = members.value.map(member => {
+          if (member.roles) {
+            member.roles = member.roles.filter(r => r.roleName !== role.roleName);
+          }
+          return member;
+        });
+
+        try {
+          const response = await fetch('http://localhost:8000/api/organizations/delete_role', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              organization_id: organizationId.value,
+              role_name: role.roleName
+            })
+          });
+          
+          const result = await response.json();
+          if (response.ok) {
+            toast.success(`成功刪除身份組: ${role.roleName}`);
+          } else {
+            throw new Error(result.detail || '刪除失敗');
+          }
+        } catch (error) {
+          console.error('刪除角色失敗:', error);
+          alert('刪除角色失敗: ' + error.message);
+        }
       }
     }
 
