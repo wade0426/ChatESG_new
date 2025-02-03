@@ -15,6 +15,11 @@
               "subSubChapterTitle": "公司名稱", // 小章節名稱
               "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
               "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
+            },
+            {
+              "subSubChapterTitle": "報告期間", // 小章節名稱
+              "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
+              "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
             }
           ]
         }

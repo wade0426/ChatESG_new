@@ -10,19 +10,19 @@ export const useCompanyStore = defineStore('company', () => {
     },
     {
       name: "科技業",
-      templateUrl: "https://raw.githubusercontent.com/wade0426/ChatESG_new/main/definition/%E5%85%AC%E5%8F%B8%E8%B3%87%E6%96%99_%E8%B3%87%E7%94%A2%E8%B3%87%E6%96%99_%E6%A0%BC%E5%BC%8F.json"
+      templateUrl: "https://raw.githubusercontent.com/wade0426/1110932038/refs/heads/main/公司資料_資產資料_格式_科技業.json"
     },
     {
       name: "製造業",
-      templateUrl: "https://raw.githubusercontent.com/wade0426/ChatESG_new/main/definition/%E5%85%AC%E5%8F%B8%E8%B3%87%E6%96%99_%E8%B3%87%E7%94%A2%E8%B3%87%E6%96%99_%E6%A0%BC%E5%BC%8F.json"
+      templateUrl: "https://raw.githubusercontent.com/wade0426/1110932038/refs/heads/main/公司資料_資產資料_格式_製造業.json"
     },
     {
       name: "服務業",
-      templateUrl: "https://raw.githubusercontent.com/wade0426/ChatESG_new/main/definition/%E5%85%AC%E5%8F%B8%E8%B3%87%E6%96%99_%E8%B3%87%E7%94%A2%E8%B3%87%E6%96%99_%E6%A0%BC%E5%BC%8F.json"
+      templateUrl: "https://raw.githubusercontent.com/wade0426/1110932038/refs/heads/main/公司資料_資產資料_格式_服務業.json"
     },
     {
       name: "零售業",
-      templateUrl: "https://raw.githubusercontent.com/wade0426/ChatESG_new/main/definition/%E5%85%AC%E5%8F%B8%E8%B3%87%E6%96%99_%E8%B3%87%E7%94%A2%E8%B3%87%E6%96%99_%E6%A0%BC%E5%BC%8F.json"
+      templateUrl: "https://raw.githubusercontent.com/wade0426/1110932038/refs/heads/main/公司資料_資產資料_格式_零售業.json"
     }
   ])
 

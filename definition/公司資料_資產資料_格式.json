@@ -1,0 +1,55 @@
+{
+  "AssetID": "UUID",
+  "chapters": [
+    {
+      "chapterTitle": "關於本報告書",
+      "subChapters": [
+        {
+          "subChapterTitle": "關於本報告書",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公司名稱",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "報告期間",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "永續發展策略",
+      "subChapters": [
+        {
+          "subChapterTitle": "永續治理架構",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續發展委員會",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "永續發展藍圖",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續策略主軸",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "永續目標",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
