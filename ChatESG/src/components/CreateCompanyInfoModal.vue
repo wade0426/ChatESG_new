@@ -3,33 +3,50 @@
     <div class="modal-content">
       <h2>建立公司基本資料</h2>
       
-      <!-- 輸入公司基本資料名稱 -->
-      <label for="companyInfoName">公司基本資料名稱</label>
-      <input 
-        id="companyInfoName" 
-        v-model="companyInfoName" 
-        type="text" 
-        placeholder="輸入公司基本資料名稱"
-        :class="{ 'error': errors.companyInfoName }"
-      />
-      <span class="error-message" v-if="errors.companyInfoName">{{ errors.companyInfoName }}</span>
+      <form @submit.prevent="submitForm">
+        <!-- 輸入公司基本資料名稱 -->
+        <div class="form-group">
+          <label for="companyInfoName">公司基本資料名稱</label>
+          <input 
+            id="companyInfoName" 
+            v-model="formData.companyInfoName" 
+            type="text" 
+            placeholder="輸入公司基本資料名稱"
+            :class="{ 'error': errors.companyInfoName }"
+            :disabled="isSubmitting"
+          />
+          <span class="error-message" v-if="errors.companyInfoName">{{ errors.companyInfoName }}</span>
+        </div>
 
-      <!-- 選擇產業 -->
-      <label for="industrySelect">產業類別</label>
-      <select 
-        id="industrySelect" 
-        v-model="selectedIndustry"
-        :class="{ 'error': errors.selectedIndustry }"
-      >
-        <option value="">請選擇產業</option>
-        <option v-for="industry in industries" :value="industry" :key="industry">{{ industry }}</option>
-      </select>
-      <span class="error-message" v-if="errors.selectedIndustry">{{ errors.selectedIndustry }}</span>
+        <!-- 選擇產業 -->
+        <div class="form-group">
+          <label for="industrySelect">產業類別</label>
+          <select 
+            id="industrySelect" 
+            v-model="formData.selectedIndustry"
+            :class="{ 'error': errors.selectedIndustry }"
+            :disabled="isSubmitting"
+          >
+            <option value="">請選擇產業</option>
+            <option 
+              v-for="industry in companyStore.industries" 
+              :value="industry.name" 
+              :key="industry.name"
+            >
+              {{ industry.name }}
+            </option>
+          </select>
+          <span class="error-message" v-if="errors.selectedIndustry">{{ errors.selectedIndustry }}</span>
+        </div>
 
-      <div class="modal-footer">
-        <button @click="hideModal">取消</button>
-        <button @click="submitForm">確認</button>
-      </div>
+        <div class="modal-footer">
+          <button type="button" @click="hideModal" :disabled="isSubmitting">取消</button>
+          <button type="submit" :disabled="isSubmitting">
+            <span v-if="isSubmitting">處理中...</span>
+            <span v-else>確認</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </template>
@@ -37,45 +54,33 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useUserStore } from '../stores/user'
+import { useCompanyStore } from '../stores/company'
+import { useFormValidation } from '../composables/useFormValidation'
+import { useToast } from 'vue-toastification'
 
 const userStore = useUserStore()
+const companyStore = useCompanyStore()
+const toast = useToast()
 
 const isVisible = ref(false)
-const companyInfoName = ref("")
-const selectedIndustry = ref("")
-const industries = ref(["金融業", "科技業", "製造業"])
+const isSubmitting = ref(false)
 
-// 錯誤訊息物件
-const errors = reactive({
-  companyInfoName: '',
-  selectedIndustry: ''
+const formData = reactive({
+  companyInfoName: "",
+  selectedIndustry: ""
 })
 
-// 驗證表單
-const validateForm = () => {
-  let isValid = true
-  
-  // 重置錯誤訊息
-  errors.companyInfoName = ''
-  errors.selectedIndustry = ''
-
-  // 驗證公司名稱
-  if (!companyInfoName.value.trim()) {
-    errors.companyInfoName = '請輸入公司基本資料名稱'
-    isValid = false
-  } else if (companyInfoName.value.length > 100) {
-    errors.companyInfoName = '公司基本資料表名稱不可超過100個字'
-    isValid = false
+const { errors, validateForm } = useFormValidation({
+  rules: {
+    companyInfoName: [
+      { required: true, message: '請輸入公司基本資料名稱' },
+      { max: 100, message: '公司基本資料表名稱不可超過100個字' }
+    ],
+    selectedIndustry: [
+      { required: true, message: '請選擇產業類別' }
+    ]
   }
-
-  // 驗證產業選擇
-  if (!selectedIndustry.value) {
-    errors.selectedIndustry = '請選擇產業類別'
-    isValid = false
-  }
-
-  return isValid
-}
+})
 
 const showModal = () => {
   isVisible.value = true
@@ -83,23 +88,34 @@ const showModal = () => {
 
 const hideModal = () => {
   isVisible.value = false
-  // 重置表單和錯誤訊息
-  companyInfoName.value = ""
-  selectedIndustry.value = ""
-  errors.companyInfoName = ''
-  errors.selectedIndustry = ''
+  resetForm()
 }
 
-const submitForm = () => {
-  if (validateForm()) {
-    console.log("提交公司基本資料：", {
-        name: companyInfoName.value,
-        industry: selectedIndustry.value,
-        // 建立人
-        creator: userStore.userID,
-        // 建立時間不需要 給 DB 自動產生
+const resetForm = () => {
+  formData.companyInfoName = ""
+  formData.selectedIndustry = ""
+  Object.keys(errors).forEach(key => errors[key] = '')
+  isSubmitting.value = false
+}
+
+const submitForm = async () => {
+  if (!validateForm(formData)) return
+  
+  try {
+    isSubmitting.value = true
+    await companyStore.createCompanyInfo({
+      name: formData.companyInfoName,
+      industry: formData.selectedIndustry,
+      creator: userStore.userID,
+      organizationID: userStore.organizationID
     })
+    
+    toast.success('公司基本資料建立成功')
     hideModal()
+  } catch (error) {
+    toast.error(error.message || '建立失敗，請稍後再試')
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -109,89 +125,15 @@ defineExpose({
 </script>
 
 <style scoped>
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
+@import '../styles/modal.css';
+@import '../styles/form.css';
+
+.form-group {
+  margin-bottom: 1rem;
 }
 
-.modal-content {
-  background-color: #242526;
-  padding: 20px;
-  border-radius: 8px;
-  min-width: 400px;
-  color: white;
+.modal-footer button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
-
-.modal-footer {
-  margin-top: 20px;
-  display: flex;
-  /* 置中 */
-  justify-content: center;
-  gap: 10px;
-}
-
-.modal-footer button:nth-child(1) {
-    background-color: #f44336;
-}
-
-.modal-footer button:nth-child(2) {
-    background-color: #4CAF50;
-}
-
-button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  background-color: #3A3B3C;
-  color: white;
-}
-
-button:hover {
-  background-color: #4A4B4C;
-}
-
-.modal-content label {
-  display: block;
-  margin: 10px 0 5px;
-  text-align: left;
-}
-
-.modal-content input,
-.modal-content select {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  background-color: #3A3B3C;
-  border: none;
-  color: white;
-  border-radius: 4px;
-}
-
-.modal-content select option {
-  background-color: #242526;
-}
-
-.error-message {
-  color: red;
-  font-size: 12px;
-  margin-top: 5px;
-}
-
-.modal-content input.error {
-  border: 1px solid red;
-}
-
-.modal-content select.error {
-  border: 1px solid red;
-}
-
 </style> 

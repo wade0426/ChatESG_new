@@ -9,6 +9,7 @@ export const useUserStore = defineStore('user', {
         username: '',
         isAuthenticated: false,
         organizationName: '',
+        organizationID: '',
         email: '',
         avatarUrl: '',
         organizationRoles: []
@@ -109,6 +110,7 @@ export const useUserStore = defineStore('user', {
             this.email = data.email || this.email
             this.avatarUrl = data.avatarUrl || this.avatarUrl
             this.organizationName = data.organizationName || this.organizationName
+            this.organizationID = data.organizationID || this.organizationID
             this.organizationRoles = data.organizationRoles || this.organizationRoles
         },
 
