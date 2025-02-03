@@ -274,7 +274,7 @@ async def get_user_profile_Personal_Information(user_data: dict):
             # 獲取用戶基本信息，加入 OrganizationMembers 表的關聯
             await cur.execute("""
                 SELECT u.UserID, u.UserName, u.AvatarUrl, u.OrganizationID, u.UserEmail,
-                       o.OrganizationName, u.AccountStatus, u.LastLoginAt
+                       o.OrganizationName, u.AccountStatus, u.LastLoginAt, u.OrganizationID
                 FROM Users u
                 LEFT JOIN OrganizationMembers om ON u.UserID = om.UserID
                 LEFT JOIN Organizations o ON om.OrganizationID = o.OrganizationID
@@ -297,6 +297,7 @@ async def get_user_profile_Personal_Information(user_data: dict):
             # 將BINARY(16)格式的UUID轉換為字符串
             user_id_str = uuid.UUID(bytes=user[0]).hex if user[0] else None
             organization_id_str = uuid.UUID(bytes=user[3]).hex if user[3] else None
+            user_organization_id_str = uuid.UUID(bytes=user[8]).hex if user[8] else None
             
             # 處理角色信息
             user_roles = []
@@ -319,7 +320,8 @@ async def get_user_profile_Personal_Information(user_data: dict):
                     "email": user[4],
                     "accountStatus": user[6],
                     "lastLoginAt": user[7].isoformat() if user[7] else None,
-                    "organizationRoles": user_roles
+                    "organizationRoles": user_roles,
+                    "userOrganizationID": user_organization_id_str
                 }
             }
 
@@ -1291,6 +1293,160 @@ async def delete_member(data: dict):
                 except Exception as e:
                     await conn.rollback()
                     raise HTTPException(status_code=500, detail=f"刪除成員失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+
+
+# 取得公司基本表
+@app.get("/api/organizations/get_company_table")
+async def get_company_table(data: dict):
+    pass
+
+
+# 建立公司基本表
+@app.post("/api/organizations/create_company_table")
+async def create_company_table(data: dict):
+    try:
+        # 獲取必要參數
+        company_name = data.get("company_name")  # 公司基本表的名稱
+        creator_id = data.get("creator_id")      # 創建者ID
+        organization_id = data.get("organization_id")  # 組織ID
+        template_url = data.get("template_url")  # 模板URL
+
+        if not all([company_name, creator_id, organization_id, template_url]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        creator_id_binary = uuid.UUID(creator_id).bytes
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查組織是否存在
+                    await cur.execute(
+                        "SELECT OrganizationID FROM Organizations WHERE OrganizationID = %s AND IsDeleted = FALSE",
+                        (organization_id_binary,)
+                    )
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到指定的組織")
+
+                    # 獲取模板內容
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(template_url, headers={
+                            'Accept': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }) as response:
+                            if response.status != 200:
+                                raise HTTPException(status_code=400, detail=f"無法獲取模板內容: HTTP {response.status}")
+                            try:
+                                template_data = await response.json(content_type=None)
+                            except Exception as e:
+                                raise HTTPException(status_code=400, detail=f"模板內容解析失敗: {str(e)}")
+
+                    # 驗證模板格式
+                    if not isinstance(template_data, dict) or "chapters" not in template_data:
+                        raise HTTPException(status_code=400, detail="無效的模板格式")
+
+                    # 生成資產ID
+                    asset_id = uuid.uuid4().bytes
+
+                    # 獲取組織中"一般"角色的RoleID
+                    await cur.execute("""
+                        SELECT RoleID 
+                        FROM Roles 
+                        WHERE OrganizationID = %s AND RoleName = '一般'
+                    """, (organization_id_binary,))
+                    general_role = await cur.fetchone()
+                    if not general_role:
+                        raise HTTPException(status_code=404, detail="找不到組織的一般角色")
+                    general_role_id = general_role[0]
+
+                    # 處理模板內容，為每個區塊生成新的UUID
+                    processed_content = {"AssetID": uuid.UUID(bytes=asset_id).hex, "chapters": []}
+                    for chapter in template_data.get("chapters", []):
+                        processed_chapter = {"chapterTitle": chapter["chapterTitle"], "subChapters": []}
+                        for sub_chapter in chapter.get("subChapters", []):
+                            processed_sub_chapter = {
+                                "subChapterTitle": sub_chapter["subChapterTitle"],
+                                "subSubChapters": []
+                            }
+                            for sub_sub_chapter in sub_chapter.get("subSubChapters", []):
+                                # 為每個子章節生成唯一ID
+                                block_id = uuid.uuid4().bytes
+                                permission_id = uuid.uuid4().bytes
+
+                                # 創建內容區塊
+                                await cur.execute("""
+                                    INSERT INTO ReportContentBlocks (
+                                        BlockID, status, content, ModifiedBy
+                                    ) VALUES (%s, 'editing', %s, %s)
+                                """, (
+                                    block_id,
+                                    json.dumps({
+                                        "BlockID": uuid.UUID(bytes=block_id).hex,
+                                        "subChapterTitle": sub_sub_chapter["subSubChapterTitle"],
+                                        "content": {"text": ""}
+                                    }),
+                                    creator_id_binary
+                                ))
+
+                                # 創建權限映射
+                                await cur.execute("""
+                                    INSERT INTO RolePermissionMappings (
+                                        RoleID, PermissionChapterID, ResourceType, ActionType
+                                    ) VALUES (%s, %s, %s, %s)
+                                    ON DUPLICATE KEY UPDATE
+                                    ResourceType = VALUES(ResourceType),
+                                    ActionType = VALUES(ActionType)
+                                """, (
+                                    general_role_id,
+                                    permission_id,
+                                    'company_info',
+                                    'read_write'
+                                ))
+
+                                # 添加到處理後的內容中
+                                processed_sub_chapter["subSubChapters"].append({
+                                    "subSubChapterTitle": sub_sub_chapter["subSubChapterTitle"],
+                                    "BlockID": uuid.UUID(bytes=block_id).hex,
+                                    "access_permissions": uuid.UUID(bytes=permission_id).hex
+                                })
+                            processed_chapter["subChapters"].append(processed_sub_chapter)
+                        processed_content["chapters"].append(processed_chapter)
+
+                    # 創建組織資產記錄
+                    await cur.execute("""
+                        INSERT INTO OrganizationAssets (
+                            AssetID, OrganizationID, AssetName, AssetType,
+                            CreatorID, Status, Content
+                        ) VALUES (%s, %s, %s, 'company_info', %s, 'editing', %s)
+                    """, (
+                        asset_id,
+                        organization_id_binary,
+                        company_name,
+                        creator_id_binary,
+                        json.dumps(processed_content)
+                    ))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "公司基本表創建成功",
+                        "data": {
+                            "asset_id": uuid.UUID(bytes=asset_id).hex,
+                            "content": processed_content
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"創建公司基本表失敗: {str(e)}")
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的ID格式")
