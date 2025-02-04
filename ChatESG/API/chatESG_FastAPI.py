@@ -1299,9 +1299,9 @@ async def delete_member(data: dict):
 
 
 # 取得公司基本表
-@app.get("/api/organizations/get_company_table")
-async def get_company_table(data: dict):
-    pass
+# @app.get("/api/organizations/get_company_table")
+# async def get_company_table(data: dict):
+#     pass
 
 
 # 建立公司基本表
@@ -1450,6 +1450,79 @@ async def create_company_table(data: dict):
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的ID格式")
+
+
+# 取得組織資產
+@app.get("/api/organizations/get_organization_assets")
+async def get_organization_assets(organization_id: str):
+    try:
+        # 獲取組織ID並轉換為BINARY(16)格式
+        organization_id_bytes = uuid.UUID(organization_id).bytes
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
+
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                # 開始事務
+                await conn.begin()
+
+                # 查詢組織的所有未刪除的資產
+                await cur.execute("""
+                    SELECT 
+                        AssetID,
+                        AssetName,
+                        AssetType,
+                        Status,
+                        UpdatedAt,
+                        CreatorID,
+                        CreatedAt
+                    FROM OrganizationAssets
+                    WHERE OrganizationID = %s 
+                    AND IsDeleted = FALSE
+                    ORDER BY UpdatedAt DESC
+                """, (organization_id_bytes,))
+
+                assets = await cur.fetchall()
+                
+                # 格式化資產列表
+                asset_list = []
+                for asset in assets:
+                    # 獲取創建者信息
+                    creator_info = None
+                    if asset[5]:  # 如果有創建者ID
+                        await cur.execute("""
+                            SELECT UserName, AvatarUrl
+                            FROM Users
+                            WHERE UserID = %s
+                        """, (asset[5],))
+                        creator = await cur.fetchone()
+                        if creator:
+                            creator_info = {
+                                "id": uuid.UUID(bytes=asset[5]).hex,
+                                "name": creator[0],
+                                "avatarUrl": creator[1] or DEFAULT_USER_AVATAR
+                            }
+
+                    asset_list.append({
+                        "assetID": uuid.UUID(bytes=asset[0]).hex,
+                        "assetName": asset[1],
+                        "assetType": asset[2],
+                        "status": asset[3],
+                        "updatedAt": asset[4].isoformat() if asset[4] else None,
+                        "creator": creator_info,
+                        "createdAt": asset[6].isoformat() if asset[6] else None
+                    })
+
+                await conn.commit()
+                return {
+                    "status": "success",
+                    "data": asset_list
+                }
+
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"獲取組織資產失敗: {str(e)}")
 
 
 if __name__ == "__main__":
