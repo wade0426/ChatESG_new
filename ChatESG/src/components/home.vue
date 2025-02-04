@@ -4,10 +4,10 @@
     
     <!-- 其餘內容保持不變 -->
     <div class="toolbar">
-        <a href="#" class="tool-item">
+        <router-link to="/asset-overview" class="tool-item">
             <i>📝</i>
             <span>資產總覽</span>
-        </a>
+        </router-link>
         <a href="javascript:void(0)" class="tool-item" @click="showCreateCompanyInfoModal">
             <i>📋</i>
             <span>建立公司資料</span>

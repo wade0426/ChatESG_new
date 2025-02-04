@@ -96,6 +96,12 @@ const router = createRouter({
             name: 'CreateMajorIssuesList',
             component: () => import('../components/CreateMajorIssuesList.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/asset-overview',
+            name: 'AssetOverview',
+            component: () => import('../components/AssetOverview.vue'),
+            meta: { requiresAuth: true }
         }
     ]
 })
