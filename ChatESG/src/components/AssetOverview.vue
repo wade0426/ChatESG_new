@@ -49,7 +49,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="asset in sortedAssets" :key="asset.AssetId" @click="handleRowClick(asset)" style="cursor: pointer;">
+                    <tr v-for="asset in filteredAndSortedAssets" :key="asset.AssetId" @click="handleRowClick(asset)" style="cursor: pointer;">
                         <td>{{ asset.AssetName }}</td>
                         <td>{{ asset.AssetType }}</td>
                         <td>{{ asset.Status }}</td>
@@ -167,6 +167,17 @@ const sortedAssets = computed(() => {
         } else {
             return aValue < bValue ? 1 : -1
         }
+    })
+})
+
+const filteredAndSortedAssets = computed(() => {
+    const query = searchQuery.value.toLowerCase().trim()
+    if (!query) return sortedAssets.value
+
+    return sortedAssets.value.filter(asset => {
+        return asset.AssetName.toLowerCase().includes(query) ||
+               asset.AssetType.toLowerCase().includes(query) ||
+               asset.Status.toLowerCase().includes(query)
     })
 })
 
