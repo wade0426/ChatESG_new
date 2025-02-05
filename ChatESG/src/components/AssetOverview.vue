@@ -57,7 +57,7 @@
                         <td class="actions">
                             <div class="dropdown">
                                 <button class="dropdown-toggle" @click="toggleDropdown(asset.AssetId)">
-                                    <span class="dots">...</span>
+                                    <span class="dots">●●●</span>
                                 </button>
                                 <div class="dropdown-menu" v-show="activeDropdown === asset.AssetId">
                                     <button @click="openAsset(asset)">開啟</button>
@@ -71,11 +71,53 @@
             </table>
         </div>
     </div>
+
+    <!-- 新增改名對話框 -->
+    <div v-if="showRenameModal" class="rename-modal">
+        <div class="rename-modal-content">
+            <div class="rename-modal-header">
+                <h2>重命名資產</h2>
+            </div>
+            <div class="rename-modal-body">
+                <p>請輸入新的資產名稱：</p>
+                <input 
+                    type="text" 
+                    v-model="newAssetName" 
+                    placeholder="輸入新名稱"
+                    class="rename-input"
+                >
+            </div>
+            <div class="rename-modal-actions">
+                <button @click="confirmRename" class="confirm-btn" :disabled="!newAssetName.trim()">確認</button>
+                <button @click="cancelRename" class="cancel-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增刪除確認對話框 -->
+    <div v-if="showDeleteConfirm" class="delete-confirm-modal">
+        <div class="delete-confirm-content">
+            <div class="delete-confirm-header">
+                <h2>確認刪除</h2>
+            </div>
+            <div class="delete-confirm-body">
+                <p>您確定要刪除這個資產嗎？</p>
+            </div>
+            <div class="delete-confirm-input">
+                <input type="text" v-model="deleteConfirmInput" placeholder="輸入 'Delete' 確認刪除">
+            </div>
+            <div class="delete-confirm-actions">
+                <button @click="confirmDelete" :disabled="deleteConfirmInput !== 'Delete'" class="delete-btn">刪除</button>
+                <button @click="cancelDelete" class="cancel-btn">取消</button>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useToast } from 'vue-toastification'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import axios from 'axios'
@@ -83,6 +125,9 @@ import axios from 'axios'
 // 初始化 userStore
 const userStore = useUserStore()
 const organizationId = computed(() => userStore.organizationID)
+
+// 初始化 toast
+const toast = useToast()
 
 const searchQuery = ref('')
 const activeDropdown = ref(null)
@@ -92,6 +137,18 @@ const assets = ref([])
 const loading = ref(false)
 const error = ref(null)
 const isSidebarOpen = ref(false)
+
+// 新增刪除相關的響應式變數
+const showDeleteConfirm = ref(false)
+const deleteConfirmInput = ref('')
+const assetToDelete = ref(null)
+const isDeleting = ref(false)
+
+// 新增改名相關的響應式變數
+const showRenameModal = ref(false)
+const newAssetName = ref('')
+const assetToRename = ref(null)
+const isRenaming = ref(false)
 
 // 獲取資產數據的函數
 const fetchAssets = async () => {
@@ -191,13 +248,89 @@ const openAsset = (asset) => {
 }
 
 const renameAsset = (asset) => {
-    console.log('重命名資產:', asset)
+    assetToRename.value = asset
+    newAssetName.value = asset.AssetName
+    showRenameModal.value = true
     activeDropdown.value = null
 }
 
-const deleteAsset = (asset) => {
-    console.log('刪除資產:', asset)
+const confirmRename = async () => {
+    if (!newAssetName.value.trim()) {
+        return
+    }
+
+    try {
+        isRenaming.value = true
+        const response = await axios.post('http://localhost:8000/api/organizations/update_asset_name', {
+            asset_id: assetToRename.value.AssetId,
+            organization_id: organizationId.value,
+            asset_name: newAssetName.value.trim()
+        })
+
+        // 更新本地資產列表中的名稱
+        const index = assets.value.findIndex(a => a.AssetId === assetToRename.value.AssetId)
+        if (index !== -1) {
+            assets.value[index].AssetName = newAssetName.value.trim()
+        }
+
+        showRenameModal.value = false
+        assetToRename.value = null
+        newAssetName.value = ''
+        
+        // 顯示成功提示
+        toast.success('資產名稱已成功更新')
+    } catch (err) {
+        toast.error('更新資產名稱失敗：' + (err.response?.data?.detail || err.message))
+        console.error('更新資產名稱失敗:', err)
+    } finally {
+        isRenaming.value = false
+    }
+}
+
+const cancelRename = () => {
+    showRenameModal.value = false
+    assetToRename.value = null
+    newAssetName.value = ''
+}
+
+const deleteAsset = async (asset) => {
+    assetToDelete.value = asset
+    showDeleteConfirm.value = true
+    deleteConfirmInput.value = ''
     activeDropdown.value = null
+}
+
+const confirmDelete = async () => {
+    if (deleteConfirmInput.value !== 'Delete') {
+        return
+    }
+
+    try {
+        isDeleting.value = true
+        const response = await axios.post('http://localhost:8000/api/organizations/delete_asset', {
+            asset_id: assetToDelete.value.AssetId,
+            user_id: userStore.userID,
+            organization_id: organizationId.value
+        })
+
+        if (response.data.message === '資產已成功刪除') {
+            assets.value = assets.value.filter(a => a.AssetId !== assetToDelete.value.AssetId)
+            showDeleteConfirm.value = false
+            assetToDelete.value = null
+            toast.success('資產已成功刪除')
+        }
+    } catch (err) {
+        toast.error('刪除資產失敗：' + (err.response?.data?.detail || err.message))
+        console.error('刪除資產失敗:', err)
+    } finally {
+        isDeleting.value = false
+    }
+}
+
+const cancelDelete = () => {
+    showDeleteConfirm.value = false
+    assetToDelete.value = null
+    deleteConfirmInput.value = ''
 }
 
 const handleRowClick = (asset) => {
@@ -364,7 +497,8 @@ tr:last-child .dropdown-menu {
 }
 
 /* 移除原有的編輯和刪除按鈕樣式 */
-.edit-btn, .delete-btn {
+.table-actions .edit-btn, 
+.table-actions .delete-btn {
     display: none;
 }
 
@@ -405,5 +539,172 @@ tr:last-child .dropdown-menu {
 
 .retry-button:hover {
     background-color: #4A4B4C;
+}
+
+/* 新增刪除確認對話框的樣式 */
+.delete-confirm-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.delete-confirm-content {
+    background-color: #242526;
+    padding: 24px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.delete-confirm-header {
+    margin-bottom: 16px;
+}
+
+.delete-confirm-header h2 {
+    color: #E4E6EB;
+    font-size: 20px;
+    margin: 0;
+}
+
+.delete-confirm-body {
+    margin-bottom: 20px;
+}
+
+.delete-confirm-body p {
+    color: #B0B3B8;
+    margin-bottom: 16px;
+}
+
+.delete-confirm-input {
+    width: 100%;
+    padding: 8px;
+    background-color: #3A3B3C;
+    border: 1px solid #4A4B4C;
+    border-radius: 4px;
+    color: white;
+    margin-bottom: 16px;
+}
+
+.delete-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.delete-confirm-actions button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-confirm-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.cancel-btn {
+    background-color: #3A3B3C;
+    color: #E4E6EB;
+}
+
+.delete-btn {
+    background-color: #BE4040;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background-color: #4A4B4C;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background-color: #A03030;
+}
+
+/* 新增改名模態框樣式 */
+.rename-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.rename-modal-content {
+    background-color: #242526;
+    padding: 24px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.rename-modal-header {
+    margin-bottom: 16px;
+}
+
+.rename-modal-header h2 {
+    color: #E4E6EB;
+    font-size: 20px;
+    margin: 0;
+}
+
+.rename-modal-body {
+    margin-bottom: 20px;
+}
+
+.rename-modal-body p {
+    color: #B0B3B8;
+    margin-bottom: 16px;
+}
+
+.rename-input {
+    width: 100%;
+    padding: 8px;
+    background-color: #3A3B3C;
+    border: 1px solid #4A4B4C;
+    border-radius: 4px;
+    color: white;
+    margin-bottom: 16px;
+}
+
+.rename-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.rename-modal-actions button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.rename-modal-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.confirm-btn {
+    background-color: #0084FF;
+    color: white;
+}
+
+.confirm-btn:hover:not(:disabled) {
+    background-color: #0073E6;
 }
 </style> 
