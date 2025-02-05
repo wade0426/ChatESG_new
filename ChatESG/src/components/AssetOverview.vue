@@ -118,12 +118,14 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useToast } from 'vue-toastification'
+import { useRouter } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import axios from 'axios'
 
-// 初始化 userStore
+// 初始化 userStore 和 router
 const userStore = useUserStore()
+const router = useRouter()
 const organizationId = computed(() => userStore.organizationID)
 
 // 初始化 toast
@@ -243,7 +245,11 @@ const toggleDropdown = (assetId) => {
 }
 
 const openAsset = (asset) => {
-    console.log('開啟資產:', asset)
+    if (asset.AssetType === 'company_info') {
+        router.push(`/company-info-edit?assetId=${asset.AssetId}`)
+    } else {
+        toast.info('此類型資產暫不支持開啟')
+    }
     activeDropdown.value = null
 }
 
