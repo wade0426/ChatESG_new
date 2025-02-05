@@ -1313,8 +1313,9 @@ async def create_company_table(data: dict):
         creator_id = data.get("creator_id")      # 創建者ID
         organization_id = data.get("organization_id")  # 組織ID
         template_url = data.get("template_url")  # 模板URL
+        category = data.get("category")  # 類別
 
-        if not all([company_name, creator_id, organization_id, template_url]):
+        if not all([company_name, creator_id, organization_id, template_url, category]):
             raise HTTPException(status_code=400, detail="缺少必要參數")
 
         # 將字符串格式的ID轉換為BINARY(16)格式
@@ -1369,6 +1370,9 @@ async def create_company_table(data: dict):
 
                     # 處理模板內容，為每個區塊生成新的UUID
                     processed_content = {"AssetID": uuid.UUID(bytes=asset_id).hex, "chapters": []}
+                    blocks_to_create = []  # 儲存要創建的內容區塊
+                    permissions_to_create = []  # 儲存要創建的權限映射
+
                     for chapter in template_data.get("chapters", []):
                         processed_chapter = {"chapterTitle": chapter["chapterTitle"], "subChapters": []}
                         for sub_chapter in chapter.get("subChapters", []):
@@ -1381,13 +1385,11 @@ async def create_company_table(data: dict):
                                 block_id = uuid.uuid4().bytes
                                 permission_id = uuid.uuid4().bytes
 
-                                # 創建內容區塊
-                                await cur.execute("""
-                                    INSERT INTO ReportContentBlocks (
-                                        BlockID, status, content, ModifiedBy
-                                    ) VALUES (%s, 'editing', %s, %s)
-                                """, (
+                                # 準備內容區塊數據
+                                blocks_to_create.append((
                                     block_id,
+                                    asset_id,
+                                    'editing',
                                     json.dumps({
                                         "BlockID": uuid.UUID(bytes=block_id).hex,
                                         "subChapterTitle": sub_sub_chapter["subSubChapterTitle"],
@@ -1396,17 +1398,11 @@ async def create_company_table(data: dict):
                                     creator_id_binary
                                 ))
 
-                                # 創建權限映射
-                                await cur.execute("""
-                                    INSERT INTO RolePermissionMappings (
-                                        RoleID, PermissionChapterID, ResourceType, ActionType
-                                    ) VALUES (%s, %s, %s, %s)
-                                    ON DUPLICATE KEY UPDATE
-                                    ResourceType = VALUES(ResourceType),
-                                    ActionType = VALUES(ActionType)
-                                """, (
+                                # 準備權限映射數據
+                                permissions_to_create.append((
                                     general_role_id,
                                     permission_id,
+                                    asset_id,
                                     'company_info',
                                     'read_write'
                                 ))
@@ -1420,19 +1416,39 @@ async def create_company_table(data: dict):
                             processed_chapter["subChapters"].append(processed_sub_chapter)
                         processed_content["chapters"].append(processed_chapter)
 
-                    # 創建組織資產記錄
+                    # 首先創建組織資產記錄
                     await cur.execute("""
                         INSERT INTO OrganizationAssets (
                             AssetID, OrganizationID, AssetName, AssetType,
-                            CreatorID, Status, Content
-                        ) VALUES (%s, %s, %s, 'company_info', %s, 'editing', %s)
+                            Category, CreatorID, Status, Content
+                        ) VALUES (%s, %s, %s, 'company_info', %s, %s, 'editing', %s)
                     """, (
                         asset_id,
                         organization_id_binary,
                         company_name,
+                        category,
                         creator_id_binary,
                         json.dumps(processed_content)
                     ))
+
+                    # 然後批量創建內容區塊
+                    for block_data in blocks_to_create:
+                        await cur.execute("""
+                            INSERT INTO ReportContentBlocks (
+                                BlockID, AssetID, status, content, ModifiedBy
+                            ) VALUES (%s, %s, %s, %s, %s)
+                        """, block_data)
+
+                    # 最後批量創建權限映射
+                    for permission_data in permissions_to_create:
+                        await cur.execute("""
+                            INSERT INTO RolePermissionMappings (
+                                RoleID, PermissionChapterID, AssetID, ResourceType, ActionType
+                            ) VALUES (%s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            ResourceType = VALUES(ResourceType),
+                            ActionType = VALUES(ActionType)
+                        """, permission_data)
 
                     await conn.commit()
                     return {
@@ -1450,6 +1466,119 @@ async def create_company_table(data: dict):
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的ID格式")
+
+
+# 更新資產名稱
+@app.post("/api/organizations/update_asset_name")
+async def update_asset_name(data: dict):
+    try:
+        # 傳入資產ID、組織ID、新資產名稱
+        asset_id = data.get("asset_id")
+        organization_id = data.get("organization_id")
+        new_asset_name = data.get("asset_name")
+
+        if not all([asset_id, organization_id, new_asset_name]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 驗證資產名稱長度
+        if len(new_asset_name) > 100:
+            raise HTTPException(status_code=400, detail="資產名稱長度不能超過100個字符")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        asset_id_binary = uuid.UUID(asset_id).bytes
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查資產是否存在且屬於該組織
+                    await cur.execute("""
+                        SELECT AssetID 
+                        FROM OrganizationAssets 
+                        WHERE AssetID = %s 
+                        AND OrganizationID = %s 
+                        AND IsDeleted = FALSE
+                    """, (asset_id_binary, organization_id_binary))
+
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到該資產或資產已被刪除")
+
+                    # 更新資產名稱
+                    await cur.execute("""
+                        UPDATE OrganizationAssets 
+                        SET AssetName = %s,
+                            UpdatedAt = CURRENT_TIMESTAMP
+                        WHERE AssetID = %s 
+                        AND OrganizationID = %s
+                    """, (new_asset_name, asset_id_binary, organization_id_binary))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "資產名稱更新成功",
+                        "data": {
+                            "asset_id": asset_id,
+                            "new_asset_name": new_asset_name
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"更新資產名稱失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+
+
+# 刪除資產
+@app.post("/api/organizations/delete_asset")
+async def delete_asset(data: dict):
+    try:
+        # 從請求中獲取必要參數
+        user_id = data.get("user_id")
+        asset_id = data.get("asset_id")
+        organization_id = data.get("organization_id")
+
+        if not all([user_id, asset_id, organization_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 連接資料庫
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 檢查資產是否存在且屬於該組織
+                query = """
+                    SELECT AssetID 
+                    FROM OrganizationAssets 
+                    WHERE AssetID = UNHEX(REPLACE(%s, '-', ''))
+                    AND OrganizationID = UNHEX(REPLACE(%s, '-', ''))
+                    AND IsDeleted = FALSE
+                """
+                await cur.execute(query, (asset_id, organization_id))
+                asset = await cur.fetchone()
+                
+                if not asset:
+                    raise HTTPException(status_code=404, detail="找不到該資產或資產已被刪除")
+
+                # 更新資產狀態
+                update_query = """
+                    UPDATE OrganizationAssets 
+                    SET IsDeleted = TRUE,
+                        DeletedAt = CURRENT_TIMESTAMP,
+                        DeletedBy = UNHEX(REPLACE(%s, '-', ''))
+                    WHERE AssetID = UNHEX(REPLACE(%s, '-', ''))
+                """
+                await cur.execute(update_query, (user_id, asset_id))
+                await conn.commit()
+
+        return {"message": "資產已成功刪除"}
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"刪除資產時發生錯誤: {str(e)}")
 
 
 # 取得組織資產
