@@ -104,11 +104,13 @@ CREATE TABLE UserRoles (
 CREATE TABLE RolePermissionMappings (
     RoleID BINARY(16) NOT NULL COMMENT '角色(UUID)',
     PermissionChapterID BINARY(16) NOT NULL COMMENT '章節權限識別標籤(UUID)',
+    AssetID BINARY(16) NOT NULL COMMENT '所屬資產(UUID)',
     ResourceType VARCHAR(50) DEFAULT 'report/template/company_info' COMMENT '資源類型',
     ActionType ENUM('read', 'read_write', 'no_access', 'create', 'update', 'delete') DEFAULT 'read' COMMENT '操作類型',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     PRIMARY KEY (RoleID, PermissionChapterID),
-    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    FOREIGN KEY (AssetID) REFERENCES OrganizationAssets(AssetID) ON DELETE CASCADE
 ) COMMENT '角色權限映射表';
 
 -- --------------------------------------------------------
@@ -120,6 +122,12 @@ CREATE TABLE OrganizationAssets (
     OrganizationID BINARY(16) NOT NULL COMMENT '組織(UUID)',
     AssetName VARCHAR(100) NOT NULL COMMENT '資產名稱',
     AssetType ENUM('report', 'standard_template', 'company_info') NOT NULL COMMENT '資產類型',
+    Category ENUM(
+        '金融業',
+        '製造業',
+        '科技業',
+        '其他'
+    ) COMMENT '類別',
     CreatorID BINARY(16) COMMENT '資產創建者(UUID)',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
@@ -128,8 +136,10 @@ CREATE TABLE OrganizationAssets (
     Content JSON COMMENT '資產內容(章節, 內容UUID)',
     IsDeleted BOOLEAN DEFAULT FALSE COMMENT '是否已刪除',
     DeletedAt TIMESTAMP NULL DEFAULT NULL COMMENT '刪除時間（軟刪除）',
+    DeletedBy BINARY(16) DEFAULT NULL COMMENT '刪除者(UUID)',
     FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE RESTRICT,
-    FOREIGN KEY (CreatorID) REFERENCES Users(UserID) ON DELETE SET NULL
+    FOREIGN KEY (CreatorID) REFERENCES Users(UserID) ON DELETE SET NULL,
+    FOREIGN KEY (DeletedBy) REFERENCES Users(UserID) ON DELETE SET NULL
 ) COMMENT '組織資產資料表';
 
 -- --------------------------------------------------------
@@ -137,6 +147,7 @@ CREATE TABLE OrganizationAssets (
 -- --------------------------------------------------------
 CREATE TABLE ReportContentBlocks (
     BlockID BINARY(16) PRIMARY KEY COMMENT '內容(UUID)',
+    AssetID BINARY(16) NOT NULL COMMENT '所屬資產(UUID)',
     status ENUM('editing', 'archived') NOT NULL DEFAULT 'editing' COMMENT '內容狀態',
     content JSON COMMENT '內容(文字、圖片、內容檢驗、註解)',
     LastModified TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後修改時間',
@@ -144,7 +155,10 @@ CREATE TABLE ReportContentBlocks (
     IsLocked BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否被鎖定',
     LockedBy BINARY(16) DEFAULT NULL COMMENT '鎖定者(UUID)',
     LockedAt TIMESTAMP(6) NULL DEFAULT NULL COMMENT '鎖定時間',
-    version INT DEFAULT 1
+    version INT DEFAULT 1,
+    FOREIGN KEY (AssetID) REFERENCES OrganizationAssets(AssetID) ON DELETE CASCADE,
+    FOREIGN KEY (ModifiedBy) REFERENCES Users(UserID) ON DELETE SET NULL,
+    FOREIGN KEY (LockedBy) REFERENCES Users(UserID) ON DELETE SET NULL
 ) COMMENT '組織資產內容資料表';
 
 -- --------------------------------------------------------
@@ -184,11 +198,13 @@ ALTER TABLE OrganizationMembers ADD INDEX idx_membership_time (OrganizationID, C
 -- OrganizationAssets 表索引優化
 -- DROP INDEX idx_createdat_desc ON OrganizationAssets; -- 不需要這行，因為索引本來就不存在
 ALTER TABLE OrganizationAssets ADD INDEX idx_active_assets (OrganizationID, IsDeleted, Status); -- 優化活躍資產查詢
+ALTER TABLE OrganizationAssets ADD INDEX idx_industry_type (IndustryType); -- 為 IndustryType 欄位添加索引以優化查詢
 
 -- ReportContentBlocks 表索引優化
 ALTER TABLE ReportContentBlocks 
-ADD INDEX idx_lock_status (IsLocked, LockedBy, LockedAt); -- 鎖定狀態查詢
-ALTER TABLE ReportContentBlocks ADD INDEX idx_content_state (status, IsLocked); -- 簡化現有索引，去掉較少使用的LastModified
+ADD INDEX idx_lock_status (IsLocked, LockedBy, LockedAt), -- 鎖定狀態查詢
+ADD INDEX idx_content_state (status, IsLocked), -- 簡化現有索引，去掉較少使用的LastModified
+ADD INDEX idx_asset_content (AssetID, status); -- 資產內容查詢優化
 
 -- Roles 表索引優化
 ALTER TABLE Roles ADD INDEX idx_org_management (OrganizationID, RoleName, CreatedAt);
@@ -197,7 +213,9 @@ ALTER TABLE Roles ADD INDEX idx_org_management (OrganizationID, RoleName, Create
 ALTER TABLE UserRoles ADD INDEX idx_role_assignment (OrganizationID, RoleID, CreatedAt);
 
 -- RolePermissionMappings 表索引
-ALTER TABLE RolePermissionMappings ADD INDEX idx_resource_action (ResourceType, ActionType);
+ALTER TABLE RolePermissionMappings 
+ADD INDEX idx_resource_action (ResourceType, ActionType),
+ADD INDEX idx_asset_permissions (AssetID, RoleID); -- 資產權限查詢優化
 
 -- Organizations 表索引優化
 ALTER TABLE Organizations 
