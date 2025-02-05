@@ -1298,10 +1298,547 @@ async def delete_member(data: dict):
         raise HTTPException(status_code=400, detail="無效的ID格式")
 
 
-# 取得公司基本表
-# @app.get("/api/organizations/get_company_table")
-# async def get_company_table(data: dict):
-#     pass
+# 取得資產內容(Content)
+@app.post("/api/organizations/get_asset_content")
+async def get_asset_content(data: dict):
+    try:
+        # 獲取必要參數
+        asset_id = data.get("asset_id")
+        organization_id = data.get("organization_id")
+
+        if not all([asset_id, organization_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        asset_id_binary = uuid.UUID(asset_id).bytes
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查資產是否存在且屬於該組織
+                    await cur.execute("""
+                        SELECT 
+                            AssetName,
+                            AssetType,
+                            Category,
+                            Status,
+                            Content,
+                            UpdatedAt,
+                            IsDeleted
+                        FROM OrganizationAssets
+                        WHERE AssetID = %s 
+                        AND OrganizationID = %s
+                        FOR UPDATE
+                    """, (asset_id_binary, organization_id_binary))
+
+                    asset = await cur.fetchone()
+                    
+                    if not asset:
+                        raise HTTPException(status_code=404, detail="找不到該資產")
+                    
+                    # 檢查資產是否已刪除
+                    if asset[6]:  # IsDeleted
+                        raise HTTPException(status_code=400, detail="該資產已被刪除")
+
+                    # 解析 JSON 內容
+                    content = json.loads(asset[4]) if asset[4] else None
+
+                    # 構建回應數據
+                    response_data = {
+                        "status": "success",
+                        "data": {
+                            "assetName": asset[0],
+                            "assetType": asset[1],
+                            "category": asset[2],
+                            "status": asset[3],
+                            "content": content,
+                            "updatedAt": asset[5].isoformat() if asset[5] else None
+                        }
+                    }
+
+                    await conn.commit()
+                    return response_data
+
+                except json.JSONDecodeError:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail="資產內容格式錯誤")
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"獲取資產內容失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+
+
+# 檢查區塊權限的輔助函數
+async def check_block_permission(
+    cur,
+    permissionChapter_id_binary: bytes,
+    role_ids: list,
+    asset_id: bytes
+) -> bool:
+    """
+    檢查用戶是否有權限訪問指定的區塊
+    
+    Args:
+        cur: 數據庫游標
+        permissionChapter_id_binary: 章節權限識別標籤(UUID)
+        role_ids: 用戶角色ID列表
+        asset_id: 資產ID (UUID bytes)
+        
+    Returns:
+        bool: 是否有權限
+    """
+    # 查詢該區塊的權限設置
+    await cur.execute("""
+        SELECT RoleID, ActionType
+        FROM RolePermissionMappings
+        WHERE PermissionChapterID = %s
+        AND AssetID = %s
+        FOR UPDATE
+    """, (permissionChapter_id_binary, asset_id))
+    
+    permissions = await cur.fetchall()
+    if not permissions:
+        return False
+    
+    # 檢查用戶的角色是否有權限
+    for role_id in role_ids:
+        role_id_binary = uuid.UUID(role_id).bytes
+        for permission in permissions:
+            if permission[0] == role_id_binary and permission[1] in ['read', 'read_write']:
+                return True
+    
+    return False
+
+
+# 獲取區塊內容的輔助函數
+async def get_block_content(
+    cur,
+    block_id: bytes,
+    asset_id: bytes
+) -> dict:
+    """
+    獲取區塊的內容和相關信息
+    
+    Args:
+        cur: 數據庫游標
+        block_id: 區塊ID (UUID bytes)
+        asset_id: 資產ID (UUID bytes)
+        
+    Returns:
+        dict: 區塊內容和相關信息
+    """
+    await cur.execute("""
+        SELECT 
+            content,
+            LastModified,
+            ModifiedBy,
+            IsLocked,
+            LockedBy,
+            LockedAt,
+            status
+        FROM ReportContentBlocks
+        WHERE BlockID = %s
+        AND AssetID = %s
+        FOR UPDATE
+    """, (block_id, asset_id))
+    
+    block = await cur.fetchone()
+    if not block:
+        raise HTTPException(status_code=404, detail="找不到指定的區塊")
+    
+    # 獲取最後修改者的信息
+    modified_by_info = None
+    if block[2]:  # ModifiedBy
+        await cur.execute("""
+            SELECT UserName, AvatarUrl
+            FROM Users
+            WHERE UserID = %s
+        """, (block[2],))
+        modifier = await cur.fetchone()
+        if modifier:
+            modified_by_info = {
+                "id": uuid.UUID(bytes=block[2]).hex,
+                "name": modifier[0],
+                "avatarUrl": modifier[1] or DEFAULT_USER_AVATAR
+            }
+    
+    # 獲取鎖定者的信息
+    locked_by_info = None
+    if block[4]:  # LockedBy
+        await cur.execute("""
+            SELECT UserName, AvatarUrl
+            FROM Users
+            WHERE UserID = %s
+        """, (block[4],))
+        locker = await cur.fetchone()
+        if locker:
+            locked_by_info = {
+                "id": uuid.UUID(bytes=block[4]).hex,
+                "name": locker[0],
+                "avatarUrl": locker[1] or DEFAULT_USER_AVATAR
+            }
+    
+    return {
+        "content": json.loads(block[0]) if block[0] else None,
+        "lastModified": block[1].isoformat() if block[1] else None,
+        "modifiedBy": modified_by_info,
+        "isLocked": block[3],
+        "lockedBy": locked_by_info,
+        "lockedAt": block[5].isoformat() if block[5] else None,
+        "status": block[6]
+    }
+
+
+# 鎖定區塊的輔助函數
+async def lock_block(
+    cur,
+    block_id: bytes,
+    user_id: bytes,
+    asset_id: bytes
+) -> None:
+    """
+    鎖定指定的區塊
+    
+    Args:
+        cur: 數據庫游標
+        block_id: 區塊ID (UUID bytes)
+        user_id: 用戶ID (UUID bytes)
+        asset_id: 資產ID (UUID bytes)
+    """
+    current_time = datetime.now(timezone.utc)
+    await cur.execute("""
+        UPDATE ReportContentBlocks
+        SET IsLocked = TRUE,
+            LockedBy = %s,
+            LockedAt = %s
+        WHERE BlockID = %s
+        AND AssetID = %s
+        AND (IsLocked = FALSE OR LockedAt < %s)
+    """, (
+        user_id,
+        current_time,
+        block_id,
+        asset_id,
+        current_time - timedelta(minutes=30)  # 自動解鎖30分鐘前的鎖定
+    ))
+
+
+# 解鎖區塊的輔助函數
+async def unlock_block(cur, block_id: bytes, asset_id: bytes) -> None:
+    """
+    解鎖指定的區塊
+    
+    Args:
+        cur: 數據庫游標
+        block_id: 區塊ID (UUID bytes)
+        asset_id: 資產ID (UUID bytes)
+    """
+    await cur.execute("""
+        UPDATE ReportContentBlocks
+        SET IsLocked = FALSE,
+            LockedBy = NULL,
+            LockedAt = NULL
+        WHERE BlockID = %s
+        AND AssetID = %s
+    """, (block_id, asset_id))
+
+
+# 取得公司基本表的區塊內容(Block)
+@app.post("/api/organizations/get_company_table_blocks")
+async def get_company_table_blocks(data: dict):
+    """
+    獲取公司基本表的區塊內容
+    
+    Args:
+        data: 包含以下字段的字典：
+            - blockID: 章節權限識別標籤(UUID)
+            - asset_id: 資產ID(UUID)
+            - user_id: 用戶ID(UUID)
+            - roleID: 角色ID列表(JSON格式)
+            - permissionChapter_id: 章節權限識別標籤(UUID)
+            
+    Returns:
+        dict: 包含區塊內容和狀態信息的響應
+    """
+    try:
+        # 參數驗證
+        block_id = data.get("blockID")
+        asset_id = data.get("asset_id")
+        user_id = data.get("user_id")
+        role_ids = data.get("roleID")
+        permissionChapter_id = data.get("permissionChapter_id")
+        
+        if not all([block_id, asset_id, user_id, role_ids]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+        
+        # 將逗號分隔的字符串轉換為列表
+        if isinstance(role_ids, str):
+            role_ids = role_ids.split(',')
+        
+        if not isinstance(role_ids, list):
+            raise HTTPException(status_code=400, detail="roleID 必須是列表")
+        
+        # 轉換 UUID 為二進制格式
+        try:
+            block_id_binary = uuid.UUID(block_id).bytes
+            permissionChapter_id_binary = uuid.UUID(permissionChapter_id).bytes
+            asset_id_binary = uuid.UUID(asset_id).bytes
+            user_id_binary = uuid.UUID(user_id).bytes
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=f"無效的 UUID 格式: {str(ve)}")
+        
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+                    
+                    # 檢查權限
+                    has_permission = await check_block_permission(
+                        cur, permissionChapter_id_binary, role_ids, asset_id_binary
+                    )
+                    
+                    if not has_permission:
+                        raise HTTPException(status_code=403, detail="權限不足")
+                    
+                    # 獲取區塊內容
+                    block_data = await get_block_content(
+                        cur, block_id_binary, asset_id_binary
+                    )
+                    
+                    await conn.commit()
+
+                    return {
+                        "status": "success",
+                        "data": block_data
+                    }
+                    
+                except Exception as e:
+                    await conn.rollback()
+                    print(f"數據庫操作失敗: {str(e)}")
+                    raise HTTPException(status_code=500, detail=f"獲取區塊內容失敗: {str(e)}")
+                    
+    except HTTPException as e:
+        print(f"HTTP異常: {str(e)}")
+        raise e
+    except Exception as e:
+        print(f"未預期的錯誤: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 鎖定區塊
+@app.post("/api/organizations/lock_block")
+async def lock_block_api(data: dict):
+    try:
+        # 獲取必要參數
+        block_id = data.get("block_id")
+        asset_id = data.get("asset_id")
+        user_id = data.get("user_id")
+
+        if not all([block_id, asset_id, user_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        block_id_binary = uuid.UUID(block_id).bytes
+        asset_id_binary = uuid.UUID(asset_id).bytes
+        user_id_binary = uuid.UUID(user_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查區塊是否存在
+                    await cur.execute("""
+                        SELECT IsLocked, LockedBy, LockedAt
+                        FROM ReportContentBlocks
+                        WHERE BlockID = %s AND AssetID = %s
+                        FOR UPDATE
+                    """, (block_id_binary, asset_id_binary))
+
+                    block_data = await cur.fetchone()
+                    if not block_data:
+                        raise HTTPException(status_code=404, detail="找不到指定的區塊")
+
+                    is_locked, locked_by, locked_at = block_data
+
+                    # 檢查區塊是否已被鎖定
+                    current_time = datetime.now(timezone.utc)
+                    if is_locked:
+                        # 如果鎖定時間超過30分鐘，自動解鎖
+                        if locked_at and (current_time - locked_at) > timedelta(minutes=30):
+                            is_locked = False
+                        else:
+                            # 如果是被同一用戶鎖定，允許繼續編輯
+                            if locked_by != user_id_binary:
+                                raise HTTPException(status_code=400, detail="區塊已被其他用戶鎖定")
+
+                    # 鎖定區塊
+                    await cur.execute("""
+                        UPDATE ReportContentBlocks
+                        SET IsLocked = TRUE,
+                            LockedBy = %s,
+                            LockedAt = %s
+                        WHERE BlockID = %s AND AssetID = %s
+                    """, (user_id_binary, current_time, block_id_binary, asset_id_binary))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "區塊已成功鎖定"
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"鎖定區塊失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 解鎖區塊
+@app.post("/api/organizations/unlock_block")
+async def unlock_block(data: dict):
+    try:
+        # 獲取必要參數
+        block_id = data.get("block_id")
+        asset_id = data.get("asset_id")
+        user_id = data.get("user_id")
+
+        if not all([block_id, asset_id, user_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        block_id_binary = uuid.UUID(block_id).bytes
+        asset_id_binary = uuid.UUID(asset_id).bytes
+        user_id_binary = uuid.UUID(user_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查區塊是否存在且被鎖定
+                    await cur.execute("""
+                        SELECT IsLocked, LockedBy
+                        FROM ReportContentBlocks
+                        WHERE BlockID = %s AND AssetID = %s
+                        FOR UPDATE
+                    """, (block_id_binary, asset_id_binary))
+
+                    block_data = await cur.fetchone()
+                    if not block_data:
+                        raise HTTPException(status_code=404, detail="找不到指定的區塊")
+
+                    is_locked, locked_by = block_data
+
+                    # 檢查區塊是否已被鎖定，以及是否由當前用戶鎖定
+                    if not is_locked:
+                        raise HTTPException(status_code=400, detail="區塊未被鎖定")
+                    if locked_by != user_id_binary:
+                        raise HTTPException(status_code=403, detail="無權解鎖此區塊")
+
+                    # 解鎖區塊
+                    await cur.execute("""
+                        UPDATE ReportContentBlocks
+                        SET IsLocked = FALSE,
+                            LockedBy = NULL,
+                            LockedAt = NULL
+                        WHERE BlockID = %s AND AssetID = %s
+                    """, (block_id_binary, asset_id_binary))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "區塊已成功解鎖"
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"解鎖區塊失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 檢查頁面鎖定狀態
+@app.post("/api/organizations/check_page_lock")
+async def check_page_lock(data: dict):
+    # 輸入 asset_id
+    asset_id = data.get("asset_id")
+    # 輸入 block_id 
+    block_id = data.get("block_id")
+
+    if not asset_id:
+        raise HTTPException(status_code=400, detail="缺少必要參數 asset_id")
+
+    try:
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        asset_id_binary = uuid.UUID(asset_id).bytes
+        block_id_binary = uuid.UUID(block_id).bytes if block_id else None
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 檢查區塊是否被鎖定
+                    await cur.execute("""
+                        SELECT IsLocked, LockedBy, 
+                               (SELECT Username FROM Users WHERE UserID = LockedBy) as LockedByUsername,
+                               (SELECT AvatarUrl FROM Users WHERE UserID = LockedBy) as LockedByAvatarUrl
+                        FROM ReportContentBlocks 
+                        WHERE AssetID = %s AND BlockID = %s
+                    """, (asset_id_binary, block_id_binary))
+                    
+                    result = await cur.fetchone()
+                    if not result:
+                        return {
+                            "status": "success",
+                            "isLocked": False,
+                            "lockedBy": None
+                        }
+
+                    is_locked, locked_by, locked_by_username, locked_by_avatar = result
+                    
+                    if is_locked and locked_by:
+                        return {
+                            "status": "success",
+                            "isLocked": True,
+                            "lockedBy": {
+                                "id": str(uuid.UUID(bytes=locked_by)),
+                                "name": locked_by_username,
+                                "avatarUrl": locked_by_avatar
+                            }
+                        }
+                    else:
+                        return {
+                            "status": "success",
+                            "isLocked": False,
+                            "lockedBy": None
+                        }
+
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"檢查鎖定狀態失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
 # 建立公司基本表
@@ -1652,6 +2189,12 @@ async def get_organization_assets(organization_id: str):
             except Exception as e:
                 await conn.rollback()
                 raise HTTPException(status_code=500, detail=f"獲取組織資產失敗: {str(e)}")
+
+
+
+
+
+
 
 
 if __name__ == "__main__":

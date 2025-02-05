@@ -1,9 +1,6 @@
 <!-- **公司基本資料編輯頁面 (CompanyInfoEdit.vue)** -->
 
 <template>
-  <!-- <Sidebar :isOpen="isSidebarOpen" @close="closeNav" />
-  <Header @openNav="openNav" /> -->
-
   <div :class="['editor-container', theme]">
     <!-- 引入頂部導航欄 -->
     <CompanyInfoEditNav 
@@ -281,169 +278,86 @@ import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
-import { useUserStore } from '@/stores/user'
-import { useCompanyInfoStore } from '@/stores/companyInfo'
 import { v4 as uuidv4 } from 'uuid'
-import { useRouter, useRoute } from 'vue-router'
-
-// 使用 router 和 route
-const router = useRouter()
-const route = useRoute()
-
-// 使用 store
-const userStore = useUserStore()
-const companyInfoStore = useCompanyInfoStore()
-
-// 初始化函数
-const initializeUser = async () => {
-    if (!userStore.isAuthenticated) {
-        await userStore.initializeFromStorage()
-        if (!userStore.isAuthenticated && route.path !== '/login' && route.path !== '/signup') {
-            window.location.href = '/login'
-            return
-        }
-    }
-    await userStore.fetchUserProfile()
-}
 
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
-const selectedSection = ref(null)
+const selectedSection = ref('about')
 const theme = ref('dark')
 const expandedSections = ref(new Set())
 
-// 新增子標題相關的響應式變量
+// 新增子標題相關的響應式變數
 const showModal = ref(false)
 const newSubsectionTitle = ref('')
 const currentParentId = ref(null)
 const currentLevel = ref(1)
 
-// 添加編輯標題相關的響應式變量
+// 添加新的響應式變數
 const showEditModal = ref(false)
 const editingTitle = ref('')
 const editingSectionId = ref(null)
 
-// 新增大章節相關的響應式變量
+// 新增大章節相關的響應式變數
 const showMainSectionModal = ref(false)
 const newMainSectionTitle = ref('')
 
-// 章節資料
-const sections = ref([])
-
-// 加載資產內容
-const loadAssetContent = async (assetId) => {
-  try {
-    const content = await companyInfoStore.fetchAssetContent(userStore.organizationID, assetId)
-    if (content && content.content) {
-      sections.value = content.content.chapters.map(chapter => ({
-        id: uuidv4(),
-        title: chapter.chapterTitle,
-        children: chapter.subChapters.map(subChapter => ({
-          id: uuidv4(),
-          title: subChapter.subChapterTitle,
-          children: subChapter.subSubChapters.map(subSubChapter => ({
-            id: subSubChapter.BlockID,
-            title: subSubChapter.subSubChapterTitle,
-            blockId: subSubChapter.BlockID,
-            accessPermissions: subSubChapter.access_permissions
-          }))
-        }))
-      }))
-    }
-  } catch (error) {
-    console.error('加載資產內容失敗:', error)
-  }
-}
-
-// 修改選擇章節的方法
-const selectSection = async (sectionId) => {
-  selectedSection.value = sectionId
-  // 查找並輸出 BlockID 和 章節權限識別標籤
-  const findBlockId = (sections) => {
-    for (const section of sections) {
-      if (section.children) {
-        for (const subSection of section.children) {
-          if (subSection.children) {
-            for (const item of subSection.children) {
-              if (item.id === sectionId) {
-                return {
-                  blockId: item.blockId,
-                  accessPermissions: item.accessPermissions
-                }
-              }
-            }
-          }
-        }
+// 章節結構
+const sections = ref([
+  {
+    id: 'about',
+    title: '關於本報告書',
+    children: [
+      {
+        id: 'about-section',
+        title: '關於本報告書',
+        children: [
+          { id: 'company-name', title: '公司名稱' },
+          { id: 'report-period', title: '報告期間' },
+          { id: 'scope-boundary', title: '範疇與邊界' },
+          { id: 'report-principles', title: '報告書撰寫原則' },
+          { id: 'contact-info', title: '聯絡資訊' }
+        ]
       }
-    }
-    return { blockId: null, accessPermissions: null }
-  }
-
-  const { blockId, accessPermissions } = findBlockId(sections.value)
-  if (blockId) {
-    try {
-      // 從 URL 獲取 asset_id
-      const assetId = route.query.assetId
-
-      // 從 userStore 獲取 user_id
-      const userId = userStore.userID
-
-      // 從 userStore 獲取角色 ID 並轉換為所需格式
-      const roleIds = userStore.organizationRoles.map(role => role.roleID)
-      // console.log('roleIds:', roleIds)
-
-      // 準備 API 請求數據
-      const requestData = {
-        blockID: blockId,
-        permissionChapter_id: accessPermissions,
-        asset_id: assetId,
-        user_id: userId,
-        roleID: roleIds.join(',')
+    ]
+  },
+  {
+    id: 'sustainability',
+    title: '永續發展策略',
+    children: [
+      {
+        id: 'governance',
+        title: '永續治理架構',
+        children: [
+          { id: 'committee', title: '永續發展委員會' }
+        ]
+      },
+      {
+        id: 'blueprint',
+        title: '永續發展藍圖',
+        children: [
+          { id: 'strategy-pillars', title: '永續策略主軸' },
+          { id: 'sustainability-goals', title: '永續目標' }
+        ]
+      },
+      {
+        id: 'material-topics',
+        title: '重大主題分析',
+        children: [
+          { id: 'identification-process', title: '重大主題鑑別流程' },
+          { id: 'topic-management', title: '重大主題管理' }
+        ]
+      },
+      {
+        id: 'stakeholder-communication',
+        title: '利害關係人溝通',
+        children: [
+          { id: 'stakeholder-identification', title: '利害關係人鑑別' },
+          { id: 'stakeholder-engagement', title: '利害關係人議和' }
+        ]
       }
-
-      // console.log('requestData:', requestData)
-
-      // 發送 API 請求
-      const response = await fetch('http://localhost:8000/api/organizations/get_company_table_blocks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      })
-
-      
-      if (!response.ok) {
-        throw new Error('獲取章節內容失敗')
-      }
-      
-      const data = await response.json()
-      console.log('response:', data)
-      if (data.status === 'success') {
-        // 更新章節內容
-        sectionContents.value[sectionId] = data.data.content.content.text || ''
-      }
-    } catch (error) {
-      console.error('獲取章節內容錯誤:', error)
-      // 可以在這裡添加錯誤提示
-    }
+    ]
   }
-}
-
-// 在組件掛載時初始化
-onMounted(async () => {
-  // 檢查 URL 參數
-  const assetId = route.query.assetId
-  if (!assetId) {
-    // 如果沒有 assetId 參數，導向 home 頁面
-    router.push('/home')
-    return
-  }
-  
-  await initializeUser()
-  await loadAssetContent(assetId)
-  initializeExpandedSections()
-})
+])
 
 // 編輯器配置
 const createEditor = (content = '') => new Editor({
@@ -485,6 +399,10 @@ const toggleSidebar = () => {
 
 const toggleTheme = () => {
   theme.value = theme.value === 'light' ? 'dark' : 'light'
+}
+
+const selectSection = (sectionId) => {
+  selectedSection.value = sectionId
 }
 
 const getCurrentEditor = () => {
@@ -679,6 +597,11 @@ const initializeExpandedSections = () => {
   })
 }
 
+// 在組件掛載時初始化
+onMounted(() => {
+  initializeExpandedSections()
+})
+
 const toggleSection = (sectionId) => {
   const newExpandedSections = new Set(expandedSections.value);
   if (newExpandedSections.has(sectionId)) {
@@ -720,7 +643,7 @@ const handleFontSizeChange = (size) => {
   const fontSizes = {
     small: '14px',
     medium: '16px',
-    large: '20px'
+    large: '18px'
   }
   document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
 }
@@ -1282,7 +1205,7 @@ const addMainSection = () => {
 
 .content-textarea {
   width: 100%;
-  min-height: 200px;
+  min-height: 300px;
   padding: 1rem;
   border-radius: 8px;
   resize: vertical;
