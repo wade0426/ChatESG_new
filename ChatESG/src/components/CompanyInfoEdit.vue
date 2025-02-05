@@ -285,6 +285,7 @@ import { useUserStore } from '@/stores/user'
 import { useCompanyInfoStore } from '@/stores/companyInfo'
 import { v4 as uuidv4 } from 'uuid'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 // 使用 router 和 route
 const router = useRouter()
@@ -311,6 +312,7 @@ const isSidebarCollapsed = ref(false)
 const selectedSection = ref(null)
 const theme = ref('dark')
 const expandedSections = ref(new Set())
+const previousSection = ref(null) // 添加追踪上一個選中章節的變量
 
 // 新增子標題相關的響應式變量
 const showModal = ref(false)
@@ -357,7 +359,50 @@ const loadAssetContent = async (assetId) => {
 
 // 修改選擇章節的方法
 const selectSection = async (sectionId) => {
+  // 如果有上一個選中的章節，則記錄離開信息
+  if (previousSection.value && previousSection.value !== sectionId) {
+    const prevSectionInfo = findSectionById(previousSection.value, sections.value)
+    if (prevSectionInfo && sectionContents.value[previousSection.value]) {
+      console.log(`從 ${prevSectionInfo.title} 離開章節 BlockID: ${prevSectionInfo.blockId}`)
+      console.log(`離開時的文字內容: ${sectionContents.value[previousSection.value]}`)
+      
+      try {
+        const response = await fetch('http://localhost:8000/api/organizations/update_company_table_block', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            block_id: prevSectionInfo.blockId,
+            asset_id: route.query.assetId,
+            user_id: userStore.userID,
+            content: sectionContents.value[previousSection.value]
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || '更新區塊內容失敗')
+        }
+
+        const data = await response.json()
+        if (data.status === 'success') {
+          console.log('區塊內容已成功更新')
+        } else {
+          throw new Error(data.message || '更新區塊內容失敗')
+        }
+      } catch (error) {
+        console.error('更新區塊內容時發生錯誤:', error)
+        // 這裡可以添加錯誤提示，例如使用 element-plus 的 ElMessage
+        ElMessage.error('更新區塊內容失敗：' + error.message)
+      }
+    }
+  }
+
+  // 更新上一個選中的章節
+  previousSection.value = sectionId
   selectedSection.value = sectionId
+
   // 查找並輸出 BlockID 和 章節權限識別標籤
   const findBlockId = (sections) => {
     for (const section of sections) {

@@ -1632,6 +1632,101 @@ async def get_company_table_blocks(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 修改公司基本表的區塊內容
+@app.post("/api/organizations/update_company_table_block")
+async def update_company_table_block(data: dict):
+    try:
+        # 獲取必要參數
+        block_id = data.get("block_id")
+        asset_id = data.get("asset_id")
+        user_id = data.get("user_id")
+        content = data.get("content")
+        
+        if not all([block_id, asset_id, user_id, content]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        block_id_binary = uuid.UUID(block_id).bytes
+        asset_id_binary = uuid.UUID(asset_id).bytes
+        user_id_binary = uuid.UUID(user_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查區塊是否存在並獲取原始內容
+                    await cur.execute("""
+                        SELECT 
+                            content,
+                            IsLocked,
+                            LockedBy
+                        FROM ReportContentBlocks
+                        WHERE BlockID = %s
+                        AND AssetID = %s
+                        FOR UPDATE
+                    """, (block_id_binary, asset_id_binary))
+                    
+                    block = await cur.fetchone()
+                    if not block:
+                        raise HTTPException(status_code=404, detail="找不到指定的區塊")
+
+                    # 檢查區塊是否被鎖定
+                    is_locked, locked_by = block[1], block[2]
+                    if is_locked and locked_by != user_id_binary:
+                        raise HTTPException(status_code=403, detail="區塊已被其他用戶鎖定")
+
+                    # 解析原始內容
+                    try:
+                        original_content = json.loads(block[0]) if block[0] else {}
+                    except json.JSONDecodeError:
+                        raise HTTPException(status_code=500, detail="區塊內容格式錯誤")
+
+                    # 更新內容
+                    original_content["content"]["text"] = content
+
+                    # 更新區塊內容
+                    current_time = datetime.now(timezone.utc)
+                    await cur.execute("""
+                        UPDATE ReportContentBlocks
+                        SET content = %s,
+                            LastModified = %s,
+                            ModifiedBy = %s,
+                            version = version + 1
+                        WHERE BlockID = %s
+                        AND AssetID = %s
+                    """, (
+                        json.dumps(original_content),
+                        current_time,
+                        user_id_binary,
+                        block_id_binary,
+                        asset_id_binary
+                    ))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "區塊內容已更新",
+                        "data": {
+                            "block_id": block_id,
+                            "last_modified": current_time.isoformat(),
+                            "version": "version + 1"
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"更新區塊內容失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
 # 鎖定區塊
 @app.post("/api/organizations/lock_block")
 async def lock_block_api(data: dict):
