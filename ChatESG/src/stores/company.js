@@ -38,11 +38,12 @@ export const useCompanyStore = defineStore('company', () => {
       // 準備請求資料
       const requestData = {
         company_name: companyData.name,
+        category: companyData.category,
         creator_id: companyData.creator,
         organization_id: companyData.organizationID,
         template_url: selectedIndustry.templateUrl
       }
-
+      
       // 發送 API 請求
       const response = await fetch('http://localhost:8000/api/organizations/create_company_table', {
         method: 'POST',

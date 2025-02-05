@@ -106,6 +106,7 @@ const submitForm = async () => {
     await companyStore.createCompanyInfo({
       name: formData.companyInfoName,
       industry: formData.selectedIndustry,
+      category: formData.selectedIndustry,
       creator: userStore.userID,
       organizationID: userStore.organizationID
     })
