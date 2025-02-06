@@ -247,7 +247,11 @@ const toggleDropdown = (assetId) => {
 const openAsset = (asset) => {
     if (asset.AssetType === 'company_info') {
         router.push(`/company-info-edit?assetId=${asset.AssetId}`)
-    } else {
+    }
+    else if (asset.AssetType === 'standard_template') {
+        router.push(`/create-major-issues-list?assetId=${asset.AssetId}`)
+    }
+    else {
         toast.info('此類型資產暫不支持開啟')
     }
     activeDropdown.value = null

@@ -2390,7 +2390,7 @@ async def create_standard_template(data: dict):
                     """, (
                         block_id,
                         asset_id,
-                        json.dumps({}),  # 空的內容，表示剛建立還沒有選擇準則
+                        json.dumps({"selectedCriteria": []}),  # 空的內容，表示剛建立還沒有選擇準則
                         creator_id_binary
                     ))
 
@@ -2408,6 +2408,164 @@ async def create_standard_template(data: dict):
                 except Exception as e:
                     await conn.rollback()
                     raise HTTPException(status_code=500, detail=f"創建準則模板失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
+
+
+# 取得準則模板
+@app.post("/api/organizations/get_standard_template")
+async def get_standard_template(data: dict):
+    try:
+        # 獲取必要參數
+        asset_id = data.get("asset_id")
+        organization_id = data.get("organization_id")
+        role_ids = data.get("role_ids") # 使用 , 分隔
+
+        if not all([asset_id, organization_id, role_ids]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 確保 role_ids 是列表
+        if isinstance(role_ids, str):
+            role_ids = role_ids.split(',')
+        if not isinstance(role_ids, list):
+            raise HTTPException(status_code=400, detail="role_ids 必須是列表")
+
+        # 將字符串格式的 ID 轉換為 BINARY(16) 格式
+        try:
+            asset_id_binary = uuid.UUID(asset_id).bytes
+            organization_id_binary = uuid.UUID(organization_id).bytes
+        except ValueError:
+            raise HTTPException(status_code=400, detail="無效的ID格式")
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 從 organizationassets 表獲取資產資訊
+                    await cur.execute("""
+                        SELECT 
+                            AssetName,
+                            AssetType,
+                            Category,
+                            Status,
+                            Content,
+                            IsDeleted
+                        FROM OrganizationAssets
+                        WHERE AssetID = %s
+                        AND OrganizationID = %s
+                        FOR UPDATE
+                    """, (asset_id_binary, organization_id_binary))
+
+                    asset = await cur.fetchone()
+                    if not asset:
+                        raise HTTPException(status_code=404, detail="找不到該資產")
+
+                    # 檢查資產是否已被刪除
+                    if asset[5]:  # IsDeleted
+                        raise HTTPException(status_code=404, detail="該資產已被刪除")
+
+                    # 解析資產內容以獲取 BlockID 和 access_permissions
+                    try:
+                        content = json.loads(asset[4]) if asset[4] else {}
+                        block_id = content.get("BlockID")
+                        access_permissions = content.get("access_permissions")
+
+                        if not all([block_id, access_permissions]):
+                            raise HTTPException(status_code=400, detail="資產內容格式錯誤")
+
+                        # 將字符串格式的 ID 轉換為 BINARY(16)
+                        block_id_binary = uuid.UUID(block_id).bytes
+                        permission_id_binary = uuid.UUID(access_permissions).bytes
+
+                    except (json.JSONDecodeError, ValueError) as e:
+                        raise HTTPException(status_code=400, detail="資產內容解析失敗")
+
+                    # 驗證權限
+                    has_permission = await check_block_permission(
+                        cur, permission_id_binary, role_ids, asset_id_binary
+                    )
+                    
+                    if not has_permission:
+                        raise HTTPException(status_code=403, detail="權限不足")
+
+                    # 從 reportcontentblocks 表獲取區塊內容
+                    await cur.execute("""
+                        SELECT 
+                            content,
+                            LastModified,
+                            ModifiedBy,
+                            IsLocked,
+                            LockedBy,
+                            LockedAt,
+                            status
+                        FROM ReportContentBlocks
+                        WHERE BlockID = %s AND AssetID = %s
+                        FOR UPDATE
+                    """, (block_id_binary, asset_id_binary))
+
+                    block = await cur.fetchone()
+                    if not block:
+                        raise HTTPException(status_code=404, detail="找不到區塊內容")
+
+                    # 獲取最後修改者的信息
+                    modified_by_info = None
+                    if block[2]:  # ModifiedBy
+                        await cur.execute("""
+                            SELECT UserName, AvatarUrl
+                            FROM Users
+                            WHERE UserID = %s
+                        """, (block[2],))
+                        modifier = await cur.fetchone()
+                        if modifier:
+                            modified_by_info = {
+                                "id": uuid.UUID(bytes=block[2]).hex,
+                                "name": modifier[0],
+                                "avatarUrl": modifier[1] or DEFAULT_USER_AVATAR
+                            }
+
+                    # 獲取鎖定者的信息
+                    locked_by_info = None
+                    if block[4]:  # LockedBy
+                        await cur.execute("""
+                            SELECT UserName, AvatarUrl
+                            FROM Users
+                            WHERE UserID = %s
+                        """, (block[4],))
+                        locker = await cur.fetchone()
+                        if locker:
+                            locked_by_info = {
+                                "id": uuid.UUID(bytes=block[4]).hex,
+                                "name": locker[0],
+                                "avatarUrl": locker[1] or DEFAULT_USER_AVATAR
+                            }
+
+                    # 構建回應數據
+                    response_data = {
+                        "status": "success",
+                        "data": {
+                            "assetName": asset[0],
+                            "assetType": asset[1],
+                            "category": asset[2],
+                            "status": asset[3],
+                            "content": json.loads(block[0]) if block[0] else None,
+                            "lastModified": block[1].isoformat() if block[1] else None,
+                            "modifiedBy": modified_by_info,
+                            "isLocked": block[3],
+                            "lockedBy": locked_by_info,
+                            "lockedAt": block[5].isoformat() if block[5] else None,
+                            "blockStatus": block[6]
+                        }
+                    }
+
+                    await conn.commit()
+                    return response_data
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"獲取準則模板失敗: {str(e)}")
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail="無效的ID格式")

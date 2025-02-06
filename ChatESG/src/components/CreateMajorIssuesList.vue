@@ -129,10 +129,12 @@ import axios from 'axios'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import { useUserStore } from '@/stores/user'
+import { useCriteriaTemplateStore } from '@/stores/criteriaTemplate'
 import { useRouter, useRoute } from 'vue-router'
 
 // 用戶狀態管理
 const userStore = useUserStore()
+const criteriaTemplateStore = useCriteriaTemplateStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -147,11 +149,32 @@ const initializeUser = async () => {
   await userStore.fetchUserProfile()
 }
 
+const initializeCriteriaTemplate = async () => {
+  const assetId = route.query.assetId
+  if (!assetId) {
+    router.push('/home')
+    return
+  }
+  criteriaTemplateStore.setAssetID(assetId)
+  criteriaTemplateStore.setOrganizationID(userStore.organizationID)
+  criteriaTemplateStore.setRoleIDs(userStore.organizationRoles.map(role => role.roleID).join(','))
+  criteriaTemplateStore.fetchCriteriaTemplate()
+}
+
 // 在組件掛載時初始化
 onMounted(async () => {
   await initializeUser()
+  await initializeCriteriaTemplate()
   fetchData()
   window.addEventListener('beforeunload', handleBeforeUnload)
+  
+  // 從 store 恢復選中狀態
+  const storedCriteria = criteriaTemplateStore.selectedCriteria
+  if (storedCriteria.length > 0) {
+    selectedIssues.value = issues.value
+      .filter(item => storedCriteria.some(sc => sc.gri_id === item.gri_id))
+      .map(item => item.id)
+  }
 })
 
 // 監聽路由變化
@@ -183,7 +206,10 @@ const sortOrder = ref('asc')
 const selectAll = ref(false)
 
 // 文件名稱狀態
-const fileName = ref('未命名文件')
+const fileName = computed({
+  get: () => criteriaTemplateStore.fileName,
+  set: (value) => criteriaTemplateStore.setFileName(value)
+})
 
 // 儲存狀態管理
 const saveStatus = ref('saved') // 'saved', 'saving', 'unsaved', 'error'
@@ -220,7 +246,7 @@ const handleContentChange = () => {
     if (saveStatus.value === 'unsaved') {
       saveFile()
     }
-  }, 3000)
+  }, 10000)
 }
 
 // 獲取數據
@@ -337,8 +363,20 @@ const getSortIcon = (key) => {
 // 全選/取消全選
 const toggleSelectAll = () => {
   if (selectAll.value) {
+    const selectedItems = filteredAndSortedIssues.value.map(item => ({
+      gri_id: item.gri_id,
+      topic: item.theme,
+      domain: item.domain,
+      description: item.description,
+      gri_name: item.gri_name,
+      sdgs: item.sdgs ? item.sdgs.split(',').map(s => s.trim()) : null,
+      tcfd: item.tcfd || null,
+      sasb: item.sasb || null
+    }))
+    criteriaTemplateStore.setSelectedCriteria(selectedItems)
     selectedIssues.value = filteredAndSortedIssues.value.map(item => item.id)
   } else {
+    criteriaTemplateStore.clearSelectedCriteria()
     selectedIssues.value = []
   }
 }
@@ -350,7 +388,7 @@ const saveFile = async () => {
     
     // 準備要儲存的數據
     const dataToSave = {
-      fileName: fileName.value,
+      fileName: criteriaTemplateStore.fileName,
       selectedIssues: selectedIssues.value,
       // 添加其他需要儲存的數據...
     }
@@ -376,7 +414,20 @@ const saveFile = async () => {
 }
 
 // 監聽選擇的議題變化
-watch(selectedIssues, () => {
+watch(selectedIssues, (newVal) => {
+  const selectedItems = issues.value
+    .filter(item => selectedIssues.value.includes(item.id))
+    .map(item => ({
+      gri_id: item.gri_id,
+      topic: item.theme,
+      domain: item.domain,
+      description: item.description,
+      gri_name: item.gri_name,
+      sdgs: item.sdgs ? item.sdgs.split(',').map(s => s.trim()) : null,
+      tcfd: item.tcfd || null,
+      sasb: item.sasb || null
+    }))
+  criteriaTemplateStore.setSelectedCriteria(selectedItems)
   handleContentChange()
 }, { deep: true })
 
