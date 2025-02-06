@@ -130,7 +130,7 @@ import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import { useUserStore } from '@/stores/user'
 import { useCriteriaTemplateStore } from '@/stores/criteriaTemplate'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 // import { toast } from 'vue-toastification'
 
 // 用戶狀態管理
@@ -447,17 +447,42 @@ const toggleSelectAll = () => {
   }
 }
 
-// 儲存文件
+// 修改 handleBeforeUnload 函数
+const handleBeforeUnload = (event) => {
+  if (saveStatus.value === 'unsaved') {
+    const message = '您有未儲存的更改，確定要離開嗎？'
+    event.preventDefault()
+    event.returnValue = message
+    return message
+  }
+}
+
+// 添加路由离开守卫
+onBeforeRouteLeave((to, from, next) => {
+  if (saveStatus.value === 'unsaved') {
+    const answer = window.confirm('您有未儲存的更改，確定要離開嗎？')
+    if (answer) {
+      next()
+    } else {
+      next(false)
+    }
+  } else {
+    next()
+  }
+})
+
+// 修改 saveFile 函数，确保保存成功后正确更新状态
 const saveFile = async () => {
   try {
     saveStatus.value = 'saving'
     
-    // 準備要儲存的數據
-    // const fileName = criteriaTemplateStore.fileName
-
+    await criteriaTemplateStore.saveCriteriaTemplate()
+    
     saveStatus.value = 'saved'
-
-    criteriaTemplateStore.saveCriteriaTemplate()
+    lastSavedData.value = JSON.stringify({
+      selectedCriteria: criteriaTemplateStore.selectedCriteria,
+      fileName: criteriaTemplateStore.fileName
+    })
     
     // 3秒後隱藏成功狀態
     setTimeout(() => {
@@ -472,22 +497,20 @@ const saveFile = async () => {
   }
 }
 
-// 離開頁面前檢查是否有未儲存的更改
-onMounted(() => {
-  window.addEventListener('beforeunload', handleBeforeUnload)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('beforeunload', handleBeforeUnload)
-})
-
-const handleBeforeUnload = (event) => {
-  if (saveStatus.value === 'unsaved') {
-    event.preventDefault()
-    event.returnValue = '您有未儲存的更改，確定要離開嗎？'
-    return event.returnValue
+// 监听数据变化，更新保存状态
+watch([
+  () => criteriaTemplateStore.selectedCriteria,
+  () => criteriaTemplateStore.fileName
+], () => {
+  const currentData = JSON.stringify({
+    selectedCriteria: criteriaTemplateStore.selectedCriteria,
+    fileName: criteriaTemplateStore.fileName
+  })
+  
+  if (lastSavedData.value !== currentData) {
+    saveStatus.value = 'unsaved'
   }
-}
+}, { deep: true })
 </script>
 
 <style scoped>
