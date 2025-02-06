@@ -102,6 +102,12 @@ const router = createRouter({
             name: 'AssetOverview',
             component: () => import('../components/AssetOverview.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/report-edit',
+            name: 'ReportEdit',
+            component: () => import('../components/ReportEdit.vue'),
+            meta: { requiresAuth: true }
         }
     ]
 })

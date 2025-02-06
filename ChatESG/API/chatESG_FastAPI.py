@@ -2286,6 +2286,131 @@ async def get_organization_assets(organization_id: str):
                 raise HTTPException(status_code=500, detail=f"獲取組織資產失敗: {str(e)}")
 
 
+# 建立準則模板
+@app.post("/api/organizations/create_standard_template")
+async def create_standard_template(data: dict):
+    try:
+        # 獲取必要參數
+        organization_id = data.get("organization_id")
+        creator_id = data.get("creator_id")
+        template_name = data.get("template_name")
+        category = data.get("category")
+
+        if not all([organization_id, creator_id, template_name, category]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        organization_id_binary = uuid.UUID(organization_id).bytes
+        creator_id_binary = uuid.UUID(creator_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查組織是否存在
+                    await cur.execute("""
+                        SELECT OrganizationID 
+                        FROM Organizations 
+                        WHERE OrganizationID = %s AND IsDeleted = FALSE
+                    """, (organization_id_binary,))
+
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到指定的組織")
+
+                    # 生成必要的 UUID
+                    asset_id = uuid.uuid4().bytes
+                    block_id = uuid.uuid4().bytes
+                    permission_chapter_id = uuid.uuid4().bytes
+
+                    # 獲取組織中"一般"角色的RoleID
+                    await cur.execute("""
+                        SELECT RoleID 
+                        FROM Roles 
+                        WHERE OrganizationID = %s AND RoleName = '一般'
+                    """, (organization_id_binary,))
+                    
+                    general_role = await cur.fetchone()
+                    if not general_role:
+                        raise HTTPException(status_code=404, detail="找不到組織的一般角色")
+
+                    # 準備資產內容
+                    asset_content = {
+                        "AssetID": uuid.UUID(bytes=asset_id).hex,
+                        "BlockID": uuid.UUID(bytes=block_id).hex,
+                        "access_permissions": uuid.UUID(bytes=permission_chapter_id).hex
+                    }
+
+                    # 1. 在 organizationassets 表中建立資料
+                    await cur.execute("""
+                        INSERT INTO OrganizationAssets (
+                            AssetID,
+                            OrganizationID,
+                            AssetName,
+                            AssetType,
+                            Category,
+                            CreatorID,
+                            Status,
+                            Content
+                        ) VALUES (%s, %s, %s, 'standard_template', %s, %s, 'editing', %s)
+                    """, (
+                        asset_id,
+                        organization_id_binary,
+                        template_name,
+                        category,
+                        creator_id_binary,
+                        json.dumps(asset_content)
+                    ))
+
+                    # 2. 在 rolepermissionmappings 表中建立資料
+                    await cur.execute("""
+                        INSERT INTO RolePermissionMappings (
+                            RoleID,
+                            PermissionChapterID,
+                            AssetID,
+                            ResourceType,
+                            ActionType
+                        ) VALUES (%s, %s, %s, 'standard_template', 'read_write')
+                    """, (
+                        general_role[0],  # 一般角色ID
+                        permission_chapter_id,
+                        asset_id
+                    ))
+
+                    # 3. 在 reportcontentblocks 表中建立資料
+                    await cur.execute("""
+                        INSERT INTO ReportContentBlocks (
+                            BlockID,
+                            AssetID,
+                            status,
+                            content,
+                            ModifiedBy
+                        ) VALUES (%s, %s, 'editing', %s, %s)
+                    """, (
+                        block_id,
+                        asset_id,
+                        json.dumps({}),  # 空的內容，表示剛建立還沒有選擇準則
+                        creator_id_binary
+                    ))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "準則模板創建成功",
+                        "data": {
+                            "asset_id": uuid.UUID(bytes=asset_id).hex,
+                            "block_id": uuid.UUID(bytes=block_id).hex,
+                            "permission_chapter_id": uuid.UUID(bytes=permission_chapter_id).hex
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"創建準則模板失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的ID格式")
 
 
 
