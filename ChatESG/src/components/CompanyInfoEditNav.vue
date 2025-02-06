@@ -10,12 +10,13 @@
       <div class="file-info">
         <!-- 檔案名稱輸入框 -->
         <input
-        type="text"
-        v-model="fileName"
-        class="file-name-input"
-        @change="handleFileNameChange"
-        placeholder="輸入檔案名稱"
-          >
+          type="text"
+          :value="fileName"
+          class="file-name-input"
+          @input="handleFileNameInput"
+          @change="handleFileNameChange"
+          placeholder="輸入檔案名稱"
+        >
       </div>
     </div>
 
@@ -173,10 +174,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, inject, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { useCompanyInfoStore } from '@/stores/companyInfo'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-
+const route = useRoute()
+const companyInfoStore = useCompanyInfoStore()
+const userStore = useUserStore()
 // 注入父組件提供的儲存方法
 const handleSave = inject('handleSave')
 
@@ -185,7 +190,10 @@ const comments = inject('comments', ref({}))
 
 // 基本狀態
 const theme = ref('dark')
-const fileName = ref('未命名文件')
+const fileNameInput = ref('')  // 新增用於處理輸入的ref
+const fileName = computed(() => {
+  return companyInfoStore.assetContent?.assetName || '未命名文件'
+})
 const isSaved = ref(true)
 const saveStatus = ref('已儲存')
 const showSettings = ref(false)
@@ -347,8 +355,62 @@ const goHome = async () => {
   }, 800)
 }
 
-const handleFileNameChange = () => {
-  console.log('更新後的檔案名稱:', fileName.value)
+// 監聽 assetContent 變化，更新輸入值
+watch(() => companyInfoStore.assetContent?.assetName, (newName) => {
+  if (newName) {
+    fileNameInput.value = newName
+  }
+}, { immediate: true })
+
+// 處理輸入
+const handleFileNameInput = (event) => {
+  fileNameInput.value = event.target.value
+}
+
+// 處理確認修改
+const handleFileNameChange = async (event) => {
+  const newFileName = fileNameInput.value
+  try {
+    // 檢查必要參數
+    if (!route.query.assetId || !userStore.organizationID || !newFileName) {
+      throw new Error('缺少必要參數')
+    }
+
+    // 檢查名稱長度
+    if (newFileName.length > 100) {
+      throw new Error('資產名稱長度不能超過100個字符')
+    }
+
+    // 調用 API 來更新資產名稱
+    const response = await fetch('http://localhost:8000/api/organizations/update_asset_name', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        asset_id: route.query.assetId,
+        organization_id: userStore.organizationID,
+        asset_name: newFileName
+      })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.detail || '更新資產名稱失敗')
+    }
+
+    // 更新 store 中的資產名稱
+    if (companyInfoStore.assetContent) {
+      companyInfoStore.assetContent.assetName = newFileName
+    }
+
+    console.log('資產名稱更新成功')
+  } catch (error) {
+    console.error('更新資產名稱失敗:', error)
+    // 發生錯誤時恢復原始名稱
+    fileNameInput.value = companyInfoStore.assetContent?.assetName || '未命名文件'
+  }
 }
 
 // 切換註解篩選下拉選單
