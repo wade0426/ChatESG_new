@@ -227,16 +227,53 @@ const getSaveButtonText = computed(() => {
   }
 })
 
-// 監聽內容變化
+// 添加清除自動保存的函數
+const clearAutoSave = () => {
+  if (autoSaveTimeout.value) {
+    clearTimeout(autoSaveTimeout.value)
+    autoSaveTimeout.value = null
+  }
+}
+
+// 修改路由離開守衛
+onBeforeRouteLeave((to, from, next) => {
+  if (saveStatus.value === 'unsaved') {
+    const answer = window.confirm('您有未儲存的更改，確定要離開嗎？')
+    if (answer) {
+      clearAutoSave() // 清除自动保存
+      next()
+    } else {
+      next(false)
+    }
+  } else {
+    next()
+  }
+})
+
+// 修改 handleBeforeUnload 函数
+const handleBeforeUnload = (event) => {
+  if (saveStatus.value === 'unsaved') {
+    const message = '您有未儲存的更改，確定要離開嗎？'
+    clearAutoSave() // 清除自动保存
+    event.preventDefault()
+    event.returnValue = message
+    return message
+  }
+}
+
+// 在組件卸載時清理
+onBeforeUnmount(() => {
+  clearAutoSave()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+// 修改 handleContentChange 函數
 const handleContentChange = () => {
   saveStatus.value = 'unsaved'
   
-  // 清除之前的自動儲存計時器
-  if (autoSaveTimeout.value) {
-    clearTimeout(autoSaveTimeout.value)
-  }
+  clearAutoSave() // 先清除之前的計時器
   
-  // 設置新的自動儲存計時器（10秒後自動儲存）
+  // 設置新的自動保存計時器
   autoSaveTimeout.value = setTimeout(() => {
     if (saveStatus.value === 'unsaved') {
       saveFile()
@@ -244,7 +281,7 @@ const handleContentChange = () => {
   }, 10000)
 }
 
-// 修改 fetchData 函数
+// 修改 fetchData 函數
 const fetchData = async () => {
   try {
     const response = await axios.get('https://raw.githubusercontent.com/wade0426/1110932038/refs/heads/main/Major_Issues_List.csv')
@@ -446,30 +483,6 @@ const toggleSelectAll = () => {
     isUpdatingFromSelection = false
   }
 }
-
-// 修改 handleBeforeUnload 函数
-const handleBeforeUnload = (event) => {
-  if (saveStatus.value === 'unsaved') {
-    const message = '您有未儲存的更改，確定要離開嗎？'
-    event.preventDefault()
-    event.returnValue = message
-    return message
-  }
-}
-
-// 添加路由离开守卫
-onBeforeRouteLeave((to, from, next) => {
-  if (saveStatus.value === 'unsaved') {
-    const answer = window.confirm('您有未儲存的更改，確定要離開嗎？')
-    if (answer) {
-      next()
-    } else {
-      next(false)
-    }
-  } else {
-    next()
-  }
-})
 
 // 修改 saveFile 函数，确保保存成功后正确更新状态
 const saveFile = async () => {
