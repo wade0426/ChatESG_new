@@ -1,14 +1,10 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-export const useReportStore = defineStore('report', {
+export const useReportStore = defineStore('report_modal', {
   state: () => ({
     industries: [],
-    assetSizes: [
-      { value: 'small', label: '小型企業' },
-      { value: 'medium', label: '中型企業' },
-      { value: 'large', label: '大型企業' }
-    ],
+    company_info: [],
     templates: [],
     loading: false,
     error: null
@@ -18,6 +14,7 @@ export const useReportStore = defineStore('report', {
     async fetchIndustries() {
       try {
         this.loading = true
+        // 不使用API，先暫時使用固定值
         this.industries = [
           { value: 'finance', label: '金融業' },
           { value: 'technology', label: '科技業' },
@@ -30,11 +27,38 @@ export const useReportStore = defineStore('report', {
       }
     },
 
-    async fetchTemplates() {
+    async fetchOrganizationAssets(organizationID) {
       try {
         this.loading = true
-        const response = await axios.get('/api/templates')
-        this.templates = response.data
+        const response = await fetch('http://localhost:8000/api/organizations/get_organization_assets_for_modal', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            organization_id: organizationID
+          })
+        })
+        if (response.ok) {
+          const data = await response.json()
+          // console.log("data", data)
+          this.company_info = data.data.company_info.map(item => ({
+            value: item.assetID,
+            label: item.assetName,
+            category: item.category,
+            status: item.status,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt
+          }))
+          this.templates = data.data.standard_template.map(item => ({
+            value: item.assetID,
+            label: item.assetName,
+            category: item.category,
+            status: item.status,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt
+          }))
+        }
       } catch (error) {
         this.error = error.message
       } finally {

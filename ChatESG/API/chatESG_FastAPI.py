@@ -2703,5 +2703,78 @@ async def save_standard_template(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 取得組織資產Modal
+@app.post("/api/organizations/get_organization_assets_for_modal")
+async def get_organization_assets_for_modal(data: dict):
+    try:
+        # 獲取組織ID
+        organization_id = data.get("organization_id")
+        if not organization_id:
+            raise HTTPException(status_code=400, detail="缺少組織ID")
+
+        # 將字符串格式的organization_id轉換為BINARY(16)格式
+        organization_id_binary = uuid.UUID(organization_id).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 查詢組織的所有未刪除的資產
+                    await cur.execute("""
+                        SELECT 
+                            AssetID,
+                            AssetName,
+                            AssetType,
+                            Category,
+                            Status,
+                            CreatedAt,
+                            UpdatedAt
+                        FROM OrganizationAssets
+                        WHERE OrganizationID = %s 
+                        AND IsDeleted = FALSE
+                        ORDER BY UpdatedAt DESC
+                    """, (organization_id_binary,))
+
+                    assets = await cur.fetchall()
+                    
+                    # 初始化分類結果
+                    result = {
+                        "standard_template": [],
+                        "company_info": []
+                    }
+
+                    # 處理資產數據並分類
+                    for asset in assets:
+                        asset_data = {
+                            "assetID": uuid.UUID(bytes=asset[0]).hex,
+                            "assetName": asset[1],
+                            "category": asset[3],
+                            "status": asset[4],
+                            "createdAt": asset[5].isoformat() if asset[5] else None,
+                            "updatedAt": asset[6].isoformat() if asset[6] else None
+                        }
+
+                        # 根據資產類型分類
+                        if asset[2] == 'standard_template':
+                            result["standard_template"].append(asset_data)
+                        elif asset[2] == 'company_info':
+                            result["company_info"].append(asset_data)
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "data": result
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"獲取組織資產失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="無效的組織ID格式")
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)

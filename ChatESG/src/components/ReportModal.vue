@@ -50,7 +50,7 @@
                     >
                         <option value="">請選擇資產規模</option>
                         <option 
-                            v-for="size in reportStore.assetSizes" 
+                            v-for="size in reportStore.company_info" 
                             :key="size.value" 
                             :value="size.value"
                         >
@@ -103,12 +103,14 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useReportStore } from '@/stores/report_model'
+import { useUserStore } from '@/stores/user'
 import { useFormValidation } from '@/composables/useFormValidation'
 import { useToast } from 'vue-toastification'
 
 const reportStore = useReportStore()
 const reportModal = ref(null)
 const toast = useToast()
+const userStore = useUserStore()
 
 const form = reactive({
     reportName: '',
@@ -136,10 +138,16 @@ const { errors, validateForm } = useFormValidation({
 })
 
 onMounted(async () => {
-    await Promise.all([
-        reportStore.fetchIndustries(),
-        reportStore.fetchTemplates()
-    ])
+    // 確保先獲取用戶完整信息
+    await userStore.fetchUserProfile()
+    // 獲取產業列表
+    await reportStore.fetchIndustries()
+    // 獲取組織資產
+    if (userStore.organizationID) {
+        await reportStore.fetchOrganizationAssets(userStore.organizationID)
+    } else {
+        console.error("未找到組織ID")
+    }
 })
 
 const showModal = () => {
@@ -161,8 +169,27 @@ const createReport = async () => {
     if (!validateForm(form)) return
 
     try {
-        // TODO: 調用 API 創建報告
-        console.log("建立報告書：", form)
+        // 获取选中的资产和模板的完整信息
+        const selectedAssetInfo = reportStore.company_info.find(item => item.value === form.selectedAsset)
+        const selectedTemplateInfo = reportStore.templates.find(item => item.value === form.selectedTemplate)
+        const selectedIndustryInfo = reportStore.industries.find(item => item.value === form.selectedIndustry)
+
+        console.log('報告詳細信息：', {
+            報告書名稱: form.reportName,
+            產業: {
+                id: selectedIndustryInfo?.value,
+                name: selectedIndustryInfo?.label
+            },
+            公司基本資料: {
+                AssetID: selectedAssetInfo?.value,
+                name: selectedAssetInfo?.label
+            },
+            準則模板: {
+                AssetID: selectedTemplateInfo?.value,
+                name: selectedTemplateInfo?.label
+            }
+        })
+
         toast.success('報告建立成功')
         hideModal()
     } catch (error) {
