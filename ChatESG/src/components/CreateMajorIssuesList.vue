@@ -114,7 +114,7 @@
             <td>{{ item.gri_id }}</td>
             <td>{{ item.gri_name }}</td>
             <td>{{ item.sasb }}</td>
-            <td>{{ item.sdgs }}</td>
+            <td>{{ Array.isArray(item.sdgs) ? item.sdgs.join(', ') : item.sdgs }}</td>
             <td>{{ item.tcfd }}</td>
           </tr>
         </tbody>
@@ -131,6 +131,7 @@ import Header from './Header.vue'
 import { useUserStore } from '@/stores/user'
 import { useCriteriaTemplateStore } from '@/stores/criteriaTemplate'
 import { useRouter, useRoute } from 'vue-router'
+// import { toast } from 'vue-toastification'
 
 // 用戶狀態管理
 const userStore = useUserStore()
@@ -158,23 +159,17 @@ const initializeCriteriaTemplate = async () => {
   criteriaTemplateStore.setAssetID(assetId)
   criteriaTemplateStore.setOrganizationID(userStore.organizationID)
   criteriaTemplateStore.setRoleIDs(userStore.organizationRoles.map(role => role.roleID).join(','))
+  criteriaTemplateStore.setUserID(userStore.userID)
   criteriaTemplateStore.fetchCriteriaTemplate()
 }
 
 // 在組件掛載時初始化
 onMounted(async () => {
   await initializeUser()
-  await initializeCriteriaTemplate()
-  fetchData()
-  window.addEventListener('beforeunload', handleBeforeUnload)
+  await fetchData() // 先获取数据
+  await initializeCriteriaTemplate() // 然后初始化模板
   
-  // 從 store 恢復選中狀態
-  const storedCriteria = criteriaTemplateStore.selectedCriteria
-  if (storedCriteria.length > 0) {
-    selectedIssues.value = issues.value
-      .filter(item => storedCriteria.some(sc => sc.gri_id === item.gri_id))
-      .map(item => item.id)
-  }
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 // 監聽路由變化
@@ -241,7 +236,7 @@ const handleContentChange = () => {
     clearTimeout(autoSaveTimeout.value)
   }
   
-  // 設置新的自動儲存計時器（3秒後自動儲存）
+  // 設置新的自動儲存計時器（10秒後自動儲存）
   autoSaveTimeout.value = setTimeout(() => {
     if (saveStatus.value === 'unsaved') {
       saveFile()
@@ -249,7 +244,7 @@ const handleContentChange = () => {
   }, 10000)
 }
 
-// 獲取數據
+// 修改 fetchData 函数
 const fetchData = async () => {
   try {
     const response = await axios.get('https://raw.githubusercontent.com/wade0426/1110932038/refs/heads/main/Major_Issues_List.csv')
@@ -260,41 +255,53 @@ const fetchData = async () => {
     const headers = rows[0].split(',') // 保存標題行以供參考
     
     // 從第二行開始處理數據
-    issues.value = rows.slice(1).map((row, index) => {
-      // 使用更精確的 CSV 解析邏輯
-      let columns = []
-      let inQuotes = false
-      let currentValue = ''
-      
-      for (let i = 0; i < row.length; i++) {
-        const char = row[i]
+    const processedIssues = rows.slice(1)
+      .map((row, index) => {
+        // 使用更精確的 CSV 解析邏輯
+        let columns = []
+        let inQuotes = false
+        let currentValue = ''
         
-        if (char === '"') {
-          inQuotes = !inQuotes
-        } else if (char === ',' && !inQuotes) {
-          columns.push(currentValue.trim())
-          currentValue = ''
-        } else {
-          currentValue += char
+        for (let i = 0; i < row.length; i++) {
+          const char = row[i]
+          
+          if (char === '"') {
+            inQuotes = !inQuotes
+          } else if (char === ',' && !inQuotes) {
+            columns.push(currentValue.trim())
+            currentValue = ''
+          } else {
+            currentValue += char
+          }
         }
-      }
-      columns.push(currentValue.trim()) // 添加最後一列
-      
-      // 清理數據：移除引號和多餘的空格
-      columns = columns.map(col => col.replace(/^"|"$/g, '').trim())
-      
-      return {
-        id: index,
-        theme: columns[0],
-        domain: columns[1],
-        description: columns[2],
-        gri_id: columns[3],
-        gri_name: columns[4],
-        sasb: columns[5],
-        sdgs: columns[6]?.replace(/"/g, '').trim() || '', // 特別處理 SDGs 列
-        tcfd: columns[7]?.replace(/"/g, '').trim() || '' // 特別處理 TCFD 列
-      }
-    }).filter(item => item.theme && !headers.includes(item.theme)) // 過濾掉標題行和空行
+        columns.push(currentValue.trim()) // 添加最後一列
+        
+        // 清理數據：移除引號和多餘的空格
+        columns = columns.map(col => col.replace(/^"|"$/g, '').trim())
+        
+        // 處理 SDGs：如果包含分號，則分割為數組
+        const sdgsValue = columns[6] || ''
+        const sdgs = sdgsValue.includes(';') 
+          ? sdgsValue.split(';').map(s => s.trim())
+          : sdgsValue.split(',').map(s => s.trim()).filter(s => s)
+        
+        return {
+          id: index,
+          theme: columns[0],
+          domain: columns[1],
+          description: columns[2],
+          gri_id: columns[3],
+          gri_name: columns[4],
+          sasb: columns[5] || null,
+          sdgs: sdgs.length > 0 ? sdgs : null,
+          tcfd: columns[7] || null
+        }
+      })
+      .filter(item => item.theme && !headers.includes(item.theme)) // 過濾掉標題行和空行
+    
+    // 一次性更新 issues
+    issues.value = processedIssues
+    
   } catch (error) {
     console.error('Error fetching data:', error)
   }
@@ -360,24 +367,83 @@ const getSortIcon = (key) => {
   return sortOrder.value === 'asc' ? '↑' : '↓'
 }
 
-// 全選/取消全選
+// 修改 selectedIssues 的监听器，添加防递归标记
+let isUpdatingFromStore = false
+let isUpdatingFromSelection = false
+
+// 修改 criteriaTemplateStore 监听器
+watch(() => criteriaTemplateStore.selectedCriteria, (newCriteria) => {
+  if (isUpdatingFromSelection || !issues.value.length) return
+  
+  isUpdatingFromStore = true
+  try {
+    // 根據 gri_id 找到對應的 issues 並設置選中狀態
+    const newSelectedIssues = issues.value
+      .filter(item => newCriteria.some(sc => sc.gri_id === item.gri_id))
+      .map(item => item.id)
+    
+    // 只有当选中状态真的改变时才更新
+    if (JSON.stringify(newSelectedIssues) !== JSON.stringify(selectedIssues.value)) {
+      selectedIssues.value = newSelectedIssues
+      // 更新全選狀態
+      selectAll.value = selectedIssues.value.length === issues.value.length
+    }
+  } finally {
+    isUpdatingFromStore = false
+  }
+}, { immediate: true })
+
+// 修改 selectedIssues 监听器
+watch(selectedIssues, (newVal, oldVal) => {
+  if (isUpdatingFromStore || !issues.value.length) return
+  
+  // 只有当选中状态真的改变时才更新
+  if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
+    isUpdatingFromSelection = true
+    try {
+      const selectedItems = issues.value
+        .filter(item => newVal.includes(item.id))
+        .map(item => ({
+          gri_id: item.gri_id,
+          topic: item.theme,
+          domain: item.domain,
+          description: item.description,
+          gri_name: item.gri_name,
+          sdgs: Array.isArray(item.sdgs) ? item.sdgs : (item.sdgs ? item.sdgs.split(',').map(s => s.trim()) : null),
+          tcfd: item.tcfd || null,
+          sasb: item.sasb || null
+        }))
+      criteriaTemplateStore.setSelectedCriteria(selectedItems)
+      handleContentChange()
+    } finally {
+      isUpdatingFromSelection = false
+    }
+  }
+}, { deep: true })
+
+// 修改 toggleSelectAll 函数
 const toggleSelectAll = () => {
-  if (selectAll.value) {
-    const selectedItems = filteredAndSortedIssues.value.map(item => ({
-      gri_id: item.gri_id,
-      topic: item.theme,
-      domain: item.domain,
-      description: item.description,
-      gri_name: item.gri_name,
-      sdgs: item.sdgs ? item.sdgs.split(',').map(s => s.trim()) : null,
-      tcfd: item.tcfd || null,
-      sasb: item.sasb || null
-    }))
-    criteriaTemplateStore.setSelectedCriteria(selectedItems)
-    selectedIssues.value = filteredAndSortedIssues.value.map(item => item.id)
-  } else {
-    criteriaTemplateStore.clearSelectedCriteria()
-    selectedIssues.value = []
+  isUpdatingFromSelection = true
+  try {
+    if (selectAll.value) {
+      const selectedItems = filteredAndSortedIssues.value.map(item => ({
+        gri_id: item.gri_id,
+        topic: item.theme,
+        domain: item.domain,
+        description: item.description,
+        gri_name: item.gri_name,
+        sdgs: Array.isArray(item.sdgs) ? item.sdgs : (item.sdgs ? item.sdgs.split(',').map(s => s.trim()) : null),
+        tcfd: item.tcfd || null,
+        sasb: item.sasb || null
+      }))
+      criteriaTemplateStore.setSelectedCriteria(selectedItems)
+      selectedIssues.value = filteredAndSortedIssues.value.map(item => item.id)
+    } else {
+      criteriaTemplateStore.clearSelectedCriteria()
+      selectedIssues.value = []
+    }
+  } finally {
+    isUpdatingFromSelection = false
   }
 }
 
@@ -387,18 +453,11 @@ const saveFile = async () => {
     saveStatus.value = 'saving'
     
     // 準備要儲存的數據
-    const dataToSave = {
-      fileName: criteriaTemplateStore.fileName,
-      selectedIssues: selectedIssues.value,
-      // 添加其他需要儲存的數據...
-    }
-    
-    // 模擬API調用（這裡需要替換為實際的API調用）
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 更新最後儲存的數據
-    lastSavedData.value = JSON.stringify(dataToSave)
+    // const fileName = criteriaTemplateStore.fileName
+
     saveStatus.value = 'saved'
+
+    criteriaTemplateStore.saveCriteriaTemplate()
     
     // 3秒後隱藏成功狀態
     setTimeout(() => {
@@ -412,24 +471,6 @@ const saveFile = async () => {
     saveStatus.value = 'error'
   }
 }
-
-// 監聽選擇的議題變化
-watch(selectedIssues, (newVal) => {
-  const selectedItems = issues.value
-    .filter(item => selectedIssues.value.includes(item.id))
-    .map(item => ({
-      gri_id: item.gri_id,
-      topic: item.theme,
-      domain: item.domain,
-      description: item.description,
-      gri_name: item.gri_name,
-      sdgs: item.sdgs ? item.sdgs.split(',').map(s => s.trim()) : null,
-      tcfd: item.tcfd || null,
-      sasb: item.sasb || null
-    }))
-  criteriaTemplateStore.setSelectedCriteria(selectedItems)
-  handleContentChange()
-}, { deep: true })
 
 // 離開頁面前檢查是否有未儲存的更改
 onMounted(() => {

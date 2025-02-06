@@ -5,6 +5,8 @@ export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
   state: () => ({
     BlockID: '',
     AssetID: '',
+    UserID: '',
+    PermissionChapterID: '',
     OrganizationID: '',
     role_ids: [],
     selectedCriteria: [],
@@ -22,6 +24,11 @@ export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
     // 設置 BlockID
     setBlockID(id) {
       this.BlockID = id
+    },
+
+    // 設置 UserID
+    setUserID(id) {
+      this.UserID = id
     },
 
     // 設置 AssetID
@@ -115,6 +122,8 @@ export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
           this.lockedBy = data.data.lockedBy
           this.lockedAt = data.data.lockedAt
           this.blockStatus = data.data.blockStatus
+          this.BlockID = data.data.block_id
+          this.PermissionChapterID = data.data.PermissionChapterID
 
           return data.data
         } else {
@@ -132,6 +141,68 @@ export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
       } finally {
         this.isLoading = false
       }
+    },
+
+    // 儲存準則模板
+    async saveCriteriaTemplate() {
+        const toast = useToast()
+        try {
+            // 準備請求數據
+            const requestData = {
+                asset_id: this.AssetID,
+                organization_id: this.OrganizationID,
+                asset_name: this.fileName,
+                block_id: this.BlockID,
+                permission_chapter_id: this.PermissionChapterID,
+                role_ids: this.role_ids,
+                selected_criteria: this.selectedCriteria,
+                user_id: this.UserID
+            }
+
+            console.log(requestData)
+
+            // 發送請求到後端 API
+            const response = await fetch('http://localhost:8000/api/organizations/save_standard_template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+
+            const result = await response.json()
+
+            // 檢查回應狀態
+            if (!response.ok) {
+                throw new Error(result.detail || '保存失敗')
+            }
+
+            // 更新最後修改時間
+            if (result.data && result.data.last_modified) {
+                this.lastModified = result.data.last_modified
+            }
+
+            // 顯示成功消息
+            toast.success('準則模板保存成功', {
+                timeout: 5000,
+                position: "top-right",
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true
+            })
+            return result
+
+        } catch (error) {
+            // 顯示錯誤消息
+            toast.error(error.message || '保存準則模板時發生錯誤', {
+                timeout: 5000,
+                position: "top-right",
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true
+            })
+            throw error
+        }
     }
   },
 
