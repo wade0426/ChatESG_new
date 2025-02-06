@@ -3,7 +3,7 @@
 <template>
   <div :class="['editor-container', theme]">
     <!-- 引入頂部導航欄 -->
-    <CompanyInfoEditNav 
+    <ReportEditNav 
       @toggle-sidebar="toggleSidebar" 
       @theme-change="handleThemeChange"
       @font-size-change="handleFontSizeChange" 
@@ -13,7 +13,7 @@
     <div class="sidebar-wrapper">
       <div :class="['sidebar', { 'collapsed': isSidebarCollapsed }]">
         <div class="sidebar-header">
-          <h3>公司基本資料表</h3>
+          <h3>報告書章節</h3>
           <button @click="toggleSidebar" class="sidebar-toggle">
             <i :class="['mdi', isSidebarCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left']"></i>
           </button>
@@ -25,112 +25,70 @@
               <span>新增大章節</span>
             </button>
           </div>
-          <template v-for="(section, index) in sections" :key="section.id">
-            <!-- 大標題 -->
+          <template v-for="(chapter, index) in reportEditStore.chapters" :key="chapter.chapterTitle">
+            <!-- 大章節 -->
             <div class="section-level-1">
               <div 
-                :class="['section-title', { 'active': selectedSection === section.id }]"
-                @click="toggleSection(section.id)"
+                :class="['section-title', { 'active': selectedSection === chapter.chapterTitle }]"
+                @click="toggleSection(chapter.chapterTitle)"
               >
                 <div class="section-title-content">
-                  <span>{{ getSectionNumber(index) }}. {{ section.title }}</span>
+                  <span>{{ getSectionNumber(index) }}. {{ chapter.chapterTitle }}</span>
                   <div class="section-actions">
                     <button 
                       class="edit-title-btn"
-                      @click.stop="showEditTitleModal(section.id, section.title, $event)"
+                      @click.stop="showEditTitleModal(chapter.chapterTitle, 'chapter')"
                       title="編輯標題"
                     >
                       <i class="mdi mdi-pencil"></i>
                     </button>
                     <button 
                       class="add-subsection-btn"
-                      @click.stop="showAddSubsectionModal(section.id, 1)"
-                      title="新增子標題"
+                      @click.stop="showAddSubsectionModal(chapter.chapterTitle)"
+                      title="新增中章節"
                     >
                       <i class="mdi mdi-plus"></i>
                     </button>
                     <button 
                       class="delete-btn"
-                      @click.stop="confirmDelete(section.id, section.title)"
+                      @click.stop="confirmDelete(chapter.chapterTitle, 'chapter')"
                       title="刪除"
                     >
                       <i class="mdi mdi-delete"></i>
                     </button>
-                    <i :class="['mdi', isExpanded(section.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                    <i :class="['mdi', isExpanded(chapter.chapterTitle) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
                   </div>
                 </div>
               </div>
               
-              <!-- 子標題 -->
-              <template v-if="section.children && isExpanded(section.id)">
+              <!-- 中章節 -->
+              <template v-if="isExpanded(chapter.chapterTitle)">
                 <div 
-                  v-for="(subSection, subIndex) in section.children" 
-                  :key="subSection.id"
+                  v-for="(subChapter, subIndex) in chapter.subChapters" 
+                  :key="subChapter.BlockID"
                   class="section-level-2"
                 >
                   <div 
-                    :class="['section-title', { 'active': selectedSection === subSection.id }]"
-                    @click="toggleSubSection(subSection.id)"
+                    :class="['section-title', { 'active': selectedSection === subChapter.BlockID }]"
+                    @click="selectSection(subChapter.BlockID)"
                   >
                     <div class="section-title-content">
-                      <span>{{ getAlphabetLabel(subIndex) }}. {{ subSection.title }}</span>
+                      <span>{{ getAlphabetLabel(subIndex) }}. {{ subChapter.subChapterTitle }}</span>
                       <div class="section-actions">
                         <button 
                           class="edit-title-btn"
-                          @click.stop="showEditTitleModal(subSection.id, subSection.title, $event)"
+                          @click.stop="showEditTitleModal(subChapter.BlockID, 'subChapter')"
                           title="編輯標題"
                         >
                           <i class="mdi mdi-pencil"></i>
                         </button>
                         <button 
-                          class="add-subsection-btn"
-                          @click.stop="showAddSubsectionModal(subSection.id, 2)"
-                          title="新增子標題"
-                        >
-                          <i class="mdi mdi-plus"></i>
-                        </button>
-                        <button 
                           class="delete-btn"
-                          @click.stop="confirmDelete(subSection.id, subSection.title)"
+                          @click.stop="confirmDelete(chapter.chapterTitle, 'subChapter', subChapter.subChapterTitle)"
                           title="刪除"
                         >
                           <i class="mdi mdi-delete"></i>
                         </button>
-                        <i v-if="subSection.children" :class="['mdi', isExpanded(subSection.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- 內容項目 -->
-                  <div v-if="subSection.children" :class="{ 'hidden': !isExpanded(subSection.id) }">
-                    <div 
-                      v-for="(item, itemIndex) in subSection.children" 
-                      :key="item.id"
-                      class="section-level-3"
-                    >
-                      <div 
-                        :class="['section-title', { 'active': selectedSection === item.id }]"
-                        @click.stop="selectSection(item.id)"
-                      >
-                        <div class="section-title-content">
-                          <span>{{ getRomanNumeral(itemIndex + 1) }}. {{ item.title }}</span>
-                          <div class="section-actions">
-                            <button 
-                              class="edit-title-btn"
-                              @click.stop="showEditTitleModal(item.id, item.title, $event)"
-                              title="編輯標題"
-                            >
-                              <i class="mdi mdi-pencil"></i>
-                            </button>
-                            <button 
-                              class="delete-btn"
-                              @click.stop="confirmDelete(item.id, item.title)"
-                              title="刪除"
-                            >
-                              <i class="mdi mdi-delete"></i>
-                            </button>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -156,8 +114,8 @@
       </div>
       
       <div class="editor-content">
-        <!-- 只有在選中最小層級標題時才顯示輸入框 -->
-        <div v-if="isLeafSection(selectedSection)" class="input-area">
+        <!-- 只有在選中中章節時才顯示輸入框 -->
+        <div v-if="isSubChapter(selectedSection)" class="input-area">
           <div class="content-wrapper">
             <textarea 
               v-model="sectionContents[selectedSection]" 
@@ -205,21 +163,21 @@
           </div>
         </div>
         <div v-else class="no-edit-message">
-          請選擇左側小標題以進行編輯
+          請選擇左側中章節以進行編輯
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 新增子標題的彈出視窗 -->
+  <!-- 新增中章節的彈出視窗 -->
   <div v-if="showModal" class="modal-overlay" @click="closeModal">
     <div class="modal-content" @click.stop>
-      <h3>新增子標題</h3>
+      <h3>新增中章節</h3>
       <div class="modal-form">
         <input 
           v-model="newSubsectionTitle" 
           type="text" 
-          placeholder="請輸入子標題名稱"
+          placeholder="請輸入中章節名稱"
           @keyup.enter="addSubsection"
         >
         <div class="modal-buttons">
@@ -271,126 +229,38 @@
 
 <script setup>
 import { ref, computed, onMounted, provide, nextTick } from 'vue'
-import { Editor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import Table from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableCell from '@tiptap/extension-table-cell'
-import TableHeader from '@tiptap/extension-table-header'
-import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
-import { v4 as uuidv4 } from 'uuid'
+import { useRouter } from 'vue-router'
+import ReportEditNav from './ReportEditNav.vue'
+import { useReportEditStore } from '@/stores/reportEdit'
+
+const router = useRouter()
+const reportEditStore = useReportEditStore()
 
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
-const selectedSection = ref('about')
+const selectedSection = ref(null)
 const theme = ref('dark')
 const expandedSections = ref(new Set())
 
-// 新增子標題相關的響應式變數
+// 新增中章節相關的響應式變數
 const showModal = ref(false)
 const newSubsectionTitle = ref('')
-const currentParentId = ref(null)
-const currentLevel = ref(1)
+const currentParentTitle = ref(null)
 
 // 添加新的響應式變數
 const showEditModal = ref(false)
 const editingTitle = ref('')
-const editingSectionId = ref(null)
+const editingType = ref(null) // 'chapter' 或 'subChapter'
+const editingId = ref(null)
 
 // 新增大章節相關的響應式變數
 const showMainSectionModal = ref(false)
 const newMainSectionTitle = ref('')
 
-// 章節結構
-const sections = ref([
-  {
-    id: 'about',
-    title: '關於本報告書',
-    children: [
-      {
-        id: 'about-section',
-        title: '關於本報告書',
-        children: [
-          { id: 'company-name', title: '公司名稱' },
-          { id: 'report-period', title: '報告期間' },
-          { id: 'scope-boundary', title: '範疇與邊界' },
-          { id: 'report-principles', title: '報告書撰寫原則' },
-          { id: 'contact-info', title: '聯絡資訊' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'sustainability',
-    title: '永續發展策略',
-    children: [
-      {
-        id: 'governance',
-        title: '永續治理架構',
-        children: [
-          { id: 'committee', title: '永續發展委員會' }
-        ]
-      },
-      {
-        id: 'blueprint',
-        title: '永續發展藍圖',
-        children: [
-          { id: 'strategy-pillars', title: '永續策略主軸' },
-          { id: 'sustainability-goals', title: '永續目標' }
-        ]
-      },
-      {
-        id: 'material-topics',
-        title: '重大主題分析',
-        children: [
-          { id: 'identification-process', title: '重大主題鑑別流程' },
-          { id: 'topic-management', title: '重大主題管理' }
-        ]
-      },
-      {
-        id: 'stakeholder-communication',
-        title: '利害關係人溝通',
-        children: [
-          { id: 'stakeholder-identification', title: '利害關係人鑑別' },
-          { id: 'stakeholder-engagement', title: '利害關係人議和' }
-        ]
-      }
-    ]
-  }
-])
-
-// 編輯器配置
-const createEditor = (content = '') => new Editor({
-  extensions: [
-    StarterKit,
-    Table.configure({ resizable: true }),
-    TableRow,
-    TableCell,
-    TableHeader
-  ],
-  content,
-  editorProps: {
-    attributes: {
-      class: 'prose prose-lg max-w-none',
-    }
-  }
-})
-
-// 為每個章節創建編輯器實例
-const editors = {}
-sections.value.forEach(section => {
-  editors[section.id] = createEditor()
-  if (section.children) {
-    section.children.forEach(subSection => {
-      editors[subSection.id] = createEditor()
-      if (subSection.children) {
-        subSection.children.forEach(item => {
-          editors[item.id] = createEditor()
-        })
-      }
-    })
-  }
-})
+// 章節內容和註解
+const sectionContents = ref({})
+const comments = ref({})
+const showCommentPanel = ref(false)
 
 // 方法
 const toggleSidebar = () => {
@@ -405,232 +275,53 @@ const selectSection = (sectionId) => {
   selectedSection.value = sectionId
 }
 
-const getCurrentEditor = () => {
-  return editors[selectedSection.value]
-}
-
-// 修改：儲存各區段內容的響應式對象，包含內容和註解
-const sectionContents = ref({})
-
-// 新增：註解相關的狀態
-const comments = ref({})
-const showCommentPanel = ref(false)
-const selectedCommentFilter = ref('current')
-
-// 新增：處理註解篩選變更
-const handleCommentFilterChange = (filter) => {
-  selectedCommentFilter.value = filter
-}
-
-// 修改：格式化資料的方法，加入註解
-const formatDataToJson = () => {
-  const result = []
-  
-  sections.value.forEach(section => {
-    const sectionData = {}
-    
-    if (section.children) {
-      const subSectionData = {}
-      
-      section.children.forEach(subSection => {
-        const itemData = {}
-        
-        if (subSection.children) {
-          subSection.children.forEach(item => {
-            itemData[item.title] = {
-              content: sectionContents.value[item.id] || '',
-              comment: comments.value[item.id] || null
-            }
-          })
-        }
-        
-        subSectionData[subSection.title] = itemData
-      })
-      
-      sectionData[section.title] = subSectionData
-    }
-    
-    result.push(sectionData)
-  })
-  
-  return result
-}
-
-// 新增：添加註解的方法
-const addComment = (sectionId) => {
-  if (!comments.value[sectionId]) {
-    comments.value[sectionId] = {
-      create_user: 1, // 這裡應該使用實際的用戶ID
-      content: '',
-      status: 'unfinished',
-      section: getCurrentSectionTitle(), // 添加章節信息
-      created_at: new Date().toISOString() // 添加創建時間
+// 判斷是否為中章節
+const isSubChapter = (sectionId) => {
+  for (const chapter of reportEditStore.chapters) {
+    if (chapter.subChapters.some(sub => sub.BlockID === sectionId)) {
+      return true
     }
   }
-  showCommentPanel.value = true
+  return false
 }
 
-// 新增：更新註解狀態的方法
-const updateCommentStatus = (sectionId, status) => {
-  if (comments.value[sectionId]) {
-    comments.value[sectionId].status = status
-  }
-}
-
-// 新增：更新註解內容的方法
-const updateCommentContent = (sectionId, content) => {
-  if (comments.value[sectionId]) {
-    comments.value[sectionId] = {
-      ...comments.value[sectionId],
-      content
-    }
-  }
-}
-
-// 提供給子組件的儲存方法
-const handleSave = () => {
-  const formattedData = formatDataToJson()
-  console.log(JSON.stringify(formattedData, null, 2))
-  return true
-}
-
-// 提供儲存方法給子組件
-provide('handleSave', handleSave)
-
-// 新增：判斷是否為最小層級（葉節點）的函數
-const isLeafSection = (sectionId) => {
-  // 如果沒有選擇章節,返回false
-  if (!sectionId) return false
-
-  // 內部遞迴函數,用於在章節樹中尋找指定ID的章節和其層級路徑
-  const findSectionAndPath = (sections, path = []) => {
-    for (const section of sections) {
-      if (section.id === sectionId) {
-        return {
-          section,
-          path
-        }
-      }
-      if (section.children) {
-        const result = findSectionAndPath(section.children, [...path, section])
-        if (result) return result
-      }
-    }
-    return null
-  }
-
-  // 從根章節開始搜索
-  const result = findSectionAndPath(sections.value)
-  if (!result) return false
-
-  const { section, path } = result
-
-  // 檢查是否為小標題(第三層)
-  if (path.length !== 2) return false
-
-  // 檢查上層(中標題)是否有內容
-  const parentSection = path[1]
-  if (!parentSection.children || parentSection.children.length === 0) return false
-
-  // 檢查上上層(大標題)是否有內容
-  const grandParentSection = path[0] 
-  if (!grandParentSection.children || grandParentSection.children.length === 0) return false
-
-  // 檢查當前章節是否為葉節點
-  return !section.children || section.children.length === 0
-}
-
-// 修改：獲取當前標題的函數，只顯示最小層級的標題
+// 獲取當前章節標題
 const getCurrentSectionTitle = () => {
   if (!selectedSection.value) return ''
-  const section = findSectionById(selectedSection.value, sections.value)
-  if (!section) return ''
-  return isLeafSection(selectedSection.value) ? section.title : ''
-}
-
-const findSectionById = (id, sectionsArray) => {
-  for (const section of sectionsArray) {
-    if (section.id === id) {
-      return section;
-    }
-    if (section.children) {
-      const foundInChildren = findSectionById(id, section.children);
-      if (foundInChildren) {
-        return foundInChildren;
-      }
+  
+  for (const chapter of reportEditStore.chapters) {
+    const subChapter = chapter.subChapters.find(sub => sub.BlockID === selectedSection.value)
+    if (subChapter) {
+      return subChapter.subChapterTitle
     }
   }
-  return null;
-}
-
-const save = () => {
-  // 實作儲存邏輯
-  console.log('儲存內容')
-}
-
-const cancel = () => {
-  // 實作取消邏輯
-  console.log('取消編輯')
-}
-
-// 輔助函數：將數字轉換為字母標籤 (A, B, C...)
-const getAlphabetLabel = (index) => {
-  return String.fromCharCode(65 + index);
-}
-
-// 輔助函數：將數字轉換為羅馬數字
-const getRomanNumeral = (num) => {
-  const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
-  return romanNumerals[num - 1] || num;
+  return ''
 }
 
 // 初始化展開狀態
 const initializeExpandedSections = () => {
-  sections.value.forEach(section => {
-    expandedSections.value.add(section.id)
-    if (section.children) {
-      section.children.forEach(subSection => {
-        // 預設不展開子標題
-        // expandedSections.value.add(subSection.id)
-      })
-    }
+  reportEditStore.chapters.forEach(chapter => {
+    expandedSections.value.add(chapter.chapterTitle)
   })
 }
 
 // 在組件掛載時初始化
 onMounted(() => {
+  reportEditStore.initializeDefaultChapters()
   initializeExpandedSections()
 })
 
-const toggleSection = (sectionId) => {
-  const newExpandedSections = new Set(expandedSections.value);
-  if (newExpandedSections.has(sectionId)) {
-    newExpandedSections.delete(sectionId);
-    // 收合直接子節點
-    const section = sections.value.find(s => s.id === sectionId);
-    if (section && section.children) {
-      section.children.forEach(child => newExpandedSections.delete(child.id));
-    }
+const toggleSection = (chapterTitle) => {
+  if (expandedSections.value.has(chapterTitle)) {
+    expandedSections.value.delete(chapterTitle)
   } else {
-    newExpandedSections.add(sectionId);
+    expandedSections.value.add(chapterTitle)
   }
-  expandedSections.value = newExpandedSections;
-  selectSection(sectionId);
+  selectSection(chapterTitle)
 }
 
-const toggleSubSection = (sectionId) => {
-  const newExpandedSections = new Set(expandedSections.value);
-  if (newExpandedSections.has(sectionId)) {
-    newExpandedSections.delete(sectionId);
-  } else {
-    newExpandedSections.add(sectionId);
-  }
-  expandedSections.value = newExpandedSections;
-  selectSection(sectionId);
-}
-
-const isExpanded = (sectionId) => {
-  return expandedSections.value.has(sectionId)
+const isExpanded = (chapterTitle) => {
+  return expandedSections.value.has(chapterTitle)
 }
 
 // 主題切換
@@ -648,10 +339,9 @@ const handleFontSizeChange = (size) => {
   document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
 }
 
-// 顯示新增子標題的彈出視窗
-const showAddSubsectionModal = (parentId, level) => {
-  currentParentId.value = parentId
-  currentLevel.value = level
+// 顯示新增中章節的彈出視窗
+const showAddSubsectionModal = (chapterTitle) => {
+  currentParentTitle.value = chapterTitle
   showModal.value = true
   newSubsectionTitle.value = ''
 }
@@ -662,74 +352,62 @@ const closeModal = () => {
   newSubsectionTitle.value = ''
 }
 
-// 新增子標題
+// 新增中章節
 const addSubsection = () => {
   if (!newSubsectionTitle.value.trim()) {
-    alert('請輸入子標題名稱')
+    alert('請輸入中章節名稱')
     return
   }
 
-  const newId = uuidv4()
-  const newSubsection = {
-    id: newId,
-    title: newSubsectionTitle.value.trim(),
-    children: currentLevel.value === 1 ? [] : null
-  }
-
-  const updateSections = (sectionsArr) => {
-    return sectionsArr.map(section => {
-      if (section.id === currentParentId.value) {
-        return {
-          ...section,
-          children: [...(section.children || []), newSubsection]
-        }
-      }
-      if (section.children) {
-        return {
-          ...section,
-          children: updateSections(section.children)
-        }
-      }
-      return section
-    })
-  }
-
-  sections.value = updateSections(sections.value)
-  expandedSections.value.add(currentParentId.value)
+  reportEditStore.addSubChapter(
+    currentParentTitle.value,
+    newSubsectionTitle.value.trim()
+  )
   closeModal()
 }
 
-// 添加編輯標題的方法
-const showEditTitleModal = (sectionId, title, event) => {
-  event.stopPropagation()
-  editingSectionId.value = sectionId
-  editingTitle.value = title
+// 顯示編輯標題的彈出視窗
+const showEditTitleModal = (id, type) => {
+  editingId.value = id
+  editingType.value = type
+  if (type === 'chapter') {
+    editingTitle.value = id // 因為對於大章節，id 就是標題
+  } else {
+    // 尋找對應的中章節標題
+    for (const chapter of reportEditStore.chapters) {
+      const subChapter = chapter.subChapters.find(sub => sub.BlockID === id)
+      if (subChapter) {
+        editingTitle.value = subChapter.subChapterTitle
+        break
+      }
+    }
+  }
   showEditModal.value = true
 }
 
-// 更新標題的方法
+// 更新標題
 const updateSectionTitle = () => {
   if (!editingTitle.value.trim()) {
     alert('請輸入標題名稱')
     return
   }
 
-  const updateTitle = (sectionsArr) => {
-    return sectionsArr.map(section => {
-      if (section.id === editingSectionId.value) {
-        return { ...section, title: editingTitle.value.trim() }
+  if (editingType.value === 'chapter') {
+    // 更新大章節標題
+    const index = reportEditStore.chapters.findIndex(c => c.chapterTitle === editingId.value)
+    if (index !== -1) {
+      reportEditStore.chapters[index].chapterTitle = editingTitle.value.trim()
+    }
+  } else {
+    // 更新中章節標題
+    for (const chapter of reportEditStore.chapters) {
+      const subChapter = chapter.subChapters.find(sub => sub.BlockID === editingId.value)
+      if (subChapter) {
+        subChapter.subChapterTitle = editingTitle.value.trim()
+        break
       }
-      if (section.children) {
-        return {
-          ...section,
-          children: updateTitle(section.children)
-        }
-      }
-      return section
-    })
+    }
   }
-
-  sections.value = updateTitle(sections.value)
   closeEditModal()
 }
 
@@ -737,82 +415,28 @@ const updateSectionTitle = () => {
 const closeEditModal = () => {
   showEditModal.value = false
   editingTitle.value = ''
-  editingSectionId.value = null
+  editingId.value = null
+  editingType.value = null
 }
-
-// 提供註解數據給子組件
-provide('comments', comments)
 
 // 新增：關閉註解面板的方法
 const closeCommentPanel = () => {
   showCommentPanel.value = false
 }
 
-// 修改刪除章節的方法
-const deleteSection = async (sectionId) => {
-  // 如果刪除的是當前選中的章節，先清除選中狀態
-  if (selectedSection.value === sectionId) {
-    selectedSection.value = null
-  }
-  
-  // 從展開狀態中移除
-  if (expandedSections.value.has(sectionId)) {
-    expandedSections.value.delete(sectionId)
-  }
-  
-  // 清除相關的內容和註解
-  if (sectionContents.value[sectionId]) {
-    delete sectionContents.value[sectionId]
-  }
-  if (comments.value[sectionId]) {
-    delete comments.value[sectionId]
-  }
+// 刪除章節
+const confirmDelete = (title, type, subTitle = null) => {
+  const message = type === 'chapter' 
+    ? `確定要刪除「${title}」章節及其所有子章節嗎？` 
+    : `確定要刪除「${subTitle}」章節嗎？`
 
-  // 使用臨時數組進行刪除操作
-  const deleteFromArray = (arr) => {
-    const newArr = [...arr]
-    const index = newArr.findIndex(item => item.id === sectionId)
-    if (index !== -1) {
-      newArr.splice(index, 1)
-      return { found: true, array: newArr }
+  if (confirm(message)) {
+    if (type === 'chapter') {
+      reportEditStore.removeChapter(title)
+    } else {
+      reportEditStore.removeSubChapter(title, subTitle)
     }
-    
-    for (let i = 0; i < newArr.length; i++) {
-      if (newArr[i].children) {
-        const result = deleteFromArray(newArr[i].children)
-        if (result.found) {
-          newArr[i] = { ...newArr[i], children: result.array }
-          return { found: true, array: newArr }
-        }
-      }
-    }
-    return { found: false, array: newArr }
   }
-
-  const result = deleteFromArray(sections.value)
-  if (result.found) {
-    await nextTick()
-    sections.value = result.array
-  }
-}
-
-// 修改確認刪除的方法
-const confirmDelete = async (sectionId, title) => {
-  if (confirm(`確定要刪除「${title}」嗎？此操作無法復原。`)) {
-    await deleteSection(sectionId)
-  }
-}
-
-// 生成章節序號的方法
-const getSectionNumber = (index) => {
-  // 重新計算實際的序號（跳過已刪除的章節）
-  let visibleIndex = 0;
-  sections.value.forEach((section, i) => {
-    if (i < index) {
-      visibleIndex++;
-    }
-  });
-  return visibleIndex + 1;
 }
 
 // 顯示新增大章節的彈出視窗
@@ -834,18 +458,34 @@ const addMainSection = () => {
     return
   }
 
-  const newSection = {
-    id: uuidv4(),
-    title: newMainSectionTitle.value.trim(),
-    children: []
-  }
-
-  sections.value.push(newSection)
-  expandedSections.value.add(newSection.id)
+  reportEditStore.addChapter(newMainSectionTitle.value.trim())
   closeMainSectionModal()
 }
-</script>
 
+// 生成章節序號的方法
+const getSectionNumber = (index) => {
+  return index + 1
+}
+
+// 輔助函數：將數字轉換為字母標籤 (A, B, C...)
+const getAlphabetLabel = (index) => {
+  return String.fromCharCode(65 + index)
+}
+
+// 提供儲存方法給子組件
+const handleSave = () => {
+  // 在這裡實現儲存邏輯
+  console.log('儲存內容：', {
+    fileName: reportEditStore.fileName,
+    chapters: reportEditStore.chapters,
+    contents: sectionContents.value,
+    comments: comments.value
+  })
+  return true
+}
+
+provide('handleSave', handleSave)
+</script>
 
 <style scoped>
 .editor-container {

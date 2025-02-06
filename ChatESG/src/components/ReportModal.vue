@@ -64,7 +64,7 @@
 
                 <!-- 選擇準則模板 -->
                 <div class="form-group">
-                    <label for="templateSelect">準則模板</label>
+                    <label for="templateSelect">準則模板 (資產)</label>
                     <select 
                         id="templateSelect" 
                         v-model="form.selectedTemplate"
