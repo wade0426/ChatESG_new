@@ -1,53 +1,146 @@
 <template>
     <dialog ref="reportModal">
         <div class="modal-content">
-            <h3 class="createreport_h3">建立報告書</h3>
-            <!-- 報告書名稱 -->
-            <label for="reportName">報告書名稱</label>
-            <input id="reportName" v-model="reportName" type="text" placeholder="輸入報告書名稱" />
+            <h3 class="modal-title">建立報告書</h3>
+            <form @submit.prevent="createReport" class="report-form">
+                <!-- 報告書名稱 -->
+                <div class="form-group">
+                    <label for="reportName">報告書名稱</label>
+                    <input 
+                        id="reportName" 
+                        v-model="form.reportName" 
+                        type="text" 
+                        placeholder="輸入報告書名稱"
+                        :class="{ error: errors.reportName }"
+                    />
+                    <span class="error-message" v-if="errors.reportName">
+                        {{ errors.reportName }}
+                    </span>
+                </div>
 
-            <!-- 選擇產業 -->
-            <select id="industrySelect" v-model="selectedIndustry">
-                <option value="">請選擇產業</option>
-                <option value="finance">金融業</option>
-                <option value="technology">科技業</option>
-                <option value="manufacturing">製造業</option>
-            </select>
+                <!-- 選擇產業 -->
+                <div class="form-group">
+                    <label for="industrySelect">產業</label>
+                    <select 
+                        id="industrySelect" 
+                        v-model="form.selectedIndustry"
+                        :class="{ error: errors.selectedIndustry }"
+                    >
+                        <option value="">請選擇產業</option>
+                        <option 
+                            v-for="industry in reportStore.industries" 
+                            :key="industry.value" 
+                            :value="industry.value"
+                        >
+                            {{ industry.label }}
+                        </option>
+                    </select>
+                    <span class="error-message" v-if="errors.selectedIndustry">
+                        {{ errors.selectedIndustry }}
+                    </span>
+                </div>
 
-            <!-- 選擇公司基本資料 -->
-            <label for="companyAsset">公司基本資料 (資產)</label>
-            <select id="companyAsset" v-model="selectedAsset">
-                <option value="small">小型企業</option>
-                <option value="medium">中型企業</option>
-                <option value="large">大型企業</option>
-            </select>
+                <!-- 選擇公司基本資料 -->
+                <div class="form-group">
+                    <label for="companyAsset">公司基本資料 (資產)</label>
+                    <select 
+                        id="companyAsset" 
+                        v-model="form.selectedAsset"
+                        :class="{ error: errors.selectedAsset }"
+                    >
+                        <option value="">請選擇資產規模</option>
+                        <option 
+                            v-for="size in reportStore.assetSizes" 
+                            :key="size.value" 
+                            :value="size.value"
+                        >
+                            {{ size.label }}
+                        </option>
+                    </select>
+                    <span class="error-message" v-if="errors.selectedAsset">
+                        {{ errors.selectedAsset }}
+                    </span>
+                </div>
 
-            <!-- 選擇準則模板 -->
-            <label for="templateSelect">準則模板</label>
-            <select id="templateSelect" v-model="selectedTemplate">
-                <option value="GRI">GRI 準則</option>
-                <option value="SASB">SASB 準則</option>
-                <option value="SASB">TCFD 準則</option>
-                <option value="SASB">SDGs 永續目標</option>
-            </select>
+                <!-- 選擇準則模板 -->
+                <div class="form-group">
+                    <label for="templateSelect">準則模板</label>
+                    <select 
+                        id="templateSelect" 
+                        v-model="form.selectedTemplate"
+                        :class="{ error: errors.selectedTemplate }"
+                    >
+                        <option value="">請選擇準則模板</option>
+                        <option 
+                            v-for="template in reportStore.templates" 
+                            :key="template.value" 
+                            :value="template.value"
+                        >
+                            {{ template.label }}
+                        </option>
+                    </select>
+                    <span class="error-message" v-if="errors.selectedTemplate">
+                        {{ errors.selectedTemplate }}
+                    </span>
+                </div>
 
-            <!-- 動作按鈕 -->
-            <div class="modal-actions">
-                <button @click="hideModal">取消</button>
-                <button @click="createReport">建立</button>
-            </div>
+                <!-- 動作按鈕 -->
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" @click="hideModal">取消</button>
+                    <button 
+                        type="submit" 
+                        class="btn-confirm"
+                        :disabled="reportStore.loading"
+                    >
+                        {{ reportStore.loading ? '處理中...' : '確認' }}
+                    </button>
+                </div>
+            </form>
         </div>
     </dialog>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useReportStore } from '@/stores/report_model'
+import { useFormValidation } from '@/composables/useFormValidation'
+import { useToast } from 'vue-toastification'
 
+const reportStore = useReportStore()
 const reportModal = ref(null)
-const reportName = ref("")
-const selectedIndustry = ref("")
-const selectedAsset = ref("")
-const selectedTemplate = ref("")
+const toast = useToast()
+
+const form = reactive({
+    reportName: '',
+    selectedIndustry: '',
+    selectedAsset: '',
+    selectedTemplate: ''
+})
+
+const { errors, validateForm } = useFormValidation({
+    rules: {
+        reportName: [
+            { required: true, message: '請輸入報告書名稱' },
+            { max: 100, message: '報告書名稱不可超過100個字' }
+        ],
+        selectedIndustry: [
+            { required: true, message: '請選擇產業' }
+        ],
+        selectedAsset: [
+            { required: true, message: '請選擇資產規模' }
+        ],
+        selectedTemplate: [
+            { required: true, message: '請選擇準則模板' }
+        ]
+    }
+})
+
+onMounted(async () => {
+    await Promise.all([
+        reportStore.fetchIndustries(),
+        reportStore.fetchTemplates()
+    ])
+})
 
 const showModal = () => {
     if (reportModal.value) {
@@ -58,20 +151,25 @@ const showModal = () => {
 const hideModal = () => {
     if (reportModal.value) {
         reportModal.value.close()
+        // 重置表單
+        Object.keys(form).forEach(key => form[key] = '')
+        errors.value = {}
     }
 }
 
-const createReport = () => {
-    console.log("建立報告書：", {
-        name: reportName.value,
-        industry: selectedIndustry.value,
-        asset: selectedAsset.value,
-        template: selectedTemplate.value
-    })
-    hideModal()
+const createReport = async () => {
+    if (!validateForm(form)) return
+
+    try {
+        // TODO: 調用 API 創建報告
+        console.log("建立報告書：", form)
+        toast.success('報告建立成功')
+        hideModal()
+    } catch (error) {
+        toast.error(error.message || '報告建立失敗')
+    }
 }
 
-// 導出方法供父組件使用
 defineExpose({
     showModal,
     hideModal
@@ -79,52 +177,112 @@ defineExpose({
 </script>
 
 <style scoped>
+@import '@/styles/modal.css';
+@import '@/styles/form.css';
+
 dialog {
-    width: 400px;
     border: none;
     border-radius: 8px;
-    background-color: #242526;
-    color: white;
-    padding: 20px;
-    text-align: center;
+    padding: 0;
+    background: transparent;
+    max-width: 90vw;
+    width: 500px;
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    margin: 0;
 }
 
-.createreport_h3 {
-    font-size: 1.5em;
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.5);
 }
 
-.modal-content label {
+.modal-content {
+    background-color: #242526;
+    border-radius: 8px;
+    padding: 24px;
+    color: #ffffff;
+}
+
+.modal-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 24px 0;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
     display: block;
-    margin: 10px 0 5px;
+    margin-bottom: 8px;
+    font-size: 16px;
+    color: #ffffff;
 }
 
-.modal-content input,
-.modal-content select {
+.form-group input,
+.form-group select {
     width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-    background-color: #3A3B3C;
-    border: none;
-    color: white;
+    padding: 8px 12px;
     border-radius: 4px;
+    border: 1px solid #3A3B3C;
+    background-color: #3A3B3C;
+    color: #ffffff;
+    font-size: 14px;
 }
 
-.modal-actions button {
-    margin: 10px 5px;
-    padding: 8px 16px;
-    border: none;
+.form-group input::placeholder {
+    color: #8E8E8E;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.btn-cancel,
+.btn-confirm {
+    padding: 8px 24px;
     border-radius: 4px;
+    border: none;
+    font-size: 14px;
     cursor: pointer;
+    min-width: 80px;
+}
+
+.btn-cancel {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-confirm {
     background-color: #4CAF50;
     color: white;
 }
 
-.modal-actions button:nth-child(1) {
-    background-color: #f44336;
+.btn-confirm:disabled {
+    background-color: #8E8E8E;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.error {
+    border-color: #f44336 !important;
 }
 </style> 
