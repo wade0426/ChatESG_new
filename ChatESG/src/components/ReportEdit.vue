@@ -13,7 +13,7 @@
     <div class="sidebar-wrapper">
       <div :class="['sidebar', { 'collapsed': isSidebarCollapsed }]">
         <div class="sidebar-header">
-          <h3>報告書章節</h3>
+          <h3>報告書編輯</h3>
           <button @click="toggleSidebar" class="sidebar-toggle">
             <i :class="['mdi', isSidebarCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left']"></i>
           </button>
@@ -25,77 +25,91 @@
               <span>新增大章節</span>
             </button>
           </div>
-          <template v-for="(chapter, index) in reportEditStore.chapters" :key="chapter.chapterTitle">
-            <!-- 大章節 -->
-            <div class="section-level-1">
-              <div 
-                :class="['section-title', { 'active': selectedSection === chapter.chapterTitle }]"
-                @click="toggleSection(chapter.chapterTitle)"
-              >
-                <div class="section-title-content">
-                  <span>{{ getSectionNumber(index) }}. {{ chapter.chapterTitle }}</span>
-                  <div class="section-actions">
-                    <button 
-                      class="edit-title-btn"
-                      @click.stop="showEditTitleModal(chapter.chapterTitle, 'chapter')"
-                      title="編輯標題"
-                    >
-                      <i class="mdi mdi-pencil"></i>
-                    </button>
-                    <button 
-                      class="add-subsection-btn"
-                      @click.stop="showAddSubsectionModal(chapter.chapterTitle)"
-                      title="新增中章節"
-                    >
-                      <i class="mdi mdi-plus"></i>
-                    </button>
-                    <button 
-                      class="delete-btn"
-                      @click.stop="confirmDelete(chapter.chapterTitle, 'chapter')"
-                      title="刪除"
-                    >
-                      <i class="mdi mdi-delete"></i>
-                    </button>
-                    <i :class="['mdi', isExpanded(chapter.chapterTitle) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+          <!-- 使用 draggable 包裹大章節列表 -->
+          <draggable 
+            v-model="reportEditStore.chapters" 
+            @start="drag=true" 
+            @end="drag=false"
+            item-key="chapterTitle"
+            handle=".drag-handle"
+            :animation="200"
+            class="chapter-list"
+          >
+            <template #item="{element: chapter, index}">
+              <div class="section-level-1">
+                <div 
+                  :class="['section-title', { 'active': selectedSection === chapter.chapterTitle }]"
+                  @click="toggleSection(chapter.chapterTitle)"
+                >
+                  <div class="section-title-content">
+                    <!-- 新增拖曳把手 -->
+                    <div class="drag-handle">
+                      <i class="mdi mdi-drag"></i>
+                    </div>
+                    <span style="width: 100%;">{{ getSectionNumber(index) }}. {{ chapter.chapterTitle }}</span>
+                    <div class="section-actions">
+                      <button 
+                        class="edit-title-btn"
+                        @click.stop="showEditTitleModal(chapter.chapterTitle, 'chapter')"
+                        title="編輯標題"
+                      >
+                        <i class="mdi mdi-pencil"></i>
+                      </button>
+                      <button 
+                        class="add-subsection-btn"
+                        @click.stop="showAddSubsectionModal(chapter.chapterTitle)"
+                        title="新增中章節"
+                      >
+                        <i class="mdi mdi-plus"></i>
+                      </button>
+                      <button 
+                        class="delete-btn"
+                        @click.stop="confirmDelete(chapter.chapterTitle, 'chapter')"
+                        title="刪除"
+                      >
+                        <i class="mdi mdi-delete"></i>
+                      </button>
+                      <i :class="['mdi', isExpanded(chapter.chapterTitle) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <!-- 中章節 -->
-              <template v-if="isExpanded(chapter.chapterTitle)">
-                <div 
-                  v-for="(subChapter, subIndex) in chapter.subChapters" 
-                  :key="subChapter.BlockID"
-                  class="section-level-2"
-                >
+                
+                <!-- 中章節 -->
+                <div v-if="isExpanded(chapter.chapterTitle)" class="sub-chapters">
                   <div 
-                    :class="['section-title', { 'active': selectedSection === subChapter.BlockID }]"
-                    @click="selectSection(subChapter.BlockID)"
+                    v-for="(subChapter, subIndex) in chapter.subChapters" 
+                    :key="subChapter.BlockID"
+                    class="section-level-2"
                   >
-                    <div class="section-title-content">
-                      <span>{{ getAlphabetLabel(subIndex) }}. {{ subChapter.subChapterTitle }}</span>
-                      <div class="section-actions">
-                        <button 
-                          class="edit-title-btn"
-                          @click.stop="showEditTitleModal(subChapter.BlockID, 'subChapter')"
-                          title="編輯標題"
-                        >
-                          <i class="mdi mdi-pencil"></i>
-                        </button>
-                        <button 
-                          class="delete-btn"
-                          @click.stop="confirmDelete(chapter.chapterTitle, 'subChapter', subChapter.subChapterTitle)"
-                          title="刪除"
-                        >
-                          <i class="mdi mdi-delete"></i>
-                        </button>
+                    <div 
+                      :class="['section-title', { 'active': selectedSection === subChapter.BlockID }]"
+                      @click="selectSection(subChapter.BlockID)"
+                    >
+                      <div class="section-title-content">
+                        <span>{{ getAlphabetLabel(subIndex) }}. {{ subChapter.subChapterTitle }}</span>
+                        <div class="section-actions">
+                          <button 
+                            class="edit-title-btn"
+                            @click.stop="showEditTitleModal(subChapter.BlockID, 'subChapter')"
+                            title="編輯標題"
+                          >
+                            <i class="mdi mdi-pencil"></i>
+                          </button>
+                          <button 
+                            class="delete-btn"
+                            @click.stop="confirmDelete(chapter.chapterTitle, 'subChapter', subChapter.subChapterTitle)"
+                            title="刪除"
+                          >
+                            <i class="mdi mdi-delete"></i>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </template>
-            </div>
-          </template>
+              </div>
+            </template>
+          </draggable>
         </div>
       </div>
     </div>
@@ -232,6 +246,7 @@ import { ref, computed, onMounted, provide, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import ReportEditNav from './ReportEditNav.vue'
 import { useReportEditStore } from '@/stores/reportEdit'
+import draggable from 'vuedraggable'
 
 const router = useRouter()
 const reportEditStore = useReportEditStore()
@@ -261,6 +276,9 @@ const newMainSectionTitle = ref('')
 const sectionContents = ref({})
 const comments = ref({})
 const showCommentPanel = ref(false)
+
+// 拖曳相關狀態
+const drag = ref(false)
 
 // 方法
 const toggleSidebar = () => {
@@ -514,7 +532,7 @@ provide('handleSave', handleSave)
 
 .sidebar {
   height: calc(100vh - 60px);
-  width: 300px;
+  width: 308px;
   transition: all 0.3s ease;
   position: fixed;
   background-color: #f8f9fa;
@@ -611,12 +629,13 @@ provide('handleSave', handleSave)
 }
 
 .section-level-1 {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  padding: 0 1rem;
 }
 
 .section-level-2 {
   padding-left: 1.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .section-level-3 {
@@ -625,7 +644,7 @@ provide('handleSave', handleSave)
 }
 
 .section-title {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -829,9 +848,9 @@ provide('handleSave', handleSave)
 
 .section-title-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 0.5rem;
 }
 
 .section-title-content i {
@@ -1324,5 +1343,56 @@ provide('handleSave', handleSave)
 /* 確保 modal 樣式與其他 modal 一致 */
 .modal-overlay {
   z-index: 1001;
+}
+
+/* 拖曳相關樣式 */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  cursor: move;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #666;
+}
+
+.dark .drag-handle {
+  color: #999;
+}
+
+.section-title:hover .drag-handle {
+  opacity: 0.5;
+}
+
+.section-title:hover .drag-handle:hover {
+  opacity: 1;
+}
+
+/* 拖曳時的樣式 */
+.sortable-ghost {
+  opacity: 0.5;
+  background-color: #e2e8f0;
+}
+
+.dark .sortable-ghost {
+  background-color: #2d2d2d;
+}
+
+.sortable-drag {
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .sortable-drag {
+  background-color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 新增樣式 */
+.chapter-list {
+  padding: 0.5rem 0;
+}
+
+.sub-chapters {
+  padding-left: 1.5rem;
 }
 </style>
