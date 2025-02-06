@@ -132,89 +132,18 @@ defineExpose({
 </script>
   
 <style scoped>
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
+@import '../styles/modal.css';
+@import '../styles/form.css';
 
-.modal-content {
-  background-color: #242526;
-  padding: 20px;
-  border-radius: 8px;
-  min-width: 400px;
-  color: white;
-}
-
-.modal-footer {
-  margin-top: 20px;
-  display: flex;
-  /* 置中 */
-  justify-content: center;
-  gap: 10px;
-}
-
-.modal-footer button:nth-child(1) {
-    background-color: #f44336;
-}
-
-.modal-footer button:nth-child(2) {
-    background-color: #4CAF50;
-}
-
-button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  background-color: #3A3B3C;
-  color: white;
-}
-
-button:hover {
-  background-color: #4A4B4C;
-}
-
-.modal-content label {
-  display: block;
-  margin: 10px 0 5px;
-  text-align: left;
-}
-
-.modal-content input,
-.modal-content select {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  background-color: #3A3B3C;
-  border: none;
-  color: white;
-  border-radius: 4px;
-}
-
-.modal-content select option {
-  background-color: #242526;
-}
-
+/* 只保留特定的樣式覆蓋 */
 .error-message {
   color: red;
   font-size: 12px;
   margin-top: 5px;
 }
 
-.modal-content input.error {
-  border: 1px solid red;
-}
-
+.modal-content input.error,
 .modal-content select.error {
   border: 1px solid red;
 }
-
 </style> 
