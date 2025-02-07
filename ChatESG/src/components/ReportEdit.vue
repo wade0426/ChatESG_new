@@ -39,7 +39,7 @@
               <div class="section-level-1">
                 <div 
                   :class="['section-title', { 'active': selectedSection === chapter.chapterTitle }]"
-                  @click="toggleSection(chapter.chapterTitle)"
+                  @click="selectSection(chapter.chapterTitle)"
                 >
                   <div class="section-title-content">
                     <!-- 新增拖曳把手 -->
@@ -69,7 +69,13 @@
                       >
                         <i class="mdi mdi-delete"></i>
                       </button>
-                      <i :class="['mdi', isExpanded(chapter.chapterTitle) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                      <button 
+                        class="toggle-btn"
+                        @click.stop="toggleSection(chapter.chapterTitle)"
+                        title="展開/收合"
+                      >
+                        <i :class="['mdi', isExpanded(chapter.chapterTitle) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -689,7 +695,7 @@ const handleCriteriaCheck = () => {
 
 .sidebar {
   height: calc(100vh - 60px);
-  width: 308px;
+  width: 318px;
   transition: all 0.3s ease;
   position: fixed;
   background-color: #f8f9fa;
@@ -1805,5 +1811,31 @@ const handleCriteriaCheck = () => {
 
 .dark .subchapter-block .content-textarea:focus {
   border-color: #3b82f6;
+}
+
+/* 新增展開/收合按鈕樣式 */
+.toggle-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: inherit;
+}
+
+.toggle-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-btn i {
+  font-size: 1.2rem;
 }
 </style>
