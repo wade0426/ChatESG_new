@@ -892,7 +892,7 @@ const handleCriteriaCheck = () => {
 
 .main-content {
   flex: 1;
-  padding: 2rem;
+  padding: 2rem 2rem 2rem 3rem;
   transition: all 0.3s ease;
   margin-left: 280px;
   height: calc(100vh - 60px);

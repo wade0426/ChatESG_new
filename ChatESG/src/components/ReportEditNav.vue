@@ -174,8 +174,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, inject, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useReportEditStore } from '@/stores/reportEdit'
 
 const router = useRouter()
+const reportEditStore = useReportEditStore()
 
 // 注入父組件提供的儲存方法
 const handleSave = inject('handleSave')
@@ -185,7 +187,10 @@ const comments = inject('comments', ref({}))
 
 // 基本狀態
 const theme = ref('dark')
-const fileName = ref('未命名文件')
+const fileName = computed({
+  get: () => reportEditStore.getFileName,
+  set: (value) => reportEditStore.setFileName(value)
+})
 const isSaved = ref(true)
 const saveStatus = ref('已儲存')
 const showSettings = ref(false)
@@ -348,7 +353,7 @@ const goHome = async () => {
 }
 
 const handleFileNameChange = () => {
-  console.log('更新後的檔案名稱:', fileName.value)
+  reportEditStore.setFileName(fileName.value)
 }
 
 // 切換註解篩選下拉選單

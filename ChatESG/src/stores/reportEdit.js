@@ -31,13 +31,16 @@ export const useReportEditStore = defineStore('reportEdit', {
         }
       }
       return { text_content: '', img_content_url: [] }
-    }
+    },
+
+    // 獲取檔案名稱
+    getFileName: (state) => state.fileName
   },
 
   actions: {
     // 設定報告書的檔案名稱
     setFileName(fileName) {
-      this.fileName = fileName
+      this.fileName = fileName || '未命名報告書'
     },
 
     // 設定完整的章節結構
