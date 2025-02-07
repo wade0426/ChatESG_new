@@ -124,40 +124,79 @@ export const useReportEditStore = defineStore('reportEdit', {
     },
 
     // 初始化示例數據
-    initializeDefaultChapters() {
-      this.chapters = [
-        {
-          chapterTitle: '關於本報告書',
-          subChapters: [
-            {
-              subChapterTitle: '關於本報告書',
-              BlockID: uuidv4(),
-              access_permissions: uuidv4(),
-              text_content: '',
-              img_content_url: []
+    async initializeDefaultChapters(data) {
+      try {
+        const response = await this.fetchReportData(data)
+        if (response.status === 'success') {
+          const reportData = response.data
+          this.setFileName(reportData.assetName)
+          
+          // 設置章節結構
+          if (reportData.content && reportData.content.chapters) {
+            this.chapters = reportData.content.chapters.map(chapter => ({
+              chapterTitle: chapter.chapterTitle,
+              subChapters: chapter.subChapters.map(subChapter => ({
+                subChapterTitle: subChapter.subChapterTitle,
+                BlockID: subChapter.BlockID,
+                access_permissions: subChapter.access_permissions,
+                text_content: '',
+                img_content_url: []
+              }))
+            }))
+
+            // 獲取每個 block 的內容
+            for (const chapter of this.chapters) {
+              for (const subChapter of chapter.subChapters) {
+                const blockData = await this.fetchReportBlockData({
+                  block_id: subChapter.BlockID
+                })
+                if (blockData.status === 'success') {
+                  const content = blockData.data.content.content
+                  subChapter.text_content = content.text || ''
+                  subChapter.img_content_url = content.images || []
+                }
+              }
             }
-          ]
-        },
-        {
-          chapterTitle: '永續發展策略',
-          subChapters: [
-            {
-              subChapterTitle: '永續治理架構',
-              BlockID: uuidv4(),
-              access_permissions: uuidv4(),
-              text_content: '',
-              img_content_url: []
-            },
-            {
-              subChapterTitle: '永續發展藍圖',
-              BlockID: uuidv4(),
-              access_permissions: uuidv4(),
-              text_content: '',
-              img_content_url: []
-            }
-          ]
+          }
+        } else {
+          console.error('獲取報告書數據失敗')
         }
-      ]
+      } catch (error) {
+        console.error('初始化章節數據時發生錯誤:', error)
+      }
+    },
+
+    // 使用API獲取報告書大綱
+    async fetchReportData(data) {
+      const response = await fetch(`http://localhost:8000/api/report/get_report_data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          organization_id: data.organization_id,
+          asset_id: data.asset_id
+        })
+      })
+      const responseData = await response.json()
+      console.log("responseData_report", responseData) // 測試
+      return responseData
+    },
+
+    // 使用API獲取報告書Block內容
+    async fetchReportBlockData(data) {
+      const response = await fetch(`http://localhost:8000/api/report/get_report_block_data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          block_id: data.block_id
+        })
+      })
+      const responseData = await response.json()
+      console.log("responseData_block", responseData) // 測試
+      return responseData
     }
   }
 }) 

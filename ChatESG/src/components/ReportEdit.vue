@@ -319,12 +319,16 @@
 
 <script setup>
 import { ref, computed, onMounted, provide, nextTick, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import ReportEditNav from './ReportEditNav.vue'
+import { useUserStore } from '@/stores/user'
 import { useReportEditStore } from '@/stores/reportEdit'
 import draggable from 'vuedraggable'
 
+// 使用 router 和 route
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 const reportEditStore = useReportEditStore()
 
 // 側邊欄狀態
@@ -402,8 +406,23 @@ const initializeExpandedSections = () => {
 }
 
 // 在組件掛載時初始化
-onMounted(() => {
-  reportEditStore.initializeDefaultChapters()
+onMounted(async () => {
+  // 檢查 URL 參數
+  const assetId = route.query.assetId
+  if (!assetId) {
+    // 如果沒有 assetId 參數，導向 home 頁面
+    router.push('/home')
+    return
+  }
+
+  await userStore.initializeFromStorage()
+  
+  // 初始化報告書數據
+  await reportEditStore.initializeDefaultChapters({
+    organization_id: userStore.organizationID,
+    asset_id: assetId
+  })
+  
   initializeExpandedSections()
 })
 

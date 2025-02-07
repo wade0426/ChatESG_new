@@ -53,7 +53,7 @@ export const useUserStore = defineStore('user', {
 
             if (userID && username && access_token) {
                 this.login(userID, username, access_token)
-                await this.fetchUserProfile()  // 添加 await 等待获取完整用户资料
+                await this.fetchUserProfile()  // 添加 await 等待獲取完整用戶資料
             }
         },
 

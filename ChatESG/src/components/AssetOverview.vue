@@ -251,6 +251,9 @@ const openAsset = (asset) => {
     else if (asset.AssetType === 'standard_template') {
         router.push(`/create-major-issues-list?assetId=${asset.AssetId}`)
     }
+    else if (asset.AssetType === 'report') {
+        router.push(`/report-edit?assetId=${asset.AssetId}`)
+    }
     else {
         toast.info('此類型資產暫不支持開啟')
     }
