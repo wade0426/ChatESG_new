@@ -3032,6 +3032,8 @@ async def get_report_data(data: dict):
                     response_data = {
                         "status": "success",
                         "data": {
+                            "company_info_assetID": content['company_info_assetID'],
+                            "standard_template_id": content['standard_template_id'],
                             "assetName": asset[0],
                             "assetType": asset[1],
                             "category": asset[2],
@@ -3310,6 +3312,79 @@ def convert_base64_to_url(base64_string, output_dir="images", filename=None):
 async def base64_to_url(data: dict):
     base64_string = data.get("base64_string")
     return convert_base64_to_url(base64_string).replace("\\", "/")
+
+
+# 更新報告書大綱
+@app.post("/api/report/update_report_outline")
+async def update_report_outline(data: dict):
+    try:
+        # 獲取必要參數
+        asset_id = data.get("asset_id")
+        content = data.get("content")
+
+        if not all([asset_id, content]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 驗證內容格式
+        try:
+            if isinstance(content, str):
+                content = json.loads(content)
+            elif not isinstance(content, dict):
+                raise ValueError("內容必須是JSON格式")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="內容必須是有效的JSON格式")
+
+        # 將字符串格式的ID轉換為BINARY(16)格式
+        try:
+            asset_id_binary = uuid.UUID(asset_id).bytes
+        except ValueError:
+            raise HTTPException(status_code=400, detail="無效的資產ID格式")
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 檢查資產是否存在且未被刪除
+                    await cur.execute("""
+                        SELECT AssetID 
+                        FROM OrganizationAssets 
+                        WHERE AssetID = %s 
+                        AND IsDeleted = FALSE
+                        FOR UPDATE
+                    """, (asset_id_binary,))
+
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="找不到該資產或資產已被刪除")
+
+                    # 更新資產內容和更新時間
+                    current_time = datetime.now(timezone.utc)
+                    await cur.execute("""
+                        UPDATE OrganizationAssets 
+                        SET Content = %s,
+                            UpdatedAt = %s
+                        WHERE AssetID = %s
+                    """, (json.dumps(content), current_time, asset_id_binary))
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "報告書大綱更新成功",
+                        "data": {
+                            "asset_id": asset_id,
+                            "updated_at": current_time.isoformat()
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"更新報告書大綱失敗: {str(e)}")
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
 if __name__ == "__main__":

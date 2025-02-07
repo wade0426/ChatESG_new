@@ -28,8 +28,8 @@
           <!-- 使用 draggable 包裹大章節列表 -->
           <draggable 
             v-model="reportEditStore.chapters" 
-            @start="drag=true" 
-            @end="drag=false"
+            @start="drag=true"
+            @end="handleDragEnd"
             item-key="chapterTitle"
             handle=".drag-handle"
             :animation="200"
@@ -394,7 +394,7 @@ const selectSection = async (sectionId) => {
         ?.subChapters.find(s => s.BlockID === sectionId)?.subChapterTitle
     : reportEditStore.chapters.find(c => c.chapterTitle === sectionId)?.chapterTitle;
 
-  // 如果存在上一個章節，則輸出切換信息並更新內容
+  // 如果存在上一個章節，則輸出切換訊息並更新內容
   if (previousSection.value && previousContent) {
     console.log(`章節切換: ${previousTitle} -> ${newTitle}`);
     console.log('原章節 BlockID:', previousBlockId);
@@ -453,6 +453,9 @@ onMounted(async () => {
     router.push('/home')
     return
   }
+
+  // 設定 assetId
+  reportEditStore.setAssetId(assetId)
 
   await userStore.initializeFromStorage()
   
@@ -697,7 +700,7 @@ const handleImageUpload = (event) => {
   event.target.value = ''
 }
 
-// 更新圖片信息
+// 更新圖片訊息
 const updateImageInfo = (index) => {
   reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
 }
@@ -723,6 +726,15 @@ const getSubChapters = (chapterTitle) => {
 // 處理準則檢驗按鈕點擊
 const handleCriteriaCheck = () => {
   console.log("準則檢驗按鈕被按下")
+}
+
+// 拖曳結束
+const handleDragEnd = async (evt) => {
+  drag.value = false
+  const movedItem = evt.item.__draggable_context.element
+  // console.log('完成拖移章節:', movedItem.chapterTitle)
+  // 更新報告書大綱
+  await reportEditStore.updateReportOutline()
 }
 </script>
 

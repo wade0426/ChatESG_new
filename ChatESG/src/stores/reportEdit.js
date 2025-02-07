@@ -4,6 +4,9 @@ import { v4 as uuidv4 } from 'uuid'
 export const useReportEditStore = defineStore('reportEdit', {
   state: () => ({
     fileName: '未命名報告書',
+    company_info_assetID: null,
+    standard_template_id: null,
+    asset_id: null,
     chapters: []
   }),
 
@@ -41,6 +44,10 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 設定報告書的檔案名稱
     setFileName(fileName) {
       this.fileName = fileName || '未命名報告書'
+    },
+
+    setAssetId(assetId) {
+      this.asset_id = assetId
     },
 
     // 設定完整的章節結構
@@ -165,6 +172,8 @@ export const useReportEditStore = defineStore('reportEdit', {
         if (response.status === 'success') {
           const reportData = response.data
           this.setFileName(reportData.assetName)
+          this.company_info_assetID = reportData.company_info_assetID
+          this.standard_template_id = reportData.standard_template_id
           
           // 設置章節結構
           if (reportData.content && reportData.content.chapters) {
@@ -290,6 +299,40 @@ export const useReportEditStore = defineStore('reportEdit', {
         return responseData
       } catch (error) {
         console.error('更新報告書Block內容時發生錯誤:', error)
+        throw error
+      }
+    },
+
+    // 更新報告書大綱
+    async updateReportOutline() {
+      try {
+        // 準備要傳送的內容
+        const content = {
+          company_info_assetID: this.company_info_assetID,
+          standard_template_id: this.standard_template_id,
+          chapters: this.chapters
+        }
+
+        const response = await fetch(`http://localhost:8000/api/report/update_report_outline`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            asset_id: this.asset_id,
+            content: content
+          })
+        })
+
+        const responseData = await response.json()
+        if (!response.ok) {
+          throw new Error(responseData.detail || '更新失敗')
+        }
+
+        console.log("更新報告書大綱成功", responseData)
+        return responseData
+      } catch (error) {
+        console.error('更新報告書大綱時發生錯誤:', error)
         throw error
       }
     }
