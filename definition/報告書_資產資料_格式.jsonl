@@ -3,27 +3,29 @@
 需求：要有大章節、中章節、中章節的UUID(去找資料庫放內容的地方)、章節權限識別標籤(UUID)
 
 {
+    "company_info_assetID": "UUID",
+    "standard_template_id": "UUID",
     "chapters": [
       {
-        "chapterTitle": "永續發展策略", // 大章節名稱
+        "chapterTitle": "關於本報告書", // 大章節名稱
         "subChapters": [
           {
-            "subChapterTitle": "永續治理架構", // 中章節名稱
+            "subChapterTitle": "關於本報告書", // 中章節名稱
             "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
             "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
           }
         ]
       },
       {
-        "chapterTitle": "經濟績效",
+        "chapterTitle": "永續發展策略",
         "subChapters": [
           {
-            "subChapterTitle": "營運財務概況",
+            "subChapterTitle": "永續治理架構",
             "BlockID": "UUID", 
             "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
           },
           {
-            "subChapterTitle": "收入概況",
+            "subChapterTitle": "永續發展藍圖",
             "BlockID": "UUID",
             "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
           }

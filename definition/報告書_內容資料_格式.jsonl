@@ -49,7 +49,7 @@
     "comments": [
       {
         "content": "需要更新2023年第四季財務數據",
-        "status": "resolved",
+        "status": "resolved", // open, resolved
         "creator": "user456", 
         "updatedAt": "2024-01-10T15:45:00Z"
       }
