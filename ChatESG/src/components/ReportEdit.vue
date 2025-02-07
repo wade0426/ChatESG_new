@@ -128,8 +128,37 @@
       </div>
       
       <div class="editor-content">
-        <!-- 只有在選中中章節時才顯示輸入框 -->
-        <div v-if="isSubChapter(selectedSection)" class="input-area">
+        <!-- 當選中大章節時顯示所有子章節 -->
+        <div v-if="!isSubChapter(selectedSection) && selectedSection" class="chapter-content">
+          <h2 class="chapter-title">{{ getChapterTitle(selectedSection) }}</h2>
+          
+          <div class="subchapters-container">
+            <div 
+              v-for="subChapter in getSubChapters(selectedSection)" 
+              :key="subChapter.BlockID"
+              class="subchapter-block"
+            >
+              <h3 class="subchapter-title">{{ subChapter.subChapterTitle }}</h3>
+              <textarea 
+                v-model="sectionContents[subChapter.BlockID]" 
+                class="content-textarea"
+                :placeholder="'請輸入' + subChapter.subChapterTitle + '的內容...'"
+                @input="() => handleContentChange(subChapter.BlockID)"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- 準則檢驗按鈕 -->
+          <div class="criteria-check-container">
+            <button class="criteria-check-btn" @click="handleCriteriaCheck">
+              <i class="mdi mdi-check-circle"></i>
+              準則檢驗
+            </button>
+          </div>
+        </div>
+
+        <!-- 當選中中章節時顯示單一編輯區域 -->
+        <div v-else-if="isSubChapter(selectedSection)" class="input-area">
           <div class="content-wrapper">
             <textarea 
               v-model="sectionContents[selectedSection]" 
@@ -218,7 +247,7 @@
           </div>
         </div>
         <div v-else class="no-edit-message">
-          請選擇左側中章節以進行編輯
+          請選擇左側章節以進行編輯
         </div>
       </div>
     </div>
@@ -549,19 +578,30 @@ provide('handleSave', handleSave)
 
 // 監聽選中的章節變化
 watch(selectedSection, (newSection) => {
-  if (newSection && isSubChapter(newSection)) {
-    const content = reportEditStore.getSubChapterContent(newSection)
-    sectionContents.value[newSection] = content.text_content
-    currentImages.value = content.img_content_url
+  if (newSection) {
+    if (isSubChapter(newSection)) {
+      // 如果是中章節，載入單一章節內容
+      const content = reportEditStore.getSubChapterContent(newSection)
+      sectionContents.value[newSection] = content.text_content
+      currentImages.value = content.img_content_url
+    } else {
+      // 如果是大章節，載入所有子章節的內容
+      const subChapters = getSubChapters(newSection)
+      subChapters.forEach(subChapter => {
+        const content = reportEditStore.getSubChapterContent(subChapter.BlockID)
+        sectionContents.value[subChapter.BlockID] = content.text_content
+      })
+    }
   }
 })
 
 // 處理內容變化
-const handleContentChange = () => {
-  if (selectedSection.value) {
+const handleContentChange = (blockId = null) => {
+  const targetBlockId = blockId || selectedSection.value
+  if (targetBlockId) {
     reportEditStore.updateSubChapterText(
-      selectedSection.value, 
-      sectionContents.value[selectedSection.value]
+      targetBlockId, 
+      sectionContents.value[targetBlockId]
     )
   }
 }
@@ -602,6 +642,23 @@ const updateImageInfo = (index) => {
 const removeImage = (index) => {
   currentImages.value.splice(index, 1)
   reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+}
+
+// 獲取大章節標題
+const getChapterTitle = (chapterTitle) => {
+  const chapter = reportEditStore.chapters.find(c => c.chapterTitle === chapterTitle)
+  return chapter ? chapter.chapterTitle : ''
+}
+
+// 獲取大章節下的所有中章節
+const getSubChapters = (chapterTitle) => {
+  const chapter = reportEditStore.chapters.find(c => c.chapterTitle === chapterTitle)
+  return chapter ? chapter.subChapters : []
+}
+
+// 處理準則檢驗按鈕點擊
+const handleCriteriaCheck = () => {
+  console.log("準則檢驗按鈕被按下")
 }
 </script>
 
@@ -1644,5 +1701,109 @@ const removeImage = (index) => {
 
 .sub-chapters {
   padding-left: 1.5rem;
+}
+
+/* 新增樣式 */
+.chapter-content {
+  padding: 2rem;
+}
+
+.chapter-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  color: var(--text-color);
+}
+
+.subchapters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.subchapter-block {
+  background-color: var(--bg-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .subchapter-block {
+  background-color: #2d2d2d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.subchapter-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: var(--text-color);
+}
+
+.criteria-check-container {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.criteria-check-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #2563eb;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.criteria-check-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.criteria-check-btn:active {
+  transform: translateY(0);
+}
+
+.dark .criteria-check-btn {
+  background-color: #3b82f6;
+}
+
+.dark .criteria-check-btn:hover {
+  background-color: #2563eb;
+}
+
+/* 確保文字框樣式一致 */
+.subchapter-block .content-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: var(--editor-font-size, 16px);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.dark .subchapter-block .content-textarea {
+  background-color: #1a1a1a;
+  border-color: #2d2d2d;
+  color: #ffffff;
+}
+
+.subchapter-block .content-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.dark .subchapter-block .content-textarea:focus {
+  border-color: #3b82f6;
 }
 </style>
