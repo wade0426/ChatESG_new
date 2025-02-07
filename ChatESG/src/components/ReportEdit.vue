@@ -135,8 +135,49 @@
               v-model="sectionContents[selectedSection]" 
               class="content-textarea"
               :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
+              @input="handleContentChange"
             ></textarea>
             
+            <!-- 圖片上傳區域 -->
+            <div class="image-upload-area">
+              <input 
+                type="file" 
+                ref="imageInput"
+                @change="handleImageUpload" 
+                accept="image/*"
+                multiple
+                class="hidden"
+              />
+              <button class="upload-btn" @click="triggerImageUpload">
+                <i class="mdi mdi-image-plus"></i>
+                <span>上傳圖片</span>
+              </button>
+              
+              <!-- 圖片預覽區域 -->
+              <div v-if="currentImages.length > 0" class="image-preview-area">
+                <div v-for="(image, index) in currentImages" :key="index" class="image-preview-item">
+                  <img :src="image.url || image" :alt="image.title || '圖片 ' + (index + 1)" />
+                  <div class="image-info">
+                    <input 
+                      v-model="image.title"
+                      placeholder="輸入圖片標題"
+                      class="image-title-input"
+                      @input="updateImageInfo(index)"
+                    />
+                    <input 
+                      v-model="image.subtitle"
+                      placeholder="輸入圖片描述"
+                      class="image-subtitle-input"
+                      @input="updateImageInfo(index)"
+                    />
+                  </div>
+                  <button class="remove-image-btn" @click="removeImage(index)">
+                    <i class="mdi mdi-close"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- 註解按鈕 -->
             <button 
               class="add-comment-btn"
@@ -242,7 +283,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, provide, nextTick } from 'vue'
+import { ref, computed, onMounted, provide, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ReportEditNav from './ReportEditNav.vue'
 import { useReportEditStore } from '@/stores/reportEdit'
@@ -276,6 +317,8 @@ const newMainSectionTitle = ref('')
 const sectionContents = ref({})
 const comments = ref({})
 const showCommentPanel = ref(false)
+const currentImages = ref([])
+const imageInput = ref(null)
 
 // 拖曳相關狀態
 const drag = ref(false)
@@ -503,6 +546,63 @@ const handleSave = () => {
 }
 
 provide('handleSave', handleSave)
+
+// 監聽選中的章節變化
+watch(selectedSection, (newSection) => {
+  if (newSection && isSubChapter(newSection)) {
+    const content = reportEditStore.getSubChapterContent(newSection)
+    sectionContents.value[newSection] = content.text_content
+    currentImages.value = content.img_content_url
+  }
+})
+
+// 處理內容變化
+const handleContentChange = () => {
+  if (selectedSection.value) {
+    reportEditStore.updateSubChapterText(
+      selectedSection.value, 
+      sectionContents.value[selectedSection.value]
+    )
+  }
+}
+
+// 觸發圖片上傳
+const triggerImageUpload = () => {
+  imageInput.value.click()
+}
+
+// 處理圖片上傳
+const handleImageUpload = (event) => {
+  const files = event.target.files
+  if (!files.length) return
+
+  Array.from(files).forEach(file => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      currentImages.value.push({
+        url: e.target.result,
+        title: '',
+        subtitle: ''
+      })
+      reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+    }
+    reader.readAsDataURL(file)
+  })
+  
+  // 清空 input，以便可以重複上傳相同的圖片
+  event.target.value = ''
+}
+
+// 更新圖片信息
+const updateImageInfo = (index) => {
+  reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+}
+
+// 移除圖片
+const removeImage = (index) => {
+  currentImages.value.splice(index, 1)
+  reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+}
 </script>
 
 <style scoped>
@@ -1130,7 +1230,157 @@ provide('handleSave', handleSave)
 .content-wrapper {
   position: relative;
   display: flex;
+  flex-direction: column;
   gap: 1rem;
+}
+
+.image-upload-area {
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #2563eb;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.upload-btn:active {
+  transform: translateY(0);
+}
+
+.image-preview-area {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.image-preview-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .image-preview-item {
+  background-color: #2d2d2d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.dark .image-preview-item img {
+  background-color: #1a1a1a;
+}
+
+.image-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.image-title-input,
+.image-subtitle-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.dark .image-title-input,
+.dark .image-subtitle-input {
+  background-color: #1a1a1a;
+  border-color: #2d2d2d;
+  color: #ffffff;
+}
+
+.image-title-input {
+  font-weight: 500;
+}
+
+.image-subtitle-input {
+  font-size: 0.8125rem;
+  color: #666;
+}
+
+.dark .image-subtitle-input {
+  color: #999;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-image-btn:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+.hidden {
+  display: none;
+}
+
+.dark .image-upload-area {
+  border-color: #2d2d2d;
+}
+
+.dark .upload-btn {
+  background-color: #3b82f6;
+}
+
+.dark .upload-btn:hover {
+  background-color: #2563eb;
+}
+
+.dark .remove-image-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .remove-image-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 .add-comment-btn {

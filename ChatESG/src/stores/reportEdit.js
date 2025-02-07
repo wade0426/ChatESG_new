@@ -17,6 +17,20 @@ export const useReportEditStore = defineStore('reportEdit', {
     getSubChaptersByTitle: (state) => (chapterTitle) => {
       const chapter = state.chapters.find(c => c.chapterTitle === chapterTitle)
       return chapter ? chapter.subChapters : []
+    },
+
+    // 根據 BlockID 獲取中章節內容
+    getSubChapterContent: (state) => (blockId) => {
+      for (const chapter of state.chapters) {
+        const subChapter = chapter.subChapters.find(sub => sub.BlockID === blockId)
+        if (subChapter) {
+          return {
+            text_content: subChapter.text_content || '',
+            img_content_url: subChapter.img_content_url || []
+          }
+        }
+      }
+      return { text_content: '', img_content_url: [] }
     }
   },
 
@@ -50,9 +64,37 @@ export const useReportEditStore = defineStore('reportEdit', {
         if (!chapter.subChapters.some(sub => sub.subChapterTitle === subChapterTitle)) {
           chapter.subChapters.push({
             subChapterTitle,
-            BlockID: BlockID || uuidv4(), // 如果沒有提供 BlockID，則生成新的 UUID
-            access_permissions: access_permissions || uuidv4() // 如果沒有提供 access_permissions，則生成新的 UUID
+            BlockID: BlockID || uuidv4(),
+            access_permissions: access_permissions || uuidv4(),
+            text_content: '',
+            img_content_url: []
           })
+        }
+      }
+    },
+
+    // 更新中章節的文本內容
+    updateSubChapterText(blockId, text) {
+      for (const chapter of this.chapters) {
+        const subChapter = chapter.subChapters.find(sub => sub.BlockID === blockId)
+        if (subChapter) {
+          subChapter.text_content = text
+          break
+        }
+      }
+    },
+
+    // 更新中章節的圖片內容
+    updateSubChapterImages(blockId, images) {
+      for (const chapter of this.chapters) {
+        const subChapter = chapter.subChapters.find(sub => sub.BlockID === blockId)
+        if (subChapter) {
+          subChapter.img_content_url = images.map(image => ({
+            url: image.url || image,
+            title: image.title || '',
+            subtitle: image.subtitle || ''
+          }))
+          break
         }
       }
     },
@@ -82,27 +124,33 @@ export const useReportEditStore = defineStore('reportEdit', {
     initializeDefaultChapters() {
       this.chapters = [
         {
+          chapterTitle: '關於本報告書',
+          subChapters: [
+            {
+              subChapterTitle: '關於本報告書',
+              BlockID: uuidv4(),
+              access_permissions: uuidv4(),
+              text_content: '',
+              img_content_url: []
+            }
+          ]
+        },
+        {
           chapterTitle: '永續發展策略',
           subChapters: [
             {
               subChapterTitle: '永續治理架構',
               BlockID: uuidv4(),
-              access_permissions: uuidv4()
-            }
-          ]
-        },
-        {
-          chapterTitle: '經濟績效',
-          subChapters: [
-            {
-              subChapterTitle: '營運財務概況',
-              BlockID: uuidv4(),
-              access_permissions: uuidv4()
+              access_permissions: uuidv4(),
+              text_content: '',
+              img_content_url: []
             },
             {
-              subChapterTitle: '收入概況',
+              subChapterTitle: '永續發展藍圖',
               BlockID: uuidv4(),
-              access_permissions: uuidv4()
+              access_permissions: uuidv4(),
+              text_content: '',
+              img_content_url: []
             }
           ]
         }
