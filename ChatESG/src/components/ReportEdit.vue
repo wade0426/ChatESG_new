@@ -164,7 +164,7 @@
               v-model="sectionContents[selectedSection]" 
               class="content-textarea"
               :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
-              @input="handleContentChange"
+              @input="() => handleContentChange(selectedSection)"
             ></textarea>
             
             <!-- 圖片上傳區域 -->
