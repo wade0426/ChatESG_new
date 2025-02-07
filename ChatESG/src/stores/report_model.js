@@ -64,6 +64,42 @@ export const useReportStore = defineStore('report_modal', {
       } finally {
         this.loading = false
       }
+    },
+
+    async createReport(data) {
+      try {
+        this.loading = true
+        console.log("發送的數據:", data)
+        const response = await fetch('http://localhost:8000/api/organizations/create_report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            OrganizationID: data.OrganizationID,
+            AssetName: data.AssetName,
+            Category: data.Category.name,
+            CreatorID: data.CreatorID,
+            company_info_assetID: data.company_info_assetID.value,
+            standard_template_id: data.standard_template_id.value
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || '創建報告書失敗')
+        }
+
+        const result = await response.json()
+        return result
+
+      } catch (error) {
+        console.error("創建報告書錯誤:", error)
+        this.error = error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
     }
   }
 }) 

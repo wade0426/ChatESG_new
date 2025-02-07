@@ -169,26 +169,29 @@ const createReport = async () => {
     if (!validateForm(form)) return
 
     try {
-        // 获取选中的资产和模板的完整信息
+        // 獲取選中的資產和模板的完整信息
         const selectedAssetInfo = reportStore.company_info.find(item => item.value === form.selectedAsset)
         const selectedTemplateInfo = reportStore.templates.find(item => item.value === form.selectedTemplate)
         const selectedIndustryInfo = reportStore.industries.find(item => item.value === form.selectedIndustry)
 
-        console.log('報告詳細信息：', {
-            報告書名稱: form.reportName,
-            產業: {
+        const reportData = {
+            OrganizationID: userStore.organizationID,
+            CreatorID: userStore.userID,
+            AssetName: form.reportName,
+            Category: {
                 id: selectedIndustryInfo?.value,
                 name: selectedIndustryInfo?.label
             },
-            公司基本資料: {
+            company_info_content: {
                 AssetID: selectedAssetInfo?.value,
                 name: selectedAssetInfo?.label
             },
-            準則模板: {
+            standard_template_content: {
                 AssetID: selectedTemplateInfo?.value,
                 name: selectedTemplateInfo?.label
             }
-        })
+        }
+        reportStore.createReport(reportData)
 
         toast.success('報告建立成功')
         hideModal()

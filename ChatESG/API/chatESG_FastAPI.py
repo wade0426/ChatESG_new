@@ -2776,5 +2776,158 @@ async def get_organization_assets_for_modal(data: dict):
         raise HTTPException(status_code=400, detail="無效的組織ID格式")
 
 
+@app.post("/api/organizations/create_report")
+async def create_report(data: dict):
+    try:
+        # 驗證必要參數是否存在
+        print("data", data)
+        required_fields = ['OrganizationID', 'AssetName', 'Category', 'CreatorID', 'company_info_assetID', 'standard_template_id']
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"缺少必要参数: {field}")
+
+        # 將UUID字符串轉換為二進制格式
+        organization_id = uuid.UUID(data['OrganizationID']).bytes
+        creator_id = uuid.UUID(data['CreatorID']).bytes
+        company_info_asset_id = uuid.UUID(data['company_info_assetID']).bytes
+        standard_template_id = uuid.UUID(data['standard_template_id']).bytes
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+                    
+                    # 驗證組織ID是否存在
+                    await cur.execute(
+                        "SELECT 1 FROM Organizations WHERE OrganizationID = %s AND IsDeleted = FALSE",
+                        (organization_id,)
+                    )
+                    if not await cur.fetchone():
+                        raise HTTPException(status_code=404, detail="组织不存在")
+
+                    # 獲取公司基本資料的章節結構
+                    await cur.execute(
+                        "SELECT Content FROM OrganizationAssets WHERE AssetID = %s AND AssetType = 'company_info'",
+                        (company_info_asset_id,)
+                    )
+                    company_info = await cur.fetchone()
+                    if not company_info:
+                        raise HTTPException(status_code=404, detail="公司基本资料不存在")
+
+                    company_info_content = json.loads(company_info[0])
+                    
+                    # 創建新的報告書資產
+                    new_asset_id = uuid.uuid4().bytes
+                    new_chapters = []
+                    
+                    # 根據公司基本資料的章節結構創建報告書章節
+                    for chapter in company_info_content['chapters']:
+                        new_chapter = {
+                            'chapterTitle': chapter['chapterTitle'],
+                            'subChapters': []
+                        }
+                        
+                        for sub_chapter in chapter['subChapters']:
+                            # 為每個子章節創建新的BlockID和權限標識
+                            block_id = uuid.uuid4().bytes
+                            permission_id = uuid.uuid4().bytes
+                            
+                            new_sub_chapter = {
+                                'subChapterTitle': sub_chapter['subChapterTitle'],
+                                'BlockID': block_id.hex(),
+                                'access_permissions': permission_id.hex()
+                            }
+                            
+                            new_chapter['subChapters'].append(new_sub_chapter)
+                        
+                        new_chapters.append(new_chapter)
+
+                    # 首先創建報告書資產
+                    report_content = {
+                        'company_info_assetID': data['company_info_assetID'],
+                        'standard_template_id': data['standard_template_id'],
+                        'chapters': new_chapters
+                    }
+
+                    await cur.execute(
+                        """
+                        INSERT INTO OrganizationAssets 
+                        (AssetID, OrganizationID, AssetName, AssetType, Category, CreatorID, Content)
+                        VALUES (%s, %s, %s, 'report', %s, %s, %s)
+                        """,
+                        (
+                            new_asset_id,
+                            organization_id,
+                            data['AssetName'],
+                            data['Category'],
+                            creator_id,
+                            json.dumps(report_content)
+                        )
+                    )
+
+                    # 然後創建內容塊和權限映射
+                    for chapter in new_chapters:
+                        for sub_chapter in chapter['subChapters']:
+                            block_id = uuid.UUID(sub_chapter['BlockID']).bytes
+                            permission_id = uuid.UUID(sub_chapter['access_permissions']).bytes
+                            
+                            # 創建內容塊
+                            await cur.execute(
+                                """
+                                INSERT INTO ReportContentBlocks 
+                                (BlockID, AssetID, content) 
+                                VALUES (%s, %s, %s)
+                                """,
+                                (
+                                    block_id,
+                                    new_asset_id,
+                                    json.dumps({
+                                        'BlockID': sub_chapter['BlockID'],
+                                        'subChapterTitle': sub_chapter['subChapterTitle'],
+                                        'content': {
+                                            'text': '',
+                                            'images': [],
+                                            'guidelines': {'inspection content': None},
+                                            'comments': []
+                                        }
+                                    })
+                                )
+                            )
+                            
+                            # 創建默認權限映射
+                            await cur.execute(
+                                """
+                                INSERT INTO RolePermissionMappings 
+                                (RoleID, PermissionChapterID, AssetID, ResourceType, ActionType)
+                                SELECT RoleID, %s, %s, 'report', 'read_write'
+                                FROM Roles 
+                                WHERE OrganizationID = %s AND RoleName = '一般'
+                                """,
+                                (permission_id, new_asset_id, organization_id)
+                            )
+
+                    await conn.commit()
+                    
+                    return {
+                        "status": "success",
+                        "message": "报告书创建成功",
+                        "data": {
+                            "AssetID": new_asset_id.hex(),
+                            "AssetName": data['AssetName']
+                        }
+                    }
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"創建報告書失敗: {str(e)}")
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"無效的UUID格式: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"創建報告書失敗: {str(e)}")
+
+
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
