@@ -80,8 +80,8 @@ export const useReportStore = defineStore('report_modal', {
             AssetName: data.AssetName,
             Category: data.Category.name,
             CreatorID: data.CreatorID,
-            company_info_assetID: data.company_info_assetID.value,
-            standard_template_id: data.standard_template_id.value
+            company_info_assetID: data.company_info_content.AssetID,
+            standard_template_id: data.standard_template_content.AssetID
           })
         })
 
