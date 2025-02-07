@@ -87,18 +87,53 @@ export const useReportEditStore = defineStore('reportEdit', {
       }
     },
 
+    // 新增：將 base64 轉換為 URL 的方法
+    async convertBase64ToUrl(base64String) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/base64_to_url`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            base64_string: base64String
+          })
+        })
+        const data = await response.json()
+        return data
+      } catch (error) {
+        console.error('轉換圖片格式時發生錯誤:', error)
+        throw error
+      }
+    },
+
     // 更新中章節的圖片內容
-    updateSubChapterImages(blockId, images) {
-      for (const chapter of this.chapters) {
-        const subChapter = chapter.subChapters.find(sub => sub.BlockID === blockId)
-        if (subChapter) {
-          subChapter.img_content_url = images.map(image => ({
-            url: image.url || image,
-            title: image.title || '',
-            subtitle: image.subtitle || ''
-          }))
-          break
+    async updateSubChapterImages(blockId, images) {
+      try {
+        for (const chapter of this.chapters) {
+          const subChapter = chapter.subChapters.find(sub => sub.BlockID === blockId)
+          if (subChapter) {
+            // 處理每張圖片
+            const processedImages = await Promise.all(images.map(async image => {
+              let imageUrl = image.url || image
+              // 檢查是否為 base64 格式
+              if (imageUrl.startsWith('data:image')) {
+                imageUrl = await this.convertBase64ToUrl(imageUrl)
+              }
+              return {
+                url: imageUrl,
+                title: image.title || '',
+                subtitle: image.subtitle || ''
+              }
+            }))
+            
+            subChapter.img_content_url = processedImages
+            break
+          }
         }
+      } catch (error) {
+        console.error('更新圖片時發生錯誤:', error)
+        throw error
       }
     },
 
@@ -135,6 +170,7 @@ export const useReportEditStore = defineStore('reportEdit', {
           if (reportData.content && reportData.content.chapters) {
             this.chapters = reportData.content.chapters.map(chapter => ({
               chapterTitle: chapter.chapterTitle,
+              guidelines: {"inspection_content": null},
               subChapters: chapter.subChapters.map(subChapter => ({
                 subChapterTitle: subChapter.subChapterTitle,
                 BlockID: subChapter.BlockID,
@@ -183,6 +219,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       return responseData
     },
 
+
     // 使用API獲取報告書Block內容
     async fetchReportBlockData(data) {
       const response = await fetch(`http://localhost:8000/api/report/get_report_block_data`, {
@@ -197,6 +234,64 @@ export const useReportEditStore = defineStore('reportEdit', {
       const responseData = await response.json()
       console.log("responseData_block", responseData) // 測試
       return responseData
+    },
+
+    // 使用API更新報告書Block內容
+    async updateReportBlockData(BlockId, user_id) {
+      try {
+        const rawContent = this.getSubChapterContent(BlockId)
+        
+        let subChapterTitle = ''
+        for (const chapter of this.chapters) {
+          const subChapter = chapter.subChapters.find(sub => sub.BlockID === BlockId)
+          if (subChapter) {
+            subChapterTitle = subChapter.subChapterTitle
+            break
+          }
+        }
+    
+        // 修改 content 格式以符合後端期望
+        const content = {
+          BlockID: BlockId,
+          subChapterTitle: subChapterTitle,
+          content: {
+            text: rawContent.text_content || '',
+            images: rawContent.img_content_url.map(img => {
+              return {
+                url: img.url || img,
+                title: img.title || '',
+                subtitle: img.subtitle || ''
+              }
+            }),
+            guidelines: {
+              inspection_content: null  // 改為物件格式
+            },
+            comments: []  // 保持空陣列
+          }
+        }
+        
+        console.log("formatted content", content)
+        
+        const response = await fetch(`http://localhost:8000/api/report/update_report_block_data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            block_id: BlockId,
+            content: content,
+            user_id: user_id
+          })
+        })
+        
+        const responseData = await response.json()
+        if (!response.ok) {
+          throw new Error(responseData.detail || '更新失敗')
+        }
+        console.log("responseData_update", responseData)
+        return responseData
+      } catch (error) {
+        console.error('更新報告書Block內容時發生錯誤:', error)
+        throw error
+      }
     }
   }
 }) 

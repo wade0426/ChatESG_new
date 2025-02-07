@@ -3170,6 +3170,146 @@ async def get_report_block_data(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 更新報告書Block內容
+@app.post("/api/report/update_report_block_data")
+async def update_report_block_data(data: dict):
+    try:
+        block_id = data.get("block_id")
+        content = data.get("content")
+        user_id = data.get("user_id")
+
+        if not all([block_id, content, user_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        try:
+            block_id_binary = uuid.UUID(block_id).bytes
+            user_id_binary = uuid.UUID(user_id).bytes
+        except ValueError:
+            raise HTTPException(status_code=400, detail="無效的ID格式")
+
+        # 驗證內容格式
+        try:
+            if isinstance(content, str):
+                content = json.loads(content)
+            elif not isinstance(content, dict):
+                raise ValueError("內容必須是JSON格式")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="內容必須是有效的JSON格式")
+
+        # 使用全局的 db_pool
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 檢查區塊是否被鎖定
+                await cur.execute("""
+                    SELECT IsLocked, LockedBy, AssetID
+                    FROM ReportContentBlocks
+                    WHERE BlockID = %s
+                """, (block_id_binary,))
+                
+                block_info = await cur.fetchone()
+                if not block_info:
+                    raise HTTPException(status_code=404, detail="找不到指定的區塊")
+                
+                is_locked, locked_by, asset_id = block_info
+
+                if is_locked and locked_by != user_id_binary:
+                    raise HTTPException(status_code=403, detail="該區塊已被其他用戶鎖定")
+
+                # 檢查用戶是否有權限編輯該區塊
+                await cur.execute("""
+                    SELECT r.RoleID
+                    FROM UserRoles ur
+                    JOIN Roles r ON ur.RoleID = r.RoleID
+                    WHERE ur.UserID = %s AND ur.OrganizationID = (
+                        SELECT OrganizationID 
+                        FROM OrganizationAssets 
+                        WHERE AssetID = %s
+                    )
+                """, (user_id_binary, asset_id))
+                
+                user_roles = await cur.fetchall()
+                if not user_roles:
+                    raise HTTPException(status_code=403, detail="您沒有權限編輯此區塊")
+
+                # 更新區塊內容
+                try:
+                    await cur.execute("""
+                        UPDATE ReportContentBlocks
+                        SET content = %s,
+                            LastModified = CURRENT_TIMESTAMP(6),
+                            ModifiedBy = %s,
+                            version = version + 1
+                        WHERE BlockID = %s
+                    """, (json.dumps(content), user_id_binary, block_id_binary))
+
+                    await conn.commit()
+                    return {"status": "success", "message": "區塊內容已更新"}
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"更新區塊內容失敗: {str(e)}")
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+import os
+import base64
+import time
+# 將 base64 的圖片存成圖片
+def convert_base64_to_url(base64_string, output_dir="images", filename=None):
+    """將 base64 的圖片存成圖片
+
+    Args:
+        base64_string: base64 編碼的圖片字串。
+        output_dir: 圖片儲存的目錄，預設為 "images"。
+        filename: 圖片的檔案名稱，如果為 None，則自動產生檔名。
+
+    Returns:
+        str: 圖片檔案的路徑 (包含檔名)。如果儲存失敗則返回 None。
+    """
+    try:
+        # 檢查輸出目錄是否存在，不存在則創建
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # 移除 base64 字串可能的前綴 (例如： "data:image/png;base64,")
+        if ',' in base64_string:
+            header, base64_string = base64_string.split(',', 1)
+            image_format = header.split('/')[1].split(';')[0] # 嘗試從 header 取得圖片格式
+        else:
+            image_format = "png" # 預設圖片格式，如果無法從 header 判斷
+
+        # 解碼 base64 字串
+        image_data = base64.b64decode(base64_string)
+
+        # 產生檔案名稱
+        if filename is None:
+            timestamp = int(time.time())
+            filename = f"image_{timestamp}.{image_format}"
+        elif '.' not in filename: # 確保檔名有副檔名
+            filename = f"{filename}.{image_format}"
+
+        filepath = os.path.join(output_dir, filename)
+
+        # 儲存圖片
+        with open(filepath, 'wb') as f:
+            f.write(image_data)
+
+        return "http://localhost:8001/" + filepath
+
+    except Exception as e:
+        print(f"儲存圖片失敗: {e}")
+        return None
+
+
+# api base64 轉 URL
+@app.post("/api/base64_to_url")
+async def base64_to_url(data: dict):
+    base64_string = data.get("base64_string")
+    return convert_base64_to_url(base64_string).replace("\\", "/")
 
 
 if __name__ == "__main__":

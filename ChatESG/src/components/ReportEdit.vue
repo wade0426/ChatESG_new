@@ -334,6 +334,7 @@ const reportEditStore = useReportEditStore()
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
 const selectedSection = ref(null)
+const previousSection = ref(null)
 const theme = ref('dark')
 const expandedSections = ref(new Set())
 
@@ -371,8 +372,46 @@ const toggleTheme = () => {
   theme.value = theme.value === 'light' ? 'dark' : 'light'
 }
 
-const selectSection = (sectionId) => {
-  selectedSection.value = sectionId
+const selectSection = async (sectionId) => {
+  if (selectedSection.value === sectionId) return;
+  
+  // 獲取上一個章節的標題和內容
+  let previousTitle = '';
+  let previousContent = '';
+  let previousBlockId = '';
+  if (previousSection.value) {
+    previousTitle = isSubChapter(previousSection.value) 
+      ? reportEditStore.chapters.find(c => c.subChapters.some(s => s.BlockID === previousSection.value))
+          ?.subChapters.find(s => s.BlockID === previousSection.value)?.subChapterTitle
+      : reportEditStore.chapters.find(c => c.chapterTitle === previousSection.value)?.chapterTitle;
+    previousContent = sectionContents.value[previousSection.value] || '';
+    previousBlockId = previousSection.value;
+  }
+
+  // 獲取新章節的標題
+  let newTitle = isSubChapter(sectionId)
+    ? reportEditStore.chapters.find(c => c.subChapters.some(s => s.BlockID === sectionId))
+        ?.subChapters.find(s => s.BlockID === sectionId)?.subChapterTitle
+    : reportEditStore.chapters.find(c => c.chapterTitle === sectionId)?.chapterTitle;
+
+  // 如果存在上一個章節，則輸出切換信息並更新內容
+  if (previousSection.value && previousContent) {
+    console.log(`章節切換: ${previousTitle} -> ${newTitle}`);
+    console.log('原章節 BlockID:', previousBlockId);
+    console.log('原文內容:', previousContent);
+    console.log('User ID:', userStore.userID);
+    
+    try {
+      await reportEditStore.updateReportBlockData(previousBlockId, userStore.userID);
+    } catch (error) {
+      console.error('更新章節內容時發生錯誤:', error);
+      // 可以在這裡添加錯誤提示給用戶
+    }
+  }
+
+  // 更新章節記錄
+  previousSection.value = sectionId;
+  selectedSection.value = sectionId;
 }
 
 // 判斷是否為中章節
