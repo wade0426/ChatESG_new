@@ -552,11 +552,16 @@ const updateSectionTitle = () => {
   }
 
   if (editingType.value === 'chapter') {
-    // 更新大章節標題
-    const index = reportEditStore.chapters.findIndex(c => c.chapterTitle === editingId.value)
-    if (index !== -1) {
-      reportEditStore.chapters[index].chapterTitle = editingTitle.value.trim()
-      reportEditStore.updateReportOutlineRenameChapterTitle(editingId.value, editingTitle.value.trim())
+    // 檢查是否已存在相同標題的大章節
+    if (!reportEditStore.chapters.some(chapter => chapter.chapterTitle === editingTitle.value.trim())) {
+      // 更新大章節標題
+      const index = reportEditStore.chapters.findIndex(c => c.chapterTitle === editingId.value)
+      if (index !== -1) {
+        reportEditStore.chapters[index].chapterTitle = editingTitle.value.trim()
+        reportEditStore.updateReportOutlineRenameChapterTitle(editingId.value, editingTitle.value.trim())
+      }
+    } else {
+      toast.error('已存在相同標題的大章節')
     }
   } else {
     // 更新中章節標題
