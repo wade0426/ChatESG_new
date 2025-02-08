@@ -810,6 +810,7 @@ const handleGenerateText = async () => {
     const responseData = await reportEditStore.generateText(chapterTitle, subChapterTitle)
     console.log('生成文字結果:', responseData)
     sectionContents.value[selectedSection.value] = responseData.text
+    reportEditStore.updateSubChapterText(selectedSection.value, responseData.text)
     // console.log('生成文字結果:', text)
   }
 }
