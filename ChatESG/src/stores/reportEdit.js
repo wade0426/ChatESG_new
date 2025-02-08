@@ -63,7 +63,9 @@ export const useReportEditStore = defineStore('reportEdit', {
           chapterTitle,
           subChapters: []
         })
+        return true
       }
+      return false
     },
 
     // 在指定的大章節下新增中章節
@@ -303,7 +305,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       }
     },
 
-    // 更新報告書大綱
+    // 更新報告書大綱(拖移順序)
     async updateReportOutline() {
       try {
         // 準備要傳送的內容
@@ -334,6 +336,39 @@ export const useReportEditStore = defineStore('reportEdit', {
       } catch (error) {
         console.error('更新報告書大綱時發生錯誤:', error)
         throw error
+      }
+    },
+
+    // 更新報告書大綱(新增章節標題)
+    async updateReportOutlineAddChapterTitle(chapterTitle, asset_id) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/update_report_outline_add_chapter_title`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            asset_id: asset_id,
+            chapterTitle: chapterTitle
+          })
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.detail || '新增章節標題失敗');
+        }
+
+        // 如果後端更新成功，同步更新前端的狀態
+        if (responseData.status === 'success') {
+          // 只在後端更新成功時更新前端狀態
+          this.addChapter(chapterTitle);
+          console.log("新增章節標題成功", responseData);
+        }
+
+        return responseData;
+      } catch (error) {
+        console.error('新增章節標題時發生錯誤:', error);
+        throw error;
       }
     }
   }

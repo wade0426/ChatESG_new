@@ -324,12 +324,14 @@ import ReportEditNav from './ReportEditNav.vue'
 import { useUserStore } from '@/stores/user'
 import { useReportEditStore } from '@/stores/reportEdit'
 import draggable from 'vuedraggable'
+import { useToast } from 'vue-toastification'
 
 // 使用 router 和 route
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const reportEditStore = useReportEditStore()
+const toast = useToast()
 
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
@@ -611,11 +613,15 @@ const closeMainSectionModal = () => {
 // 新增大章節
 const addMainSection = () => {
   if (!newMainSectionTitle.value.trim()) {
-    alert('請輸入大章節名稱')
+    toast.error('請輸入大章節名稱')
     return
   }
 
-  reportEditStore.addChapter(newMainSectionTitle.value.trim())
+  const success = reportEditStore.addChapter(newMainSectionTitle.value.trim())
+  if (!success) {
+    toast.error('已存在相同標題的大章節')
+    return
+  }
   closeMainSectionModal()
 }
 

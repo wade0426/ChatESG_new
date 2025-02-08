@@ -3314,7 +3314,7 @@ async def base64_to_url(data: dict):
     return convert_base64_to_url(base64_string).replace("\\", "/")
 
 
-# 更新報告書大綱
+# 更新報告書大綱(拖曳順序)
 @app.post("/api/report/update_report_outline")
 async def update_report_outline(data: dict):
     try:
@@ -3380,6 +3380,85 @@ async def update_report_outline(data: dict):
                 except Exception as e:
                     await conn.rollback()
                     raise HTTPException(status_code=500, detail=f"更新報告書大綱失敗: {str(e)}")
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 更新報告書大綱(新增章節標題)
+@app.post("/api/report/update_report_outline_add_chapter_title")
+async def update_report_outline_add_chapter_title(data: dict):
+    try:
+        # 檢查必要的參數
+        if not all(key in data for key in ['asset_id', 'chapterTitle']):
+            raise HTTPException(status_code=400, detail="缺少必要的參數")
+
+        asset_id = data['asset_id']
+        chapter_title = data['chapterTitle']
+
+        # 轉換 UUID 字串為二進制格式
+        try:
+            asset_id_binary = uuid.UUID(asset_id).bytes
+        except ValueError:
+            raise HTTPException(status_code=400, detail="無效的 UUID 格式")
+
+        # 修正非同步調用
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 檢查資產是否存在
+                await cur.execute(
+                    "SELECT Content FROM OrganizationAssets WHERE AssetID = %s AND IsDeleted = FALSE",
+                    (asset_id_binary,)
+                )
+                result = await cur.fetchone()
+                
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到指定的資產")
+                
+                try:
+                    content = json.loads(result[0]) if result[0] else {"chapters": []}
+                except json.JSONDecodeError:
+                    content = {"chapters": []}
+
+                # 新增章節標題
+                new_chapter = {
+                    "chapterTitle": chapter_title,
+                    "subChapters": []
+                }
+                
+                if "chapters" not in content:
+                    content["chapters"] = []
+                
+                content["chapters"].append(new_chapter)
+
+                # 更新資料庫
+                current_time = datetime.now()
+                try:
+                    await cur.execute(
+                        """
+                        UPDATE OrganizationAssets 
+                        SET Content = %s, UpdatedAt = %s 
+                        WHERE AssetID = %s
+                        """,
+                        (json.dumps(content), current_time, asset_id_binary)
+                    )
+                    await conn.commit()
+
+                    return {
+                        "status": "success",
+                        "message": "章節標題新增成功",
+                        "data": {
+                            "asset_id": asset_id,
+                            "updated_at": current_time.isoformat()
+                        }
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    raise HTTPException(status_code=500, detail=f"更新資料失敗: {str(e)}")
 
     except HTTPException as e:
         raise e
