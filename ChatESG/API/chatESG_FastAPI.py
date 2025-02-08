@@ -3851,6 +3851,88 @@ async def rename_subchapter(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 刪除報告書中章節
+@app.post("/api/report/delete_subchapter")
+async def delete_subchapter(data: dict):
+    try:
+        # 獲取必要參數
+        asset_id = data.get("AssetID")
+        chapter_title = data.get("chapterTitle")
+        subchapter_title = data.get("subChapterTitle")
+
+        if not all([asset_id, chapter_title, subchapter_title]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 將 asset_id 轉換為 bytes
+                asset_id_binary = bytes.fromhex(asset_id.replace('-', ''))
+
+                # 獲取 organizationassets 的 content
+                await cur.execute(
+                    "SELECT Content FROM OrganizationAssets WHERE AssetID = %s AND IsDeleted = FALSE",
+                    (asset_id_binary,)
+                )
+                result = await cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到指定的資產")
+
+                content = json.loads(result[0])
+                block_id = None
+                access_permissions = None
+                content_updated = False
+
+                # 遍歷章節找到要刪除的子章節
+                for chapter in content.get("chapters", []):
+                    if chapter["chapterTitle"] == chapter_title:
+                        for i, subchapter in enumerate(chapter.get("subChapters", [])):
+                            if subchapter["subChapterTitle"] == subchapter_title:
+                                block_id = subchapter.get("BlockID")
+                                access_permissions = subchapter.get("access_permissions")
+                                # 刪除子章節
+                                chapter["subChapters"].pop(i)
+                                content_updated = True
+                                break
+                        break
+
+                if not content_updated:
+                    raise HTTPException(status_code=404, detail="找不到指定的子章節")
+
+                # 更新 content
+                await cur.execute(
+                    "UPDATE OrganizationAssets SET Content = %s, UpdatedAt = CURRENT_TIMESTAMP WHERE AssetID = %s",
+                    (json.dumps(content), asset_id_binary)
+                )
+
+                # 如果有 BlockID，刪除相關的 reportcontentblocks 記錄
+                if block_id:
+                    block_id_binary = bytes.fromhex(block_id.replace('-', ''))
+                    await cur.execute(
+                        "DELETE FROM ReportContentBlocks WHERE BlockID = %s",
+                        (block_id_binary,)
+                    )
+
+                # 如果有 access_permissions，刪除相關的 rolepermissionmappings 記錄
+                if access_permissions:
+                    permission_id_binary = bytes.fromhex(access_permissions.replace('-', ''))
+                    await cur.execute(
+                        "DELETE FROM RolePermissionMappings WHERE PermissionChapterID = %s",
+                        (permission_id_binary,)
+                    )
+
+                await conn.commit()
+
+                return {"status": "success", "message": "子章節已成功刪除"}
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"錯誤詳情: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
 
 
 if __name__ == "__main__":
