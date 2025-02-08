@@ -3690,7 +3690,10 @@ async def add_subchapter(data: dict):
                         chapter["subChapters"].append({
                             "subChapterTitle": subchapter_title,
                             "BlockID": block_id,
-                            "access_permissions": access_permissions
+                            "access_permissions": access_permissions,
+                            "text_content":"",
+                            "img_content_url": []
+
                         })
                         break
 
@@ -3752,7 +3755,100 @@ async def add_subchapter(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 更改報告書中章節名稱(rename)
+@app.post("/api/report/rename_subchapter")
+async def rename_subchapter(data: dict):
+    try:
+        # 獲取必要參數
+        asset_id = data.get("AssetID")
+        chapter_title = data.get("chapterTitle")
+        subchapter_title = data.get("subChapterTitle")
+        new_subchapter_title = data.get("new_subChapterTitle")
 
+        # 驗證必要參數
+        if not all([asset_id, chapter_title, subchapter_title, new_subchapter_title]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+        
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始交易
+                    await conn.begin()
+                    
+                    # 將 asset_id 轉換為 bytes
+                    asset_id_binary = bytes.fromhex(asset_id.replace('-', ''))
+
+                    # 檢查是否已存在相同名稱的子章節
+                    await cur.execute("""
+                        SELECT Content 
+                        FROM OrganizationAssets 
+                        WHERE AssetID = %s AND IsDeleted = FALSE
+                        FOR UPDATE
+                    """, (asset_id_binary,))
+                    
+                    result = await cur.fetchone()
+                    if not result:
+                        raise HTTPException(status_code=404, detail="找不到指定的資產")
+
+                    content = json.loads(result[0]) if result[0] else {}
+                    
+                    # 在內容中找到並更新子章節名稱
+                    found = False
+                    name_exists = False
+                    if "chapters" in content:
+                        for chapter in content["chapters"]:
+                            if chapter.get("chapterTitle") == chapter_title:
+                                # 檢查新名稱是否已存在
+                                for subchapter in chapter["subChapters"]:
+                                    if subchapter.get("subChapterTitle") == new_subchapter_title:
+                                        name_exists = True
+                                        break
+                                    elif subchapter.get("subChapterTitle") == subchapter_title:
+                                        found = True
+                                        subchapter["subChapterTitle"] = new_subchapter_title
+                                if name_exists:
+                                    raise HTTPException(status_code=400, detail="新的子章節名稱已存在")
+                                break
+
+                    if not found:
+                        raise HTTPException(status_code=404, detail="找不到指定的章節或子章節")
+
+                    # 更新資產內容和更新時間
+                    current_time = datetime.now()
+                    await cur.execute("""
+                        UPDATE OrganizationAssets 
+                        SET Content = %s, UpdatedAt = %s
+                        WHERE AssetID = %s
+                    """, (json.dumps(content), current_time, asset_id_binary))
+
+                    # 提交交易
+                    await conn.commit()
+
+                    print(f"更新成功: asset_id={asset_id}, content={json.dumps(content)}")  # 添加調試日誌
+
+                    return {
+                        "status": "success",
+                        "message": "子章節名稱更新成功",
+                        "data": {
+                            "asset_id": asset_id,
+                            "chapter_title": chapter_title,
+                            "old_subchapter_title": subchapter_title,
+                            "new_subchapter_title": new_subchapter_title,
+                            "updated_at": current_time.isoformat()
+                        }
+                    }
+                except Exception as e:
+                    # 發生錯誤時回滾交易
+                    await conn.rollback()
+                    raise e
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"錯誤詳情: {str(e)}")  # 添加錯誤日誌
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
 
