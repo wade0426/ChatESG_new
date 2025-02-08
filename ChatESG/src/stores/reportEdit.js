@@ -370,6 +370,44 @@ export const useReportEditStore = defineStore('reportEdit', {
         console.error('新增章節標題時發生錯誤:', error);
         throw error;
       }
+    },
+
+    // 更新報告書_章節標題_大章節
+    async updateReportOutlineRenameChapterTitle(chapterTitle, newChapterTitle) {
+      const asset_id = this.asset_id
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/rename_chapter_title`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            asset_id: asset_id,
+            chapter_title: chapterTitle,
+            new_chapter_title: newChapterTitle
+          })
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.detail || '更新章節標題失敗');
+        }
+
+        // 如果後端更新成功，同步更新前端的狀態
+        if (responseData.status === 'success') {
+          // 找到並更新對應章節的標題
+          const chapter = this.chapters.find(c => c.chapterTitle === chapterTitle);
+          if (chapter) {
+            chapter.chapterTitle = newChapterTitle;
+          }
+          console.log("更新章節標題成功", responseData);
+        }
+
+        return responseData;
+      } catch (error) {
+        console.error('更新章節標題時發生錯誤:', error);
+        throw error;
+      }
     }
   }
 }) 

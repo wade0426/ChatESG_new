@@ -556,6 +556,7 @@ const updateSectionTitle = () => {
     const index = reportEditStore.chapters.findIndex(c => c.chapterTitle === editingId.value)
     if (index !== -1) {
       reportEditStore.chapters[index].chapterTitle = editingTitle.value.trim()
+      reportEditStore.updateReportOutlineRenameChapterTitle(editingId.value, editingTitle.value.trim())
     }
   } else {
     // 更新中章節標題

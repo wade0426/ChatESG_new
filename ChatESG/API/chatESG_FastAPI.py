@@ -3466,5 +3466,80 @@ async def update_report_outline_add_chapter_title(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 更新報告書大綱名稱
+@app.post("/api/report/rename_chapter_title")
+async def rename_chapter_title(data: dict):
+    try:
+        # 檢查必要參數
+        if not all(key in data for key in ["asset_id", "chapter_title", "new_chapter_title"]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        asset_id = data["asset_id"]
+        chapter_title = data["chapter_title"]
+        new_chapter_title = data["new_chapter_title"]
+
+        # 將 asset_id 轉換為 bytes
+        try:
+            asset_id_binary = uuid.UUID(asset_id).bytes
+        except ValueError:
+            raise HTTPException(status_code=400, detail="無效的 asset_id 格式")
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 從資料庫獲取資產內容
+                await cur.execute("""
+                    SELECT Content 
+                    FROM OrganizationAssets 
+                    WHERE AssetID = %s AND IsDeleted = FALSE
+                """, (asset_id_binary,))
+                
+                result = await cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到指定的資產")
+
+                content = json.loads(result[0]) if result[0] else {}
+                
+                # 檢查並更新章節標題
+                if "chapters" not in content:
+                    raise HTTPException(status_code=400, detail="資產內容格式錯誤")
+
+                title_found = False
+                for chapter in content["chapters"]:
+                    if chapter.get("chapterTitle") == chapter_title:
+                        chapter["chapterTitle"] = new_chapter_title
+                        title_found = True
+                        break
+
+                if not title_found:
+                    raise HTTPException(status_code=404, detail="找不到指定的章節標題")
+
+                # 更新資料庫
+                current_time = datetime.now()
+                await cur.execute("""
+                    UPDATE OrganizationAssets 
+                    SET Content = %s, UpdatedAt = %s
+                    WHERE AssetID = %s
+                """, (json.dumps(content), current_time, asset_id_binary))
+
+                await conn.commit()
+
+                return {
+                    "status": "success",
+                    "message": "章節標題更新成功",
+                    "data": {
+                        "asset_id": asset_id,
+                        "updated_at": current_time.isoformat()
+                    }
+                }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
