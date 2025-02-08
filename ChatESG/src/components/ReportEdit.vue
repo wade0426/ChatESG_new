@@ -786,7 +786,7 @@ const handleDragEnd = async (evt) => {
 }
 
 // 處理生成文字按鈕點擊
-const handleGenerateText = () => {
+const handleGenerateText = async () => {
   // 獲取當前選中的章節信息
   const currentChapter = reportEditStore.chapters.find(chapter => {
     return chapter.subChapters.some(sub => sub.BlockID === selectedSection.value) ||
@@ -806,7 +806,11 @@ const handleGenerateText = () => {
       }
     }
 
-    console.log(`大章節: ${chapterTitle}, 中章節: ${subChapterTitle}, 文字內容: ${content}, 呼叫生成文字`)
+    // console.log(`大章節: ${chapterTitle}, 中章節: ${subChapterTitle}, 文字內容: ${content}, 呼叫生成文字`)
+    const responseData = await reportEditStore.generateText(chapterTitle, subChapterTitle)
+    console.log('生成文字結果:', responseData)
+    sectionContents.value[selectedSection.value] = responseData.text
+    // console.log('生成文字結果:', text)
   }
 }
 

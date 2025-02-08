@@ -559,6 +559,38 @@ export const useReportEditStore = defineStore('reportEdit', {
         console.error('刪除子章節時發生錯誤:', error)
         throw error
       }
+    },
+
+    // 生成報告書文字
+    async generateText(chapterTitle, subChapterTitle) {
+      try {
+        const company_info_assetID = this.company_info_assetID
+        const response = await fetch(`http://localhost:8000/api/report/generate_text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            company_info_assetID: company_info_assetID, 
+            chapter_title: chapterTitle, 
+            sub_chapter_title: subChapterTitle 
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || '生成文字失敗')
+        }
+
+        const responseData = await response.json()
+        if (responseData.status === 'success') {
+          // console.log("生成文字成功", responseData)
+          return responseData
+        } else {
+          throw new Error('生成文字失敗')
+        }
+      } catch (error) {
+        console.error('生成報告書文字時發生錯誤:', error)
+        throw error
+      }
     }
   }
 }) 
