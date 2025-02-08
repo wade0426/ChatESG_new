@@ -589,6 +589,8 @@ const updateSectionTitle = () => {
       for (const chapter of reportEditStore.chapters) {
         const subChapter = chapter.subChapters.find(sub => sub.BlockID === editingId.value)
         if (subChapter) {
+          // console.log('更新中章節標題成功', chapter.chapterTitle, subChapter.subChapterTitle, editingTitle.value.trim())
+          reportEditStore.updateReportOutlineRenameSubChapterTitle(chapter.chapterTitle, subChapter.subChapterTitle, editingTitle.value.trim())
           subChapter.subChapterTitle = editingTitle.value.trim()
           break
         }

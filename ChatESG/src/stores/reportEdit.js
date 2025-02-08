@@ -479,6 +479,48 @@ export const useReportEditStore = defineStore('reportEdit', {
         console.error('新增子章節時發生錯誤:', error)
         throw error
       }
+    },
+
+    // 更新報告書中章節名稱
+    async updateReportOutlineRenameSubChapterTitle(chapterTitle, subChapterTitle, new_subChapterTitle) {
+      const asset_id = this.asset_id
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/rename_subchapter`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            AssetID: asset_id,
+            chapterTitle: chapterTitle,
+            subChapterTitle: subChapterTitle,
+            new_subChapterTitle: new_subChapterTitle
+          })
+        })
+
+        const responseData = await response.json()
+        if (!response.ok) {
+          throw new Error(responseData.detail || '更新子章節標題失敗')
+        }
+
+        // 如果後端更新成功，同步更新前端的狀態
+        if (responseData.status === 'success') {
+          // 找到並更新對應子章節的標題
+          const chapter = this.chapters.find(c => c.chapterTitle === chapterTitle)
+          if (chapter) {
+            const subChapter = chapter.subChapters.find(s => s.subChapterTitle === subChapterTitle)
+            if (subChapter) {
+              subChapter.subChapterTitle = new_subChapterTitle
+            }
+          }
+          console.log("更新子章節標題成功", responseData)
+        }
+
+        return responseData
+      } catch (error) {
+        console.error('更新子章節標題時發生錯誤:', error)
+        throw error
+      }
     }
   }
 }) 
