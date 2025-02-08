@@ -10,12 +10,14 @@
       <div class="file-info">
         <!-- 檔案名稱輸入框 -->
         <input
-        type="text"
-        v-model="fileName"
-        class="file-name-input"
-        @change="handleFileNameChange"
-        placeholder="輸入檔案名稱"
-          >
+          type="text"
+          v-model="fileName"
+          class="file-name-input"
+          @change="handleFileNameChange"
+          placeholder="輸入檔案名稱"
+          disabled 
+        >
+        <!-- 暫時disabled -->
       </div>
     </div>
 
