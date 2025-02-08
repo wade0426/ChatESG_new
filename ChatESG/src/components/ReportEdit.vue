@@ -187,6 +187,14 @@
                 <i class="mdi mdi-image-plus"></i>
                 <span>上傳圖片</span>
               </button>
+              <button class="generate-text-btn" @click="handleGenerateText">
+                <i class="mdi mdi-text"></i>
+                <span>生成文字</span>
+              </button>
+              <button class="generate-image-btn" @click="handleGenerateImage">
+                <i class="mdi mdi-image"></i>
+                <span>生成圖片</span>
+              </button>
               
               <!-- 圖片預覽區域 -->
               <div v-if="currentImages.length > 0" class="image-preview-area">
@@ -528,7 +536,8 @@ const addSubsection = () => {
     reportEditStore.addSubChapter_api(
       currentParentTitle.value,
       newSubsectionTitle.value.trim(),
-      userStore.userID
+      userStore.userID,
+      userStore.organizationID
     )
     closeModal()
   } else {
@@ -774,6 +783,56 @@ const handleDragEnd = async (evt) => {
   // console.log('完成拖移章節:', movedItem.chapterTitle)
   // 更新報告書大綱
   await reportEditStore.updateReportOutline()
+}
+
+// 處理生成文字按鈕點擊
+const handleGenerateText = () => {
+  // 獲取當前選中的章節信息
+  const currentChapter = reportEditStore.chapters.find(chapter => {
+    return chapter.subChapters.some(sub => sub.BlockID === selectedSection.value) ||
+           chapter.chapterTitle === selectedSection.value
+  })
+
+  if (currentChapter) {
+    const chapterTitle = currentChapter.chapterTitle
+    let subChapterTitle = ''
+    let content = ''
+
+    if (isSubChapter(selectedSection.value)) {
+      const subChapter = currentChapter.subChapters.find(sub => sub.BlockID === selectedSection.value)
+      if (subChapter) {
+        subChapterTitle = subChapter.subChapterTitle
+        content = sectionContents.value[selectedSection.value] || ''
+      }
+    }
+
+    console.log(`大章節: ${chapterTitle}, 中章節: ${subChapterTitle}, 文字內容: ${content}, 呼叫生成文字`)
+  }
+}
+
+// 處理生成圖片按鈕點擊
+const handleGenerateImage = () => {
+  // 獲取當前選中的章節信息
+  const currentChapter = reportEditStore.chapters.find(chapter => {
+    return chapter.subChapters.some(sub => sub.BlockID === selectedSection.value) ||
+           chapter.chapterTitle === selectedSection.value
+  })
+
+  if (currentChapter) {
+    const chapterTitle = currentChapter.chapterTitle
+    let subChapterTitle = ''
+    let content = ''
+
+    if (isSubChapter(selectedSection.value)) {
+      const subChapter = currentChapter.subChapters.find(sub => sub.BlockID === selectedSection.value)
+      if (subChapter) {
+        subChapterTitle = subChapter.subChapterTitle
+        content = sectionContents.value[selectedSection.value] || ''
+      }
+    }
+
+    console.log(`大章節: ${chapterTitle}, 中章節: ${subChapterTitle}, 文字內容: ${content}, 呼叫生成圖片`)
+  }
 }
 </script>
 
@@ -1411,6 +1470,8 @@ const handleDragEnd = async (evt) => {
   border: 1px dashed var(--border-color);
   border-radius: 8px;
   margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
 }
 
 .upload-btn {
@@ -1433,6 +1494,66 @@ const handleDragEnd = async (evt) => {
 
 .upload-btn:active {
   transform: translateY(0);
+}
+
+.generate-text-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #10b981;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.generate-text-btn:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+.generate-text-btn:active {
+  transform: translateY(0);
+}
+
+.dark .generate-text-btn {
+  background-color: #34d399;
+}
+
+.dark .generate-text-btn:hover {
+  background-color: #10b981;
+}
+
+.generate-image-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #8b5cf6;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.generate-image-btn:hover {
+  background-color: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.generate-image-btn:active {
+  transform: translateY(0);
+}
+
+.dark .generate-image-btn {
+  background-color: #a78bfa;
+}
+
+.dark .generate-image-btn:hover {
+  background-color: #8b5cf6;
 }
 
 .image-preview-area {

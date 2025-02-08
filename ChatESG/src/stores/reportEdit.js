@@ -447,7 +447,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     },
 
     // 新增報告書中章節
-    async addSubChapter_api(chapterTitle, subChapterTitle, user_id) {
+    async addSubChapter_api(chapterTitle, subChapterTitle, user_id, organization_id) {
       try {
         const asset_id = this.asset_id
         const response = await fetch(`http://localhost:8000/api/report/add_subchapter`, {
@@ -474,6 +474,11 @@ export const useReportEditStore = defineStore('reportEdit', {
           // 使用現有的 addSubChapter action 更新前端狀態
           this.addSubChapter(chapterTitle, subChapterTitle, block_id, access_permissions)
           console.log("新增子章節成功", responseData)
+          const data = {
+            asset_id: this.asset_id,
+            organization_id: organization_id
+          }
+          await this.initializeDefaultChapters(data)
         }
 
         return responseData
