@@ -3466,7 +3466,7 @@ async def update_report_outline_add_chapter_title(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
-# 更新報告書大綱名稱
+# 更新報告書大綱(大章節)名稱
 @app.post("/api/report/rename_chapter_title")
 async def rename_chapter_title(data: dict):
     try:
@@ -3538,6 +3538,222 @@ async def rename_chapter_title(data: dict):
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 刪除報告書大綱
+@app.post("/api/report/delete_report_outline")
+async def delete_report_outline(data: dict):
+    try:
+        asset_id = data.get("asset_id")
+        chapter_title = data.get("chapterTitle")
+
+        if not asset_id or not chapter_title:
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        asset_id_binary = uuid.UUID(asset_id).bytes
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                    # 獲取資產內容
+                    await cur.execute("""
+                        SELECT Content 
+                        FROM OrganizationAssets 
+                        WHERE AssetID = %s AND IsDeleted = FALSE
+                    """, (asset_id_binary,))
+                    
+                    result = await cur.fetchone()
+                    if not result:
+                        raise HTTPException(status_code=404, detail="找不到指定的資產")
+
+                    content = json.loads(result[0])
+                    if not content.get("chapters"):
+                        raise HTTPException(status_code=400, detail="資產內容格式錯誤")
+
+                    # 找到要刪除的章節
+                    block_ids_to_delete = []
+                    permission_ids_to_delete = []
+                    new_chapters = []
+                    chapter_found = False
+
+                    for chapter in content["chapters"]:
+                        if chapter["chapterTitle"] == chapter_title:
+                            chapter_found = True
+                            # 收集所有需要刪除的 BlockID 和 access_permissions
+                            for subchapter in chapter["subChapters"]:
+                                if subchapter.get("BlockID"):
+                                    block_ids_to_delete.append(uuid.UUID(subchapter["BlockID"]).bytes)
+                                if subchapter.get("access_permissions"):
+                                    permission_ids_to_delete.append(uuid.UUID(subchapter["access_permissions"]).bytes)
+                        else:
+                            new_chapters.append(chapter)
+
+                    if not chapter_found:
+                        raise HTTPException(status_code=404, detail="找不到指定的章節")
+
+                    # 更新 content
+                    content["chapters"] = new_chapters
+                    current_time = datetime.now()
+
+                    # 刪除相關的 blocks
+                    if block_ids_to_delete:
+                        block_ids_placeholder = ','.join(['%s'] * len(block_ids_to_delete))
+                        await cur.execute(f"""
+                            DELETE FROM ReportContentBlocks 
+                            WHERE BlockID IN ({block_ids_placeholder})
+                        """, tuple(block_ids_to_delete))
+
+                    # 刪除相關的權限映射
+                    if permission_ids_to_delete:
+                        permission_ids_placeholder = ','.join(['%s'] * len(permission_ids_to_delete))
+                        await cur.execute(f"""
+                            DELETE FROM RolePermissionMappings 
+                            WHERE PermissionChapterID IN ({permission_ids_placeholder})
+                        """, tuple(permission_ids_to_delete))
+
+                    # 更新資產內容
+                    await cur.execute("""
+                        UPDATE OrganizationAssets 
+                        SET Content = %s, UpdatedAt = %s
+                        WHERE AssetID = %s
+                    """, (json.dumps(content), current_time, asset_id_binary))
+
+                    await conn.commit()
+
+                    return {
+                        "status": "success",
+                        "message": "章節刪除成功",
+                        "data": {
+                            "asset_id": asset_id,
+                            "deleted_chapter": chapter_title,
+                            "updated_at": current_time.isoformat()
+                        }
+                    }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 新增報告書中章節
+@app.post("/api/report/add_subchapter")
+async def add_subchapter(data: dict):
+    try:
+        # 獲取輸入參數
+        asset_id = data.get("asset_id")
+        chapter_title = data.get("chapter_title")
+        subchapter_title = data.get("subchapter_title")
+        user_id = data.get("user_id")
+
+        # 參數驗證
+        if not all([asset_id, chapter_title, subchapter_title, user_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 生成新的UUID
+        block_id = str(uuid.uuid4()).replace("-", "")
+        access_permissions = str(uuid.uuid4()).replace("-", "")
+        current_time = datetime.now()
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 將字符串ID轉換為二進制格式
+                asset_id_binary = bytes.fromhex(asset_id)
+                user_id_binary = bytes.fromhex(user_id)
+
+                # 獲取資產內容
+                await cur.execute(
+                    "SELECT Content, OrganizationID FROM OrganizationAssets WHERE AssetID = %s",
+                    (asset_id_binary,)
+                )
+                result = await cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到指定的資產")
+                
+                content = json.loads(result[0])
+                organization_id_binary = result[1]
+
+                # 在content中找到對應的chapter並添加新的subchapter
+                chapter_found = False
+                for chapter in content["chapters"]:
+                    if chapter["chapterTitle"] == chapter_title:
+                        chapter_found = True
+                        # 檢查是否已存在相同的subchapter_title
+                        for subchapter in chapter["subChapters"]:
+                            if subchapter["subChapterTitle"] == subchapter_title:
+                                raise HTTPException(status_code=400, detail="子章節標題已存在")
+                        
+                        # 添加新的subchapter
+                        chapter["subChapters"].append({
+                            "subChapterTitle": subchapter_title,
+                            "BlockID": block_id,
+                            "access_permissions": access_permissions
+                        })
+                        break
+
+                if not chapter_found:
+                    raise HTTPException(status_code=404, detail="找不到指定的章節")
+
+                # 更新OrganizationAssets的content
+                await cur.execute(
+                    "UPDATE OrganizationAssets SET Content = %s, UpdatedAt = %s WHERE AssetID = %s",
+                    (json.dumps(content), current_time, asset_id_binary)
+                )
+
+                # 創建新的ReportContentBlocks記錄
+                block_id_binary = bytes.fromhex(block_id)
+                await cur.execute(
+                    """INSERT INTO ReportContentBlocks 
+                       (BlockID, AssetID, status, content, ModifiedBy)
+                       VALUES (%s, %s, 'editing', %s, %s)""",
+                    (block_id_binary, asset_id_binary, 
+                     json.dumps({"BlockID": f"{block_id}", "subChapterTitle": f"{subchapter_title}", "content": {"text": "", "images": [], "guidelines": {"inspection_content": None}, "comments": []}}),
+                     user_id_binary)
+                )
+
+                # 獲取組織的所有角色
+                await cur.execute(
+                    "SELECT RoleID FROM Roles WHERE OrganizationID = %s",
+                    (organization_id_binary,)
+                )
+                roles = await cur.fetchall()
+
+                # 創建RolePermissionMappings記錄
+                permission_chapter_id_binary = bytes.fromhex(access_permissions)
+                for role in roles:
+                    await cur.execute(
+                        """INSERT INTO RolePermissionMappings 
+                           (RoleID, PermissionChapterID, AssetID, ResourceType, ActionType)
+                           VALUES (%s, %s, %s, 'report', 'read')""",
+                        (role[0], permission_chapter_id_binary, asset_id_binary)
+                    )
+
+                await conn.commit()
+
+                return {
+                    "status": "success",
+                    "message": "子章節添加成功",
+                    "data": {
+                        "asset_id": asset_id,
+                        "chapter_title": chapter_title,
+                        "subchapter_title": subchapter_title,
+                        "block_id": block_id,
+                        "access_permissions": access_permissions,
+                        "updated_at": current_time.isoformat()
+                    }
+                }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+
+
 
 
 
