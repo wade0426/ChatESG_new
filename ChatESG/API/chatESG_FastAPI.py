@@ -20,6 +20,7 @@ import json
 import random
 import string
 from contextlib import asynccontextmanager
+from ai_generate import GeminiGenerator
 
 # 資料庫配置
 DB_CONFIG = {
@@ -3931,6 +3932,96 @@ async def delete_subchapter(data: dict):
     except Exception as e:
         print(f"錯誤詳情: {str(e)}")
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 生成報告書文字
+@app.post("/api/report/generate_text")
+async def generate_text(data: dict):
+    try:
+        # 獲取必要參數
+        company_info_assetID = data.get("company_info_assetID")
+        chapter_title = data.get("chapter_title")
+        sub_chapter_title = data.get("sub_chapter_title")
+
+        if not all([company_info_assetID, chapter_title, sub_chapter_title]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 將 company_info_assetID 轉換為 bytes
+                asset_id_binary = bytes.fromhex(company_info_assetID.replace('-', ''))
+
+                # 從 organizationassets 獲取資產內容
+                await cur.execute(
+                    "SELECT Content, Category FROM OrganizationAssets WHERE AssetID = %s AND IsDeleted = FALSE",
+                    (asset_id_binary,)
+                )
+                result = await cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到指定的資產")
+
+                assets_content = json.loads(result[0])
+                category = result[1]
+                # 尋找對應的章節和子章節
+                target_sub_sub_chapters = None
+                for chapter in assets_content.get("chapters", []):
+                    if chapter["chapterTitle"] == chapter_title:
+                        for sub_chapter in chapter.get("subChapters", []):
+                            if sub_chapter["subChapterTitle"] == sub_chapter_title:
+                                target_sub_sub_chapters = sub_chapter.get("subSubChapters", [])
+                                break
+                        break
+
+                if not target_sub_sub_chapters:
+                    raise HTTPException(status_code=404, detail="找不到指定的章節或子章節")
+
+                # 生成輸出文字
+                output_text = ""
+                for sub_sub_chapter in target_sub_sub_chapters:
+                    block_id = sub_sub_chapter["BlockID"]
+                    block_id_binary = bytes.fromhex(block_id.replace('-', ''))
+
+                    # 從 reportcontentblocks 獲取區塊內容
+                    await cur.execute(
+                        "SELECT content FROM ReportContentBlocks WHERE BlockID = %s",
+                        (block_id_binary,)
+                    )
+                    block_result = await cur.fetchone()
+                    if block_result:
+                        block_content = json.loads(block_result[0])
+                        text_content = block_content.get("content", {}).get("text", "")
+                        output_text += f"{sub_sub_chapter['subSubChapterTitle']}:{text_content}\n\n"
+                output_text = output_text.strip()
+
+                api_keys = ["AIzaSyBPqDAvFpwanos-0uoO_3IC3_7tIYguBaw"]
+                model_name = "gemini-2.0-pro-exp-02-05"
+                config = {
+                    "n": 1,
+                    "temperature": 0.7,
+                    "max_tokens": 1000
+                }
+                base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+                # 建立物件
+                generator = GeminiGenerator(api_keys, model_name, config, base_url)
+                # 獲取訓練數據
+                url = "http://localhost:8001/api/報告書範例.json"
+                messages = generator.get_messages(category, chapter_title, sub_chapter_title, url)
+
+                prompt = output_text
+                # print(messages)
+                response = await generator.generate_text(messages, prompt)
+
+                return {"status": "success", "text": response.content.replace("*   ", "").replace("*", "")}
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"錯誤詳情: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
 
 
 
