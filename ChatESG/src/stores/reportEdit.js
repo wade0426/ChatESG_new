@@ -81,6 +81,10 @@ export const useReportEditStore = defineStore('reportEdit', {
             text_content: '',
             img_content_url: []
           })
+          return true
+        }
+        else {
+          return false
         }
       }
     },
@@ -151,6 +155,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       const index = this.chapters.findIndex(c => c.chapterTitle === chapterTitle)
       if (index !== -1) {
         this.chapters.splice(index, 1)
+        this.deleteReportOutline(chapterTitle)
       }
     },
 
@@ -407,6 +412,72 @@ export const useReportEditStore = defineStore('reportEdit', {
       } catch (error) {
         console.error('更新章節標題時發生錯誤:', error);
         throw error;
+      }
+    },
+
+    // 刪除報告書大章節
+    async deleteReportOutline(chapterTitle) {
+      try {
+        const asset_id = this.asset_id;
+        const response = await fetch(`http://localhost:8000/api/report/delete_report_outline`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ asset_id: asset_id, chapterTitle: chapterTitle })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || '刪除章節失敗');
+        }
+
+        const result = await response.json();
+        
+        // 如果刪除成功，重新獲取報告書內容
+        // if (result.status === 'success') {
+        //   await this.getReportData();
+        // }
+
+        return result;
+      } catch (error) {
+        console.error('刪除章節時發生錯誤:', error);
+        throw error;
+      }
+    },
+
+    // 新增報告書中章節
+    async addSubChapter_api(chapterTitle, subChapterTitle, user_id) {
+      try {
+        const asset_id = this.asset_id
+        const response = await fetch(`http://localhost:8000/api/report/add_subchapter`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            asset_id: asset_id,
+            chapter_title: chapterTitle,
+            subchapter_title: subChapterTitle,
+            user_id: user_id
+          })
+        })
+
+        const responseData = await response.json()
+        if (!response.ok) {
+          throw new Error(responseData.detail || '新增子章節失敗')
+        }
+
+        // 如果後端更新成功，同步更新前端的狀態
+        if (responseData.status === 'success') {
+          const { block_id, access_permissions } = responseData.data
+          // 使用現有的 addSubChapter action 更新前端狀態
+          this.addSubChapter(chapterTitle, subChapterTitle, block_id, access_permissions)
+          console.log("新增子章節成功", responseData)
+        }
+
+        return responseData
+      } catch (error) {
+        console.error('新增子章節時發生錯誤:', error)
+        throw error
       }
     }
   }
