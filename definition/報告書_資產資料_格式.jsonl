@@ -12,7 +12,7 @@
           {
             "subChapterTitle": "關於本報告書", // 中章節名稱
             "BlockID": "UUID", // 小章節UUID 內容 (BlockID)
-            "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID)
+            "access_permissions": "PermissionChapterID" // 章節權限識別標籤(UUID) //應該不需要
           }
         ]
       },

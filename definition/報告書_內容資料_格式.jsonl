@@ -5,7 +5,7 @@
 
 {
   "BlockID": "UUID",
-  "subChapterTitle": "永續治理架構",
+  "subChapterTitle": "永續治理架構",  //應該不需要
   "content": {
     "text": "這裡是永續治理架構的文字內容...",
     "images": [

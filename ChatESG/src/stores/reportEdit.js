@@ -162,6 +162,8 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 刪除特定大章節下的中章節
     removeSubChapter(chapterTitle, subChapterTitle) {
       const chapter = this.chapters.find(c => c.chapterTitle === chapterTitle)
+      this.removeSubChapter_api(chapterTitle, subChapterTitle)
+      // console.log("removeSubChapter", chapterTitle, subChapterTitle)
       if (chapter) {
         const subIndex = chapter.subChapters.findIndex(
           sub => sub.subChapterTitle === subChapterTitle
@@ -519,6 +521,37 @@ export const useReportEditStore = defineStore('reportEdit', {
         return responseData
       } catch (error) {
         console.error('更新子章節標題時發生錯誤:', error)
+        throw error
+      }
+    },
+
+    // 刪除報告書中章節
+    async removeSubChapter_api(chapterTitle, subChapterTitle) {
+      try {
+        const asset_id = this.asset_id
+        const response = await fetch(`http://localhost:8000/api/report/delete_subchapter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            AssetID: asset_id,  // 修正參數名稱為 AssetID
+            chapterTitle: chapterTitle,
+            subChapterTitle: subChapterTitle 
+          })
+        })
+
+        const responseData = await response.json()
+        if (!response.ok) {
+          throw new Error(responseData.detail || '刪除子章節失敗')
+        }
+
+        // 如果後端更新成功，同步更新前端的狀態
+        if (responseData.status === 'success') {
+          console.log("刪除子章節成功", responseData)
+        }
+
+        return responseData
+      } catch (error) {
+        console.error('刪除子章節時發生錯誤:', error)
         throw error
       }
     }
