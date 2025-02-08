@@ -518,11 +518,22 @@ const addSubsection = () => {
     return
   }
 
-  reportEditStore.addSubChapter(
+  const success = reportEditStore.addSubChapter(
     currentParentTitle.value,
     newSubsectionTitle.value.trim()
   )
-  closeModal()
+
+  if (success) {
+    // console.log('新增中章節成功', currentParentTitle.value, newSubsectionTitle.value.trim())
+    reportEditStore.addSubChapter_api(
+      currentParentTitle.value,
+      newSubsectionTitle.value.trim(),
+      userStore.userID
+    )
+    closeModal()
+  } else {
+    toast.error('已存在相同標題的中章節')
+  }
 }
 
 // 顯示編輯標題的彈出視窗
@@ -564,13 +575,26 @@ const updateSectionTitle = () => {
       toast.error('已存在相同標題的大章節')
     }
   } else {
-    // 更新中章節標題
+    // 檢查是否已存在相同標題的中章節
+    let titleExists = false
     for (const chapter of reportEditStore.chapters) {
-      const subChapter = chapter.subChapters.find(sub => sub.BlockID === editingId.value)
-      if (subChapter) {
-        subChapter.subChapterTitle = editingTitle.value.trim()
+      if (chapter.subChapters.some(sub => sub.subChapterTitle === editingTitle.value.trim())) {
+        titleExists = true
         break
       }
+    }
+
+    if (!titleExists) {
+      // 更新中章節標題
+      for (const chapter of reportEditStore.chapters) {
+        const subChapter = chapter.subChapters.find(sub => sub.BlockID === editingId.value)
+        if (subChapter) {
+          subChapter.subChapterTitle = editingTitle.value.trim()
+          break
+        }
+      }
+    } else {
+      toast.error('已存在相同標題的中章節')
     }
   }
   closeEditModal()
@@ -628,6 +652,7 @@ const addMainSection = () => {
     toast.error('已存在相同標題的大章節')
     return
   }
+  reportEditStore.updateReportOutline()
   closeMainSectionModal()
 }
 
