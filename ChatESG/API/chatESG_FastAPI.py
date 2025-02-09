@@ -21,7 +21,8 @@ import random
 import string
 from contextlib import asynccontextmanager
 from ai_generate import GeminiGenerator
-
+# 圖片生成
+from mermaid import mermaid_to_image
 
 
 # 資料庫配置
@@ -4112,6 +4113,77 @@ async def update_verification_result(data: dict):
         raise HTTPException(status_code=500, detail=f"JSON解析錯誤: {str(e)}")
     except Exception as e:
         print(f"錯誤詳情: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+# 根據文字生成圖片(Mermaid)
+@app.post("/api/report/generate_mermaid_image")
+async def generate_mermaid_image(data: dict):
+    try:
+        # 檢查輸入參數
+        if not data or "text" not in data:
+            raise HTTPException(status_code=400, detail="缺少必要的文本參數")
+            
+        # 傳入文字
+        text = data.get("text")
+        if not text:
+            raise HTTPException(status_code=400, detail="文本內容不能為空")
+
+        # 生成圖片
+        api_keys = ["AIzaSyCsRfCdY2V44TT27Ad7Pbg7v2weQyl7MOM"]
+        model_name = "gemini-2.0-pro-exp-02-05"
+        config = {
+            "n": 1,
+            "temperature": 0.7,
+            "max_tokens": 1000,
+            "top_p": 1,
+        }
+        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        # max_retry = 1
+
+        try:
+            gemini = GeminiGenerator(api_keys, model_name, config, base_url)
+            reference_data = await gemini.llm_to_mermaid(text)
+            choice = reference_data.choices[0]
+            message = choice.message
+            content = message.content
+            
+            # 清理 Mermaid 語法
+            content = content.replace("```mermaid", "").replace("```", "")
+            content = content.replace("(", "").replace(")", "")
+            
+            # 生成圖片唯一碼
+            unique_id = str(uuid.uuid4())
+            output_filename = f"./images/{unique_id}.png"
+            
+            # 確保輸出目錄存在
+            os.makedirs("./images", exist_ok=True)
+            
+            # 生成圖片
+            try:
+                mermaid_to_image(content, output_filename, format="png")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"生成圖片失敗: {str(e)}")
+
+            # 構建圖片URL
+            image_url = f"http://localhost:8000/images/{unique_id}.png"
+            image_url = f"http://localhost:8001/images/9d5ced66-2019-4ad2-8d39-5f659ac13223.png"
+            
+            return {
+                "status": "success",
+                "message": "圖片已生成",
+                "data": {
+                    "image_url": image_url,
+                    "mermaid_code": content
+                }
+            }
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"生成 Mermaid 圖表失敗: {str(e)}")
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
