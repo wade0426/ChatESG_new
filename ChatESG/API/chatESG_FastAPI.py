@@ -21,9 +21,7 @@ import random
 import string
 from contextlib import asynccontextmanager
 from ai_generate import GeminiGenerator
-# 準則驗證
-from rag_main import find_most_relevant_answer
-from ESG_Criteria_Assessment import Gemini_ESG_Criteria_Assessment
+
 
 
 # 資料庫配置
@@ -3998,7 +3996,7 @@ async def generate_text(data: dict):
                         output_text += f"{sub_sub_chapter['subSubChapterTitle']}:{text_content}\n\n"
                 output_text = output_text.strip()
 
-                api_keys = ["AIzaSyBPqDAvFpwanos-0uoO_3IC3_7tIYguBaw"]
+                api_keys = ["AI"]
                 model_name = "gemini-2.0-pro-exp-02-05"
                 config = {
                     "n": 1,
@@ -4025,98 +4023,7 @@ async def generate_text(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
-# 準則檢驗
-@app.post("/api/report/gri_verification_criteria_by_chapter")
-async def gri_verification_criteria_by_chapter(data: dict):
-    try:
-        # 傳入整個大章節標題和內容
-        esg_report = data.get("chapterTitle_text_content")
 
-        if not all([esg_report]):
-            raise HTTPException(status_code=400, detail="缺少必要參數")
-    
-        # 測試資料
-        api_keys = ["AIzaSyCfUyAQgOWpJrq2xO4zIiY2JDPoHpcWpPs"]
-        model_name = "gemini-2.0-flash-lite-preview-02-05"
-        config = {
-            "n": 1,
-            "temperature": 0.7,
-            "max_tokens": 1000,
-            "top_p": 1,
-        }
-        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        max_retry = 1
-        
-        # 建立物件
-        ESG_Criteria_Assessment = Gemini_ESG_Criteria_Assessment(api_keys, model_name, config, base_url, max_retry)
-
-        # 取得對應 GRI 準則
-        response = await ESG_Criteria_Assessment.generate_gri_criteria(esg_report)
-        # print(response)
-        choice = response.choices[0]
-        message = choice.message
-        content = message.content
-        esg_criteria_json = json.loads(content)
-
-        # 建立包含完整 GRI 準則描述的列表
-        criteria_lst = []
-        for indicator in esg_criteria_json['GRI_Indicators']:
-            gri_text = f"{indicator['indicator']} {indicator['description']}"
-            criteria_lst.append(gri_text)
-
-        # print(f"criteria_lst: {criteria_lst}") #['GRI 405-1 董事會性別多樣性', 'GRI 405-2 女性對男性基本薪資與薪酬的比率']
-
-        # 開檔 開啟已經涵蓋的準則
-        file_path = r"D:\\NTCUST\\Project\\ChatESG_new\\ChatESG\\API\\rag_file\\GRI_準則.txt"
-        with open(file_path, 'r', encoding='utf-8') as file:
-            # 已經涵蓋的準則
-            covered_standards_text = file.read()
-        covered_standards_list = covered_standards_text.split('\n') #[GRI 1：基礎]
-        covered_standards_list = [item.split('：')[0] for item in covered_standards_list] #[GRI 1]
-
-        # criteria_lst 是這篇報告書的 GRI 準則清單
-        rag_content = ""
-        for criteria in criteria_lst:
-            # 將 criteria 轉換成 GRI 405
-            # criteria = GRI 405-1 董事會性別多樣性
-            # 使用空格分割字串，取前兩個部分
-            gri_parts = criteria.split(' ')[:2] # [GRI, 405-1]
-            # 組合成 GRI 405-1 格式
-            gri_code = ' '.join(gri_parts) # GRI 405-1
-            # 從 gri_code 中移除最後一個 -1 部分
-            gri_code = gri_code.rsplit('-', 1)[0] # GRI 405
-
-            # print(f"gri_code: {gri_code}")
-            if gri_code in covered_standards_list:
-                print(f"已經涵蓋的準則: {gri_code}")
-
-                # print("開始搜尋")
-                content, source, score = find_most_relevant_answer(criteria)
-                rag_content+=f"{content}\n"
-                # print(f"content: {rag_content}")
-            else:
-                print(f"未涵蓋的準則: {gri_code}")
-
-        # esg_report 是 章節名稱 + 章節內容
-        # prompt_input_content 是 esg_report 加 rag_content
-        prompt_input_content = f"{esg_report}\n\n\n###GRI 準則參考：{rag_content}###"
-        # print(f"prompt_input_content: {prompt_input_content}")
-        # 檢驗結果
-        esg_criteria_verification_result = await ESG_Criteria_Assessment.gri_verification_criteria_by_chapter(prompt_input_content)
-
-        # 將字串轉換為 JSON 物件
-        choice = esg_criteria_verification_result.choices[0]
-        message = choice.message
-        content = message.content
-        verification_json = json.loads(content)
-        
-        return {"status": "success", "text": verification_json}
-    
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        print(f"錯誤詳情: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
 
