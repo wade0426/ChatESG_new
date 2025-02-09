@@ -668,6 +668,33 @@ export const useReportEditStore = defineStore('reportEdit', {
         console.error('更新檢驗結果時發生錯誤:', error);
         throw error;
       }
+    },
+
+    // 生成圖片(Mermaid)
+    async generateMermaidImage(text) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/generate_mermaid_image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || '生成圖片失敗')
+        }
+
+        const responseData = await response.json()
+        if (responseData.status === 'success') {
+          console.log("生成圖片成功", responseData)
+          return responseData.data
+        } else {
+          throw new Error('生成圖片失敗')
+        }
+      } catch (error) {
+        console.error('生成 Mermaid 圖片時發生錯誤:', error)
+        throw error
+      }
     }
   }
 })
