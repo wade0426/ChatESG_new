@@ -49,7 +49,7 @@ class Gemini_ESG_Criteria_Assessment:
             response = self.client.chat.completions.create(
                 model = self.model_name,
                 messages = [
-                    {"role": "system", "content": "你是一位 ESG 報告與 GRI 準則的專家分析師。請分析使用者輸入的 ESG 報告內容,並找出相關的 GRI 準則對應項目，使用中文。\n\n輸入:[報告內容]\n\n請依照以下格式輸出分析結果，使用json格式:\n\n1. 相關的 GRI 準則:\n- GRI_Indicators[indicator]：編號\n- GRI_Indicators[description]：章節標題\n\n2. 如果使用者的輸入沒有相關的 GRI 準則，則輸出 沒有相關的 GRI 準則。"},
+                    {"role": "system", "content": "你是一位 ESG 報告與 GRI 準則的專家分析師。請分析使用者輸入的 ESG 報告內容,並找出相關的 GRI 準則對應項目，使用中文。\n\n輸入:[報告內容]\n\n請依照以下格式輸出分析結果，使用json格式:\n\n1. 相關的 GRI 準則:\n- GRI_Indicators[indicator]：編號\n- GRI_Indicators[description]：章節標題\n\n2. 如果使用者的輸入沒有相關的 GRI 準則，則輸出 沒有相關的 GRI 準則。\n注意：輸出JSON不需要換行空白或其他符號，請輸出壓縮後的JSON。"},
                     {"role": "user", "content": "環境 (Environmental):\n1.參與國際再生能源證書 (I-REC) 買賣，達成 2024 年內使用 25% 綠電目標。\n2.於公司主要營運據點實施廢水回收系統，2023 年總回收水量達 15 百萬公升。\n3.推動淨零碳排策略，2023 年公司碳排放量較 2022 年減少 12%。\n\n社會 (Social):\n1.提供新進員工育兒補助，2023 年補助金額達新臺幣 1,500 萬元，受惠員工人數增加 40%。\n2.開設多元化員工訓練計畫，全年平均每位員工接受訓練時數達 30 小時。\n3.針對弱勢群體，推出專門金融產品及服務，2023 年幫助超過 2,000 位低收入戶改善其金融健康。\n\n治理 (Governance):\n1.董事會中女性比例達 40%，積極推動性別平等政策。\n2.持續進行公司治理評鑑，2023 年被評為全球最佳公司治理之一。\n3.企業風險管理強化措施，2023 年整體風險指數下降 15%。\n\n榮耀與肯定：\n1.連續五年入選 MSCI ESG Ratings，2023 年持續保持 AA 級評等。\n2.2023 年再度入選「道瓊永續世界指數」和「道瓊永續新興市場指數」成分股，成為全球永續發展領先企業之一。\n3.獲得 2023 年「亞太區域最佳永續金融機構」獎項，並被評為該區域最佳創新銀行之一。\n4.連續七年榮獲「台灣企業永續獎」，2023 年榮獲「金融及保險業類白金獎」。"},
                     {"role": "assistant", "content": "{\"GRI_Indicators\":[{\"indicator\":\"GRI 302-1\",\"description\":\"組織內部的能源消耗量\"},{\"indicator\":\"GRI 303-4\",\"description\":\"排水量\"},{\"indicator\":\"GRI 305-1\",\"description\":\"直接（範疇一）溫室氣體排放\"},{\"indicator\":\"GRI 401-1\",\"description\":\"每名員工每年接受訓練的平均時數\"},{\"indicator\":\"GRI 404-2\",\"description\":\"提升員工職能及過渡協助方案\"},{\"indicator\":\"GRI 405-2\",\"description\":\"女性對男性基本薪資與薪酬的比率\"},{\"indicator\":\"GRI 413-2\",\"description\":\"對當地社區具有顯著實際或潛在正面衝擊的營運活動\"}]}"},
                     {"role": "user", "content": "測試"},
@@ -59,6 +59,8 @@ class Gemini_ESG_Criteria_Assessment:
                 response_format={"type":"json_schema","json_schema":{"name":"gri_indicators_response","strict":True,"schema":{"type":"object","properties":{"GRI_Indicators":{"type":"array","items":{"type":"object","properties":{"indicator":{"type":"string","description":"GRI 指標編號"},"description":{"type":"string","description":"GRI 指標描述"}},"required":["indicator","description"],"additionalProperties":False }}},"additionalProperties":False,"required":["GRI_Indicators"]}}},
                 **self.generation_config
             )
+            # 每次請求後，切換 API 密鑰
+            self.switch_api_key()
             return response
         
         except Exception as e:
@@ -106,7 +108,8 @@ class Gemini_ESG_Criteria_Assessment:
                     for field in required_item_fields:
                         if field not in item:
                             raise ValueError(f"待補充項目缺少必要字段: {field}")
-                
+                # 每次請求後，切換 API 密鑰
+                self.switch_api_key()
                 return response
                 
             except json.JSONDecodeError as e:
