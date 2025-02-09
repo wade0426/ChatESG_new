@@ -189,18 +189,20 @@
                 multiple
                 class="hidden"
               />
-              <button class="upload-btn" @click="triggerImageUpload">
-                <i class="mdi mdi-image-plus"></i>
-                <span>上傳圖片</span>
-              </button>
-              <button class="generate-text-btn" @click="handleGenerateText">
-                <i class="mdi mdi-text"></i>
-                <span>生成文字</span>
-              </button>
-              <button class="generate-image-btn" @click="handleGenerateImage">
-                <i class="mdi mdi-image"></i>
-                <span>生成圖片</span>
-              </button>
+              <div class="image-upload-buttons">
+                <button class="upload-btn" @click="triggerImageUpload">
+                  <i class="mdi mdi-image-plus"></i>
+                  <span>上傳圖片</span>
+                </button>
+                <button class="generate-text-btn" @click="handleGenerateText">
+                  <i class="mdi mdi-text"></i>
+                  <span>生成文字</span>
+                </button>
+                <button class="generate-image-btn" @click="handleGenerateImage">
+                  <i class="mdi mdi-image"></i>
+                  <span>生成圖片</span>
+                </button>
+              </div>
               
               <!-- 圖片預覽區域 -->
               <div v-if="currentImages.length > 0" class="image-preview-area">
@@ -340,6 +342,7 @@ import { useReportEditStore } from '@/stores/reportEdit'
 import draggable from 'vuedraggable'
 import { useToast } from 'vue-toastification'
 import GuidelinesResult from './GuidelinesResult.vue'
+import { ElMessage } from 'element-plus'
 
 // 使用 router 和 route
 const router = useRouter()
@@ -383,8 +386,36 @@ const newMainSectionTitle = ref('')
 const sectionContents = ref({})
 const comments = ref({})
 const showCommentPanel = ref(false)
-const currentImages = ref([])
 const imageInput = ref(null)
+const currentImages = ref([])
+
+// 監聽選中的章節變化，更新圖片列表
+watch(selectedSection, (newSection) => {
+  if (newSection) {
+    const content = reportEditStore.getSubChapterContent(newSection)
+    currentImages.value = content.img_content_url || []
+  } else {
+    currentImages.value = []
+  }
+})
+
+// 監聽選中的章節變化，更新文本內容
+watch(selectedSection, (newSection) => {
+  if (newSection) {
+    if (isSubChapter(newSection)) {
+      // 如果是中章節，載入單一章節內容
+      const content = reportEditStore.getSubChapterContent(newSection)
+      sectionContents.value[newSection] = content.text_content
+    } else {
+      // 如果是大章節，載入所有子章節的內容
+      const subChapters = getSubChapters(newSection)
+      subChapters.forEach(subChapter => {
+        const content = reportEditStore.getSubChapterContent(subChapter.BlockID)
+        sectionContents.value[subChapter.BlockID] = content.text_content
+      })
+    }
+  }
+})
 
 // 拖曳相關狀態
 const drag = ref(false)
@@ -707,25 +738,6 @@ const handleSave = () => {
 
 provide('handleSave', handleSave)
 
-// 監聽選中的章節變化
-watch(selectedSection, (newSection) => {
-  if (newSection) {
-    if (isSubChapter(newSection)) {
-      // 如果是中章節，載入單一章節內容
-      const content = reportEditStore.getSubChapterContent(newSection)
-      sectionContents.value[newSection] = content.text_content
-      currentImages.value = content.img_content_url
-    } else {
-      // 如果是大章節，載入所有子章節的內容
-      const subChapters = getSubChapters(newSection)
-      subChapters.forEach(subChapter => {
-        const content = reportEditStore.getSubChapterContent(subChapter.BlockID)
-        sectionContents.value[subChapter.BlockID] = content.text_content
-      })
-    }
-  }
-})
-
 // 處理內容變化
 const handleContentChange = (blockId = null) => {
   const targetBlockId = blockId || selectedSection.value
@@ -749,13 +761,14 @@ const handleImageUpload = (event) => {
 
   Array.from(files).forEach(file => {
     const reader = new FileReader()
-    reader.onload = (e) => {
-      currentImages.value.push({
+    reader.onload = async (e) => {
+      const newImage = {
         url: e.target.result,
         title: '',
         subtitle: ''
-      })
-      reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+      }
+      currentImages.value.push(newImage)
+      await reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
     }
     reader.readAsDataURL(file)
   })
@@ -765,14 +778,14 @@ const handleImageUpload = (event) => {
 }
 
 // 更新圖片訊息
-const updateImageInfo = (index) => {
-  reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+const updateImageInfo = async (index) => {
+  await reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
 }
 
 // 移除圖片
-const removeImage = (index) => {
+const removeImage = async (index) => {
   currentImages.value.splice(index, 1)
-  reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+  await reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
 }
 
 // 獲取大章節標題
@@ -851,27 +864,57 @@ const handleGenerateText = async () => {
 }
 
 // 處理生成圖片按鈕點擊
-const handleGenerateImage = () => {
-  // 獲取當前選中的章節信息
-  const currentChapter = reportEditStore.chapters.find(chapter => {
-    return chapter.subChapters.some(sub => sub.BlockID === selectedSection.value) ||
-           chapter.chapterTitle === selectedSection.value
-  })
+const handleGenerateImage = async () => {
+  try {
+    // 獲取當前選中的章節信息
+    const currentChapter = reportEditStore.chapters.find(chapter => {
+      return chapter.subChapters.some(sub => sub.BlockID === selectedSection.value) ||
+             chapter.chapterTitle === selectedSection.value
+    })
 
-  if (currentChapter) {
-    const chapterTitle = currentChapter.chapterTitle
-    let subChapterTitle = ''
-    let content = ''
+    if (currentChapter) {
+      const chapterTitle = currentChapter.chapterTitle
+      let subChapterTitle = ''
+      let content = ''
 
-    if (isSubChapter(selectedSection.value)) {
-      const subChapter = currentChapter.subChapters.find(sub => sub.BlockID === selectedSection.value)
-      if (subChapter) {
-        subChapterTitle = subChapter.subChapterTitle
-        content = sectionContents.value[selectedSection.value] || ''
+      if (isSubChapter(selectedSection.value)) {
+        const subChapter = currentChapter.subChapters.find(sub => sub.BlockID === selectedSection.value)
+        if (subChapter) {
+          subChapterTitle = subChapter.subChapterTitle
+          content = sectionContents.value[selectedSection.value] || ''
+        }
+      }
+
+      if (!content.trim()) {
+        ElMessage.warning('請先輸入要生成圖表的文字內容')
+        return
+      }
+
+      console.log(`大章節: ${chapterTitle}, 中章節: ${subChapterTitle}, 文字內容: ${content}, 呼叫生成圖片`)
+      
+      // 調用生成圖片 API
+      const result = await reportEditStore.generateMermaidImage(content)
+      if (result && result.image_url) {
+        // 構建完整的圖片對象
+        const newImage = {
+          url: result.image_url,
+          title: '生成的圖表',
+          subtitle: '由 Mermaid 自動生成'
+        }
+        
+        // 更新當前圖片列表
+        currentImages.value = [...currentImages.value, newImage]
+        
+        // 更新 store 中的圖片列表
+        await reportEditStore.updateSubChapterImages(selectedSection.value, currentImages.value)
+        
+        // 提示用戶生成成功
+        ElMessage.success('圖片生成成功')
       }
     }
-
-    console.log(`大章節: ${chapterTitle}, 中章節: ${subChapterTitle}, 文字內容: ${content}, 呼叫生成圖片`)
+  } catch (error) {
+    console.error('生成圖片時發生錯誤:', error)
+    ElMessage.error('生成圖片失敗: ' + error.message)
   }
 }
 </script>
@@ -1511,171 +1554,83 @@ const handleGenerateImage = () => {
   border-radius: 8px;
   margin-top: 1rem;
   display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 
-.upload-btn {
+.image-upload-buttons {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  background-color: #2563eb;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.upload-btn:hover {
-  background-color: #1d4ed8;
-  transform: translateY(-1px);
-}
-
-.upload-btn:active {
-  transform: translateY(0);
-}
-
-.generate-text-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  background-color: #10b981;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.generate-text-btn:hover {
-  background-color: #059669;
-  transform: translateY(-1px);
-}
-
-.generate-text-btn:active {
-  transform: translateY(0);
-}
-
-.dark .generate-text-btn {
-  background-color: #34d399;
-}
-
-.dark .generate-text-btn:hover {
-  background-color: #10b981;
-}
-
-.generate-image-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  background-color: #8b5cf6;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.generate-image-btn:hover {
-  background-color: #7c3aed;
-  transform: translateY(-1px);
-}
-
-.generate-image-btn:active {
-  transform: translateY(0);
-}
-
-.dark .generate-image-btn {
-  background-color: #a78bfa;
-}
-
-.dark .generate-image-btn:hover {
-  background-color: #8b5cf6;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .image-preview-area {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
   margin-top: 1rem;
+  width: 100%;
 }
 
 .image-preview-item {
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  background-color: #f8f9fa;
-  padding: 1rem;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.dark .image-preview-item {
-  background-color: #2d2d2d;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  height: 100%;
 }
 
 .image-preview-item img {
   width: 100%;
-  height: 160px;
-  object-fit: contain;
-  border-radius: 4px;
-  background-color: #ffffff;
+  height: 200px;
+  object-fit: cover;
+  background-color: #f8f9fa;
 }
 
 .dark .image-preview-item img {
-  background-color: #1a1a1a;
+  background-color: #2d2d2d;
 }
 
 .image-info {
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.5rem 0;
+  flex: 1;
 }
 
 .image-title-input,
 .image-subtitle-input {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 0.875rem;
-  background-color: #ffffff;
+  background-color: var(--bg-color);
+  color: var(--text-color);
   transition: all 0.2s ease;
 }
 
-.dark .image-title-input,
-.dark .image-subtitle-input {
-  background-color: #1a1a1a;
-  border-color: #2d2d2d;
-  color: #ffffff;
+.image-title-input:focus,
+.image-subtitle-input:focus {
+  outline: none;
+  border-color: #2563eb;
 }
 
-.image-title-input {
-  font-weight: 500;
-}
-
-.image-subtitle-input {
-  font-size: 0.8125rem;
-  color: #666;
-}
-
-.dark .image-subtitle-input {
-  color: #999;
+.dark .image-title-input:focus,
+.dark .image-subtitle-input:focus {
+  border-color: #3b82f6;
 }
 
 .remove-image-btn {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background-color: rgba(0, 0, 0, 0.5);
   color: white;
@@ -1685,27 +1640,12 @@ const handleGenerateImage = () => {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
 }
 
 .remove-image-btn:hover {
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(220, 38, 38, 0.8);
   transform: scale(1.1);
-}
-
-.hidden {
-  display: none;
-}
-
-.dark .image-upload-area {
-  border-color: #2d2d2d;
-}
-
-.dark .upload-btn {
-  background-color: #3b82f6;
-}
-
-.dark .upload-btn:hover {
-  background-color: #2563eb;
 }
 
 .dark .remove-image-btn {
@@ -1713,7 +1653,7 @@ const handleGenerateImage = () => {
 }
 
 .dark .remove-image-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(239, 68, 68, 0.8);
 }
 
 .add-comment-btn {
@@ -2107,5 +2047,83 @@ const handleGenerateImage = () => {
 
 .toggle-btn i {
   font-size: 1.2rem;
+}
+
+.upload-btn,
+.generate-text-btn,
+.generate-image-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: white;
+}
+
+.upload-btn {
+  background-color: #2563eb;
+}
+
+.upload-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.upload-btn:active {
+  transform: translateY(0);
+}
+
+.generate-text-btn {
+  background-color: #10b981;
+}
+
+.generate-text-btn:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+.generate-text-btn:active {
+  transform: translateY(0);
+}
+
+.generate-image-btn {
+  background-color: #8b5cf6;
+}
+
+.generate-image-btn:hover {
+  background-color: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.generate-image-btn:active {
+  transform: translateY(0);
+}
+
+.dark .upload-btn {
+  background-color: #3b82f6;
+}
+
+.dark .upload-btn:hover {
+  background-color: #2563eb;
+}
+
+.dark .generate-text-btn {
+  background-color: #34d399;
+}
+
+.dark .generate-text-btn:hover {
+  background-color: #10b981;
+}
+
+.dark .generate-image-btn {
+  background-color: #a78bfa;
+}
+
+.dark .generate-image-btn:hover {
+  background-color: #8b5cf6;
 }
 </style>
