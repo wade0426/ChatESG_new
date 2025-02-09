@@ -2891,7 +2891,7 @@ async def create_report(data: dict):
                                         'content': {
                                             'text': '',
                                             'images': [],
-                                            'guidelines': {'inspection content': None},
+                                            'guidelines': {},
                                             'comments': []
                                         }
                                     })
@@ -3715,7 +3715,7 @@ async def add_subchapter(data: dict):
                        (BlockID, AssetID, status, content, ModifiedBy)
                        VALUES (%s, %s, 'editing', %s, %s)""",
                     (block_id_binary, asset_id_binary, 
-                     json.dumps({"BlockID": f"{block_id}", "subChapterTitle": f"{subchapter_title}", "content": {"text": "", "images": [], "guidelines": {"inspection_content": None}, "comments": []}}),
+                     json.dumps({"BlockID": f"{block_id}", "subChapterTitle": f"{subchapter_title}", "content": {"text": "", "images": [], "guidelines": {}, "comments": []}}),
                      user_id_binary)
                 )
 
@@ -4023,6 +4023,96 @@ async def generate_text(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 更新檢驗結果
+@app.post("/api/report/update_verification_result")
+async def update_verification_result(data: dict):
+    try:
+        # 獲取必要參數
+        asset_id = data.get("AssetID")
+        chapter_title = data.get("chapterTitle")
+        guidelines = data.get("guidelines")
+
+        print(f"接收到的參數: asset_id={asset_id}, chapter_title={chapter_title}")
+
+        # 驗證必要參數
+        if not all([asset_id, chapter_title, guidelines]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+                    
+                    # 將 asset_id 轉換為二進制格式
+                    asset_id_binary = bytes.fromhex(asset_id.replace('-', ''))
+
+                    # 獲取資產內容
+                    await cur.execute(
+                        """
+                        SELECT Content 
+                        FROM OrganizationAssets 
+                        WHERE AssetID = %s AND IsDeleted = FALSE
+                        """,
+                        (asset_id_binary,)
+                    )
+                    result = await cur.fetchone()
+
+                    if not result:
+                        raise HTTPException(status_code=404, detail="未找到指定資產")
+
+                    print(f"當前資產內容: {result[0]}")
+
+                    # 解析當前內容
+                    content = json.loads(result[0])
+                    
+                    # 更新指定章節的 guidelines
+                    updated = False
+                    for chapter in content["chapters"]:
+                        if chapter["chapterTitle"] == chapter_title:
+                            chapter["guidelines"] = guidelines
+                            updated = True
+                            break
+
+                    if not updated:
+                        raise HTTPException(status_code=404, detail="未找到指定章節")
+
+                    # 更新資料庫
+                    new_content = json.dumps(content)
+                    print(f"更新後的內容: {new_content}")
+                    
+                    await cur.execute(
+                        """
+                        UPDATE OrganizationAssets 
+                        SET Content = %s, UpdatedAt = CURRENT_TIMESTAMP 
+                        WHERE AssetID = %s
+                        """,
+                        (new_content, asset_id_binary)
+                    )
+
+                    # 提交事務
+                    await conn.commit()
+                    print("資料庫更新成功")
+
+                    return {"status": "success", "message": "檢驗結果已更新"}
+                    
+                except Exception as e:
+                    # 如果發生錯誤，回滾事務
+                    await conn.rollback()
+                    print(f"資料庫更新失敗，已回滾: {str(e)}")
+                    raise
+
+    except HTTPException as e:
+        raise e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"無效的UUID格式: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"JSON解析錯誤: {str(e)}")
+    except Exception as e:
+        print(f"錯誤詳情: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
 
