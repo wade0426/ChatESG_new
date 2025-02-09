@@ -136,7 +136,7 @@ async def gri_verification_criteria_by_chapter(data: dict):
     
         # 測試資料
         api_keys = ["AI"]
-        model_name = "gemini-2.0-flash-lite-preview-02-05"
+        model_name = "gemini-1.5-flash-8b"
         config = {
             "n": 1,
             "temperature": 0.7,
@@ -238,7 +238,7 @@ async def gri_verification_criteria_by_chapter(data: dict):
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"錯誤詳情: {str(e)}")
+        print(f"API錯誤詳情: {str(e)}")
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 

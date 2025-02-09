@@ -4130,7 +4130,7 @@ async def generate_mermaid_image(data: dict):
             raise HTTPException(status_code=400, detail="文本內容不能為空")
 
         # 生成圖片
-        api_keys = ["AIzaSyCsRfCdY2V44TT27Ad7Pbg7v2weQyl7MOM"]
+        api_keys = ["AI"]
         model_name = "gemini-2.0-pro-exp-02-05"
         config = {
             "n": 1,
