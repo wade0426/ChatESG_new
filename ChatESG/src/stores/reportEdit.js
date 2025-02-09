@@ -188,7 +188,7 @@ export const useReportEditStore = defineStore('reportEdit', {
           if (reportData.content && reportData.content.chapters) {
             this.chapters = reportData.content.chapters.map(chapter => ({
               chapterTitle: chapter.chapterTitle,
-              guidelines: {"inspection_content": null},
+              guidelines: {},
               subChapters: chapter.subChapters.map(subChapter => ({
                 subChapterTitle: subChapter.subChapterTitle,
                 BlockID: subChapter.BlockID,
@@ -281,9 +281,7 @@ export const useReportEditStore = defineStore('reportEdit', {
                 subtitle: img.subtitle || ''
               }
             }),
-            guidelines: {
-              inspection_content: null  // 改為物件格式
-            },
+            guidelines: {},
             comments: []  // 保持空陣列
           }
         }
@@ -589,6 +587,47 @@ export const useReportEditStore = defineStore('reportEdit', {
         }
       } catch (error) {
         console.error('生成報告書文字時發生錯誤:', error)
+        throw error
+      }
+    },
+
+    // 準則檢驗
+    async verification_criteria_by_chapter(chapterTitle_text_content) {
+      try {
+        const response = await fetch(`http://localhost:8002/api/report/gri_verification_criteria_by_chapter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chapterTitle_text_content: chapterTitle_text_content
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || '準則檢驗失敗')
+        }
+
+        const responseData = await response.json()
+        if (responseData.status === 'success') {
+          console.log("準則檢驗成功", responseData)
+          
+          // 從輸入的文本中提取章節標題
+          const titleMatch = chapterTitle_text_content.match(/標題：(.+?)\n/)
+          if (titleMatch) {
+            const chapterTitle = titleMatch[1]
+            // 找到對應的章節並更新其 guidelines
+            const chapter = this.chapters.find(c => c.chapterTitle === chapterTitle)
+            if (chapter) {
+              chapter.guidelines = responseData.data
+            }
+          }
+          
+          return responseData
+        } else {
+          throw new Error('準則檢驗失敗')
+        }
+      } catch (error) {
+        console.error('準則檢驗時發生錯誤:', error)
         throw error
       }
     }

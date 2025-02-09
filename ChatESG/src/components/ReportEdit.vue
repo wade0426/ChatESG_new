@@ -161,6 +161,12 @@
               準則檢驗
             </button>
           </div>
+
+          <!-- 準則檢驗結果 -->
+          <GuidelinesResult 
+            v-if="currentChapter && currentChapter.guidelines" 
+            :checkResults="currentChapter.guidelines"
+          />
         </div>
 
         <!-- 當選中中章節時顯示單一編輯區域 -->
@@ -333,6 +339,7 @@ import { useUserStore } from '@/stores/user'
 import { useReportEditStore } from '@/stores/reportEdit'
 import draggable from 'vuedraggable'
 import { useToast } from 'vue-toastification'
+import GuidelinesResult from './GuidelinesResult.vue'
 
 // 使用 router 和 route
 const router = useRouter()
@@ -347,6 +354,15 @@ const selectedSection = ref(null)
 const previousSection = ref(null)
 const theme = ref('dark')
 const expandedSections = ref(new Set())
+
+// 計算當前選中的章節
+const currentChapter = computed(() => {
+  if (!selectedSection.value) return null
+  return reportEditStore.chapters.find(chapter => {
+    return chapter.chapterTitle === selectedSection.value || 
+           chapter.subChapters.some(sub => sub.BlockID === selectedSection.value)
+  })
+})
 
 // 新增中章節相關的響應式變數
 const showModal = ref(false)
@@ -773,7 +789,26 @@ const getSubChapters = (chapterTitle) => {
 
 // 處理準則檢驗按鈕點擊
 const handleCriteriaCheck = () => {
-  console.log("準則檢驗按鈕被按下")
+  if (currentChapter.value) {
+    // 遍歷所有中章節並輸出內容
+    let outputContent = `標題：${currentChapter.value.chapterTitle}\n\n\n`
+    currentChapter.value.subChapters.forEach(sub => {
+      outputContent += `章節：${sub.subChapterTitle}\n` +
+        `內容：\n\`\`\`\n${sub.text_content}\`\`\`\n\n`
+    })
+    
+    reportEditStore.verification_criteria_by_chapter(outputContent)
+      .then(response => {
+        if (response.status === 'success') {
+          toast.success('準則檢驗完成')
+        }
+      })
+      .catch(error => {
+        toast.error('準則檢驗失敗：' + error.message)
+      })
+  } else {
+    toast.error('請先選擇要檢驗的章節')
+  }
 }
 
 // 拖曳結束
