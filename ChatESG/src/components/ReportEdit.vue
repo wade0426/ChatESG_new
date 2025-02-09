@@ -797,7 +797,7 @@ const handleCriteriaCheck = () => {
         `內容：\n\`\`\`\n${sub.text_content}\`\`\`\n\n`
     })
     
-    reportEditStore.verification_criteria_by_chapter(outputContent)
+    reportEditStore.verification_criteria_by_chapter(currentChapter.value.chapterTitle, outputContent)
       .then(response => {
         if (response.status === 'success') {
           toast.success('準則檢驗完成')

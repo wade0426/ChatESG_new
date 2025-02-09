@@ -188,7 +188,7 @@ export const useReportEditStore = defineStore('reportEdit', {
           if (reportData.content && reportData.content.chapters) {
             this.chapters = reportData.content.chapters.map(chapter => ({
               chapterTitle: chapter.chapterTitle,
-              guidelines: {},
+              guidelines: chapter.guidelines || {},
               subChapters: chapter.subChapters.map(subChapter => ({
                 subChapterTitle: subChapter.subChapterTitle,
                 BlockID: subChapter.BlockID,
@@ -592,7 +592,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     },
 
     // 準則檢驗
-    async verification_criteria_by_chapter(chapterTitle_text_content) {
+    async verification_criteria_by_chapter(chapterTitle, chapterTitle_text_content) {
       try {
         const response = await fetch(`http://localhost:8002/api/report/gri_verification_criteria_by_chapter`, {
           method: 'POST',
@@ -621,6 +621,7 @@ export const useReportEditStore = defineStore('reportEdit', {
               chapter.guidelines = responseData.data
             }
           }
+          await this.updateVerificationResult(chapterTitle, responseData.data)
           
           return responseData
         } else {
@@ -630,6 +631,43 @@ export const useReportEditStore = defineStore('reportEdit', {
         console.error('準則檢驗時發生錯誤:', error)
         throw error
       }
+    },
+
+    // 更新檢驗結果
+    async updateVerificationResult(chapterTitle, guidelines) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/update_verification_result`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            AssetID: this.asset_id,
+            chapterTitle: chapterTitle,
+            guidelines: guidelines
+          })
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.detail || '更新檢驗結果失敗');
+        }
+
+        // 如果後端更新成功，同步更新前端的狀態
+        if (responseData.status === 'success') {
+          // 找到並更新對應章節的 guidelines
+          const chapter = this.chapters.find(c => c.chapterTitle === chapterTitle);
+          if (chapter) {
+            chapter.guidelines = guidelines;
+          }
+          console.log("更新檢驗結果成功", responseData);
+        }
+
+        return responseData;
+      } catch (error) {
+        console.error('更新檢驗結果時發生錯誤:', error);
+        throw error;
+      }
     }
   }
-}) 
+})
