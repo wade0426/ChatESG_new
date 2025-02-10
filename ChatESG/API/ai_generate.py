@@ -1,5 +1,18 @@
 from openai import OpenAI
 import requests
+from dotenv import load_dotenv
+import os
+import json
+
+# 載入 .env 檔案
+load_dotenv()
+
+api_keys = list(json.loads(os.getenv("api_keys")))
+model_name = os.getenv("model_name")
+config = os.getenv("config")
+config = dict(json.loads(config))
+base_url = os.getenv("base_url")
+max_retry = int(os.getenv("max_retry"))
 
 class GeminiGenerator:
     def __init__(self, api_keys, model_name, generation_config, base_url, max_retry):
@@ -137,22 +150,6 @@ class GeminiGenerator:
 
 
 async def main():
-    # 測試資料
-    api_keys = ["AI"]
-    model_name = "gemini-2.0-pro-exp-02-05"
-    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-
-    # OpenAI
-    api_keys = ["s"]
-    model_name = "gpt-4o-mini"
-    base_url = "https://api.openai.com/v1/"
-
-    config = {
-        "n": 1,
-        "temperature": 0.7,
-        "max_tokens": 1000
-    }
-    max_retry = 1
 
     # 建立物件
     generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)

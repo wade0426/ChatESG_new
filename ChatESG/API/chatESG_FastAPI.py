@@ -21,8 +21,20 @@ import random
 import string
 from contextlib import asynccontextmanager
 from ai_generate import GeminiGenerator
+from dotenv import load_dotenv
+import os
 # 圖片生成
 from mermaid import mermaid_to_image
+
+# 載入 .env 檔案
+load_dotenv()
+
+api_keys = list(json.loads(os.getenv("api_keys")))
+model_name = os.getenv("model_name")
+config = os.getenv("config")
+config = dict(json.loads(config))
+base_url = os.getenv("base_url")
+max_retry = int(os.getenv("max_retry"))
 
 
 # 資料庫配置
@@ -3997,15 +4009,7 @@ async def generate_text(data: dict):
                         output_text += f"{sub_sub_chapter['subSubChapterTitle']}:{text_content}\n\n"
                 output_text = output_text.strip()
 
-                api_keys = ["AI"]
-                model_name = "gemini-2.0-pro-exp-02-05"
-                config = {
-                    "n": 1,
-                    "temperature": 0.7,
-                    "max_tokens": 1000
-                }
-                base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-                max_retry = 1
+                
                 # 建立物件
                 generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
                 # 獲取訓練數據
@@ -4131,18 +4135,6 @@ async def generate_mermaid_image(data: dict):
             raise HTTPException(status_code=400, detail="文本內容不能為空")
 
         # 生成圖片
-        api_keys = ["AI"]
-        model_name = "gemini-2.0-pro-exp-02-05"
-        config = {
-            "n": 1,
-            "temperature": 0.7,
-            "max_tokens": 1000,
-            "top_p": 1,
-        }
-        
-        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        max_retry = 1
-
         try:
             gemini = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
             reference_data = await gemini.llm_to_mermaid(text)
