@@ -93,13 +93,19 @@ async def main():
     # 測試資料
     api_keys = ["AI"]
     model_name = "gemini-2.0-pro-exp-02-05"
+    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+    # OpenAI
+    api_keys = [""]
+    model_name = "gpt-4o-mini"
+    base_url = "https://api.openai.com/v1/"
+
     config = {
         "n": 1,
         "temperature": 0.7,
         "max_tokens": 1000,
         "top_p": 1,
     }
-    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
     max_retry = 1
 
     ESG_Criteria_Assessment = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
@@ -122,22 +128,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    # 使用三個雙引號來確保多行字符串的正確處理
-    # mermaid_input = """
-    # graph LR
-    #     A["開始"] --> B{"判斷條件"}
-    #     B -- "是" --> C["執行動作 1"]
-    #     B -- "否" --> D["執行動作 2"]
-    #     C --> E["結束"]
-    #     D --> E
-    # """
-
-    # # 生成圖片唯一碼
-    # unique_id = str(uuid.uuid4())
-    # output_filename = f"./images/{unique_id}.png"
-    # mermaid_to_image(mermaid_input, output_filename, format="png")
-
-    # 輸出 SVG 格式的範例 (如果需要)
-    # output_filename_svg = "流程圖.svg"
-    # mermaid_to_image(mermaid_input, output_filename_svg, format="svg")
     pass
