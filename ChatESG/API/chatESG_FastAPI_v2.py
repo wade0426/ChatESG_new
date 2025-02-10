@@ -134,16 +134,22 @@ async def gri_verification_criteria_by_chapter(data: dict):
         if not all([esg_report]):
             raise HTTPException(status_code=400, detail="缺少必要參數")
     
-        # 測試資料
-        api_keys = ["AI"]
-        model_name = "gemini-1.5-flash-8b"
+        # Gemini
+        # api_keys = ["AI"]
+        # model_name = "gemini-2.0-pro-exp-02-05"
+        # base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+        # OpenAI
+        api_keys = [""]
+        model_name = "gpt-4o-mini"
+        base_url = "https://api.openai.com/v1/"
+
         config = {
             "n": 1,
             "temperature": 0.7,
             "max_tokens": 2000,
             "top_p": 1,
         }
-        base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
         max_retry = 1
         
         # 建立物件
