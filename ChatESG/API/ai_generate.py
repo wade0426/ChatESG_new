@@ -2,7 +2,7 @@ from openai import OpenAI
 import requests
 
 class GeminiGenerator:
-    def __init__(self, api_keys, model_name, generation_config, base_url):
+    def __init__(self, api_keys, model_name, generation_config, base_url, max_retry):
         self.api_keys = api_keys
         self.api_count = len(api_keys)
         self.current_api_key = api_keys[0]
@@ -12,7 +12,7 @@ class GeminiGenerator:
         self.active_chapter = ""
         self.base_url = base_url
         # 設定最大重試次數
-        self.max_retry = 3
+        self.max_retry = max_retry
         
         self.client = OpenAI(
             api_key=self.current_api_key,
@@ -140,19 +140,27 @@ async def main():
     # 測試資料
     api_keys = ["AI"]
     model_name = "gemini-2.0-pro-exp-02-05"
+    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+    # OpenAI
+    api_keys = ["s"]
+    model_name = "gpt-4o-mini"
+    base_url = "https://api.openai.com/v1/"
+
     config = {
         "n": 1,
         "temperature": 0.7,
         "max_tokens": 1000
     }
-    base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    max_retry = 1
+
     # 建立物件
-    generator = GeminiGenerator(api_keys, model_name, config, base_url)
+    generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
     # 獲取訓練數據
     category = "金融業"
     chapter_title = "長官的話"
     sub_chapter_title = "長官的話"
-    url = "http://localhost:8001/api/報告書範例.json"
+    url = "http://localhost:8001/api/Sample_Report.json"
     messages = generator.get_messages(category, chapter_title, sub_chapter_title, url)
     # print(messages)
     # 生成文本
