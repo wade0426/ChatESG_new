@@ -4013,7 +4013,7 @@ async def generate_text(data: dict):
                 # 建立物件
                 generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
                 # 獲取訓練數據
-                url = "http://localhost:8001/api/報告書範例.json"
+                url = "http://localhost:8001/api/Sample_Report.json"
                 messages = generator.get_messages(category, chapter_title, sub_chapter_title, url)
 
                 prompt = output_text
