@@ -4005,8 +4005,9 @@ async def generate_text(data: dict):
                     "max_tokens": 1000
                 }
                 base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+                max_retry = 1
                 # 建立物件
-                generator = GeminiGenerator(api_keys, model_name, config, base_url)
+                generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
                 # 獲取訓練數據
                 url = "http://localhost:8001/api/報告書範例.json"
                 messages = generator.get_messages(category, chapter_title, sub_chapter_title, url)
@@ -4138,11 +4139,12 @@ async def generate_mermaid_image(data: dict):
             "max_tokens": 1000,
             "top_p": 1,
         }
+        
         base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-        # max_retry = 1
+        max_retry = 1
 
         try:
-            gemini = GeminiGenerator(api_keys, model_name, config, base_url)
+            gemini = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
             reference_data = await gemini.llm_to_mermaid(text)
             choice = reference_data.choices[0]
             message = choice.message
@@ -4192,3 +4194,4 @@ async def generate_mermaid_image(data: dict):
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
+# python -m http.server 8001 --bind 127.0.0.1
