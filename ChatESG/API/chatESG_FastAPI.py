@@ -4118,6 +4118,165 @@ async def add_company_info_chapter(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 刪除_公司基本資料章節
+@app.post("/api/report/delete_company_info_chapter")
+async def delete_company_info_chapter(data: dict):
+    try:
+        # 獲取輸入參數
+        asset_id = data.get("asset_id")
+        chapter_title = data.get("chapter_title")
+        subchapter_title = data.get("subchapter_title")
+        chapter_level = data.get("chapter_level")
+
+        # 驗證必要參數
+        if not all([asset_id, chapter_title, subchapter_title, chapter_level]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        if chapter_level not in [1, 2, 3]:
+            raise HTTPException(status_code=400, detail="章節等級必須是 1, 2, 或 3")
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 將 asset_id 轉換為 bytes
+                asset_id_binary = bytes.fromhex(asset_id.replace('-', ''))
+
+                # 獲取資產內容
+                await cur.execute(
+                    "SELECT Content FROM OrganizationAssets WHERE AssetID = %s",
+                    (asset_id_binary,)
+                )
+                result = await cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到指定的資產")
+
+                content = json.loads(result[0])
+
+                # 根據不同章節等級處理
+                if chapter_level == 1:
+                    # 刪除最上層章節
+                    chapter_found = False
+                    for i, chapter in enumerate(content["chapters"]):
+                        if chapter["chapterTitle"] == chapter_title:
+                            # 檢查是否有子章節包含 BlockID，如果有需要刪除相關資料
+                            for subchapter in chapter["subChapters"]:
+                                for subsubchapter in subchapter.get("subSubChapters", []):
+                                    if "BlockID" in subsubchapter and "access_permissions" in subsubchapter:
+                                        block_id = subsubchapter["BlockID"]
+                                        access_permissions = subsubchapter["access_permissions"]
+                                        
+                                        # 刪除 reportcontentblocks 記錄
+                                        await cur.execute(
+                                            "DELETE FROM ReportContentBlocks WHERE BlockID = %s",
+                                            (bytes.fromhex(block_id.replace('-', '')),)
+                                        )
+                                        
+                                        # 刪除權限映射
+                                        await cur.execute(
+                                            "DELETE FROM RolePermissionMappings WHERE PermissionChapterID = %s",
+                                            (bytes.fromhex(access_permissions.replace('-', '')),)
+                                        )
+                            
+                            del content["chapters"][i]
+                            chapter_found = True
+                            break
+
+                    if not chapter_found:
+                        raise HTTPException(status_code=404, detail="找不到指定的章節")
+
+                elif chapter_level == 2:
+                    # 刪除次層章節
+                    chapter_found = False
+                    subchapter_found = False
+                    for chapter in content["chapters"]:
+                        if chapter["chapterTitle"] == chapter_title:
+                            chapter_found = True
+                            for i, subchapter in enumerate(chapter["subChapters"]):
+                                if subchapter["subChapterTitle"] == subchapter_title:
+                                    # 檢查是否有子章節包含 BlockID，如果有需要刪除相關資料
+                                    for subsubchapter in subchapter.get("subSubChapters", []):
+                                        if "BlockID" in subsubchapter and "access_permissions" in subsubchapter:
+                                            block_id = subsubchapter["BlockID"]
+                                            access_permissions = subsubchapter["access_permissions"]
+                                            
+                                            # 刪除 reportcontentblocks 記錄
+                                            await cur.execute(
+                                                "DELETE FROM ReportContentBlocks WHERE BlockID = %s",
+                                                (bytes.fromhex(block_id.replace('-', '')),)
+                                            )
+                                            
+                                            # 刪除權限映射
+                                            await cur.execute(
+                                                "DELETE FROM RolePermissionMappings WHERE PermissionChapterID = %s",
+                                                (bytes.fromhex(access_permissions.replace('-', '')),)
+                                            )
+                                    
+                                    del chapter["subChapters"][i]
+                                    subchapter_found = True
+                                    break
+                            break
+
+                    if not chapter_found:
+                        raise HTTPException(status_code=404, detail="找不到指定的上層章節")
+                    if not subchapter_found:
+                        raise HTTPException(status_code=404, detail="找不到指定的次層章節")
+
+                elif chapter_level == 3:
+                    # 刪除最下層章節
+                    subchapter_found = False
+                    subsubchapter_found = False
+                    for chapter in content["chapters"]:
+                        for subchapter in chapter["subChapters"]:
+                            if subchapter["subChapterTitle"] == chapter_title:
+                                subchapter_found = True
+                                for i, subsubchapter in enumerate(subchapter["subSubChapters"]):
+                                    if subsubchapter["subSubChapterTitle"] == subchapter_title:
+                                        # 獲取 BlockID 和 access_permissions
+                                        block_id = subsubchapter["BlockID"]
+                                        access_permissions = subsubchapter["access_permissions"]
+                                        
+                                        # 刪除 reportcontentblocks 記錄
+                                        await cur.execute(
+                                            "DELETE FROM ReportContentBlocks WHERE BlockID = %s",
+                                            (bytes.fromhex(block_id.replace('-', '')),)
+                                        )
+                                        
+                                        # 刪除權限映射
+                                        await cur.execute(
+                                            "DELETE FROM RolePermissionMappings WHERE PermissionChapterID = %s",
+                                            (bytes.fromhex(access_permissions.replace('-', '')),)
+                                        )
+                                        
+                                        del subchapter["subSubChapters"][i]
+                                        subsubchapter_found = True
+                                        break
+                                break
+                        if subchapter_found:
+                            break
+
+                    if not subchapter_found:
+                        raise HTTPException(status_code=404, detail="找不到指定的次層章節")
+                    if not subsubchapter_found:
+                        raise HTTPException(status_code=404, detail="找不到指定的最下層章節")
+
+                # 更新資產內容
+                await cur.execute(
+                    "UPDATE OrganizationAssets SET Content = %s WHERE AssetID = %s",
+                    (json.dumps(content), asset_id_binary)
+                )
+
+                await conn.commit()
+
+                return {"status": "success", "message": "章節刪除成功"}
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"錯誤詳情: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
 # 生成報告書文字
 @app.post("/api/report/generate_text")
 async def generate_text(data: dict):
