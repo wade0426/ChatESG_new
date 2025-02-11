@@ -695,7 +695,7 @@ const deleteSection = async (sectionId) => {
     const index = newArr.findIndex(item => item.id === sectionId)
     if (index !== -1) {
       newArr.splice(index, 1)
-      return { found: true, array: newArr }
+      return { found: true, found_index: index, array: newArr }
     }
     
     for (let i = 0; i < newArr.length; i++) {
@@ -703,7 +703,7 @@ const deleteSection = async (sectionId) => {
         const result = deleteFromArray(newArr[i].children)
         if (result.found) {
           newArr[i] = { ...newArr[i], children: result.array }
-          return { found: true, array: newArr }
+          return { found: true, found_index: i, array: newArr }
         }
       }
     }
@@ -716,10 +716,15 @@ const deleteSection = async (sectionId) => {
     const pathLength = pathInfo.path.length
     if (pathLength === 0) {
       console.log("刪除大標題", sectionToDelete.title)
+      companyInfoStore.deleteCompanyInfoChapter(route.query.assetId, sectionToDelete.title, sectionToDelete.title, 1)
     } else if (pathLength === 1) {
-      console.log("刪除中標題", sectionToDelete.title)
+      console.log("大標題", result.array[result.found_index].title, "刪除中標題", sectionToDelete.title)
+      companyInfoStore.deleteCompanyInfoChapter(route.query.assetId, result.array[result.found_index].title, sectionToDelete.title, 2)
     } else if (pathLength === 2) {
-      console.log("刪除小標題", sectionToDelete.title)
+      // 找到對應的大標題和中標題
+      const parentSection = pathInfo.path[0]
+      console.log("中標題", parentSection.title, "刪除小標題", sectionToDelete.title)
+      companyInfoStore.deleteCompanyInfoChapter(route.query.assetId, parentSection.title, sectionToDelete.title, 3)
     }
     companyInfoStore.sections = result.array
   }

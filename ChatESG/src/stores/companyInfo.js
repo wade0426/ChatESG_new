@@ -253,6 +253,37 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     }
   }
 
+  // 刪除_公司資料章節
+  const deleteCompanyInfoChapter = async (assetId, chapterTitle, subchapterTitle, chapterLevel) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/report/delete_company_info_chapter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          asset_id: assetId,
+          chapter_title: chapterTitle,
+          subchapter_title: subchapterTitle,
+          chapter_level: chapterLevel
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('刪除公司資料章節失敗')
+      }
+
+      const data = await response.json()
+      if (data.status === 'success') {
+        return data.data
+      } else {
+        throw new Error(data.message || '刪除公司資料章節失敗')
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
   return {
     // 狀態
     sections,
@@ -278,6 +309,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     fetchAssetContent,
     updateSectionContent,
     fetchSectionContent,
-    addCompanyInfoChapter
+    addCompanyInfoChapter,
+    deleteCompanyInfoChapter
   }
 }) 
