@@ -498,8 +498,10 @@ const addSubsection = () => {
         // 根據當前層級記錄日誌
         if (currentLevel.value === 1) {
           console.log("大標題名稱", section.title, "新增中標題", newSubsection.title)
+          companyInfoStore.addCompanyInfoChapter(route.query.assetId, section.title, newSubsection.title, 2)
         } else if (currentLevel.value === 2) {
           console.log("中標題名稱", section.title, "新增小標題", newSubsection.title)
+          companyInfoStore.addCompanyInfoChapter(route.query.assetId, section.title, newSubsection.title, 3)
         }
         return {
           ...section,
@@ -552,7 +554,8 @@ const addMainSection = () => {
     children: []
   }
 
-  console.log("新增大標題", newSection.title)
+  // console.log("新增大標題", newSection.title)
+  companyInfoStore.addCompanyInfoChapter(route.query.assetId, newSection.title, newSection.title, 1)
   companyInfoStore.sections.push(newSection)
   expandedSections.value.add(newSection.id)
   closeMainSectionModal()
