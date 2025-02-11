@@ -441,10 +441,47 @@ const handleFontSizeChange = (size) => {
   document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
 }
 
-// 新增子標題相關方法
+// 添加檢查章節名稱是否重複的方法
+const checkDuplicateTitle = (title, level, excludeId = null) => {
+  const checkInArray = (sectionsArr, currentPath = []) => {
+    for (const section of sectionsArr) {
+      // 跳過當前正在編輯的章節
+      if (section.id === excludeId) {
+        continue
+      }
+
+      const path = [section, ...currentPath]
+      const pathLength = path.length
+
+      // 檢查對應層級的標題
+      if ((level === 0 && pathLength === 1 && section.title === title) || // 大章節
+          (level === 1 && pathLength === 2 && section.title === title) || // 中章節
+          (level === 2 && pathLength === 3 && section.title === title)) { // 小章節
+        return true
+      }
+
+      // 繼續檢查子章節
+      if (section.children) {
+        const isDuplicate = checkInArray(section.children, path)
+        if (isDuplicate) return true
+      }
+    }
+    return false
+  }
+
+  return checkInArray(sections.value)
+}
+
+// 修改新增子標題的方法
 const addSubsection = () => {
   if (!newSubsectionTitle.value.trim()) {
     alert('請輸入子標題名稱')
+    return
+  }
+
+  // 檢查標題是否重複
+  if (checkDuplicateTitle(newSubsectionTitle.value.trim(), currentLevel.value)) {
+    toast.error(currentLevel.value === 1 ? '中章節名稱重複' : '小章節名稱重複')
     return
   }
 
@@ -458,6 +495,12 @@ const addSubsection = () => {
   const updateSections = (sectionsArr) => {
     return sectionsArr.map(section => {
       if (section.id === currentParentId.value) {
+        // 根據當前層級記錄日誌
+        if (currentLevel.value === 1) {
+          console.log("大標題名稱", section.title, "新增中標題", newSubsection.title)
+        } else if (currentLevel.value === 2) {
+          console.log("中標題名稱", section.title, "新增小標題", newSubsection.title)
+        }
         return {
           ...section,
           children: [...(section.children || []), newSubsection]
@@ -490,10 +533,16 @@ const closeModal = () => {
   newSubsectionTitle.value = ''
 }
 
-// 大章節相關方法
+// 修改新增大章節的方法
 const addMainSection = () => {
   if (!newMainSectionTitle.value.trim()) {
     alert('請輸入大章節名稱')
+    return
+  }
+
+  // 檢查標題是否重複
+  if (checkDuplicateTitle(newMainSectionTitle.value.trim(), 0)) {
+    toast.error('大章節名稱重複')
     return
   }
 
@@ -503,6 +552,7 @@ const addMainSection = () => {
     children: []
   }
 
+  console.log("新增大標題", newSection.title)
   companyInfoStore.sections.push(newSection)
   expandedSections.value.add(newSection.id)
   closeMainSectionModal()
@@ -555,14 +605,7 @@ const toggleSubSection = (sectionId) => {
   companyInfoStore.toggleSection(sectionId)
 }
 
-// 編輯標題相關方法
-const showEditTitleModal = (sectionId, title, event) => {
-  event.stopPropagation()
-  editingSectionId.value = sectionId
-  editingTitle.value = title
-  showEditModal.value = true
-}
-
+// 修改更新章節標題的方法
 const updateSectionTitle = () => {
   if (!editingTitle.value.trim()) {
     alert('請輸入標題名稱')
@@ -572,6 +615,31 @@ const updateSectionTitle = () => {
   const updateTitle = (sectionsArr) => {
     return sectionsArr.map(section => {
       if (section.id === editingSectionId.value) {
+        // 獲取章節層級
+        const result = companyInfoStore.findSectionAndPath(editingSectionId.value)
+        if (result) {
+          const pathLength = result.path.length
+          // 檢查標題是否重複
+          if (checkDuplicateTitle(editingTitle.value.trim(), pathLength, editingSectionId.value)) {
+            if (pathLength === 0) {
+              toast.error('大章節名稱重複')
+            } else if (pathLength === 1) {
+              toast.error('中章節名稱重複')
+            } else if (pathLength === 2) {
+              toast.error('小章節名稱重複')
+            }
+            return section
+          }
+
+          // 記錄日誌
+          if (pathLength === 0) {
+            console.log("編輯大標題", section.title, editingTitle.value.trim())
+          } else if (pathLength === 1) {
+            console.log("編輯中標題", section.title, editingTitle.value.trim())
+          } else if (pathLength === 2) {
+            console.log("編輯小標題", section.title, editingTitle.value.trim())
+          }
+        }
         return { ...section, title: editingTitle.value.trim() }
       }
       if (section.children) {
@@ -584,8 +652,12 @@ const updateSectionTitle = () => {
     })
   }
 
-  companyInfoStore.sections = updateTitle(sections.value)
-  closeEditModal()
+  const newSections = updateTitle(sections.value)
+  // 只有在沒有重複標題時才更新
+  if (newSections !== sections.value) {
+    companyInfoStore.sections = newSections
+    closeEditModal()
+  }
 }
 
 const closeEditModal = () => {
@@ -611,6 +683,10 @@ const deleteSection = async (sectionId) => {
     delete comments.value[sectionId]
   }
 
+  // 在刪除前獲取章節信息
+  const sectionToDelete = companyInfoStore.findSectionById(sectionId)
+  const pathInfo = companyInfoStore.findSectionAndPath(sectionId)
+
   const deleteFromArray = (arr) => {
     const newArr = [...arr]
     const index = newArr.findIndex(item => item.id === sectionId)
@@ -632,7 +708,16 @@ const deleteSection = async (sectionId) => {
   }
 
   const result = deleteFromArray(sections.value)
-  if (result.found) {
+  if (result.found && sectionToDelete && pathInfo) {
+    // 根據路徑長度判斷章節層級並記錄日誌
+    const pathLength = pathInfo.path.length
+    if (pathLength === 0) {
+      console.log("刪除大標題", sectionToDelete.title)
+    } else if (pathLength === 1) {
+      console.log("刪除中標題", sectionToDelete.title)
+    } else if (pathLength === 2) {
+      console.log("刪除小標題", sectionToDelete.title)
+    }
     companyInfoStore.sections = result.array
   }
 }
@@ -775,6 +860,15 @@ const getEditModalPlaceholder = (sectionId) => {
     console.error('獲取輸入提示時出錯:', error)
     return '請輸入標題名稱'
   }
+}
+
+const showEditTitleModal = (sectionId, title, event) => {
+  if (event) {
+    event.stopPropagation()
+  }
+  editingSectionId.value = sectionId
+  editingTitle.value = title
+  showEditModal.value = true
 }
 </script>
 
