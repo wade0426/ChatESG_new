@@ -162,6 +162,19 @@ CREATE TABLE ReportContentBlocks (
 ) COMMENT '組織資產內容資料表';
 
 -- --------------------------------------------------------
+-- 報告書_公司資料_對應表
+-- 用於記錄報告書_公司資料_對應表
+-- --------------------------------------------------------
+CREATE TABLE ReportCompanyInfoMapping (
+    MappingID INT AUTO_INCREMENT PRIMARY KEY COMMENT '對應關係ID(流水號)', 
+    ReportID BINARY(16) COMMENT '報告書(UUID)',
+    CompanyInfoID BINARY(16) COMMENT '公司資料(UUID)',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+    FOREIGN KEY (ReportID) REFERENCES OrganizationAssets(AssetID) ON DELETE SET NULL,
+    FOREIGN KEY (CompanyInfoID) REFERENCES OrganizationAssets(AssetID) ON DELETE SET NULL
+) COMMENT '報告書_公司資料_對應表';
+
+-- --------------------------------------------------------
 -- 組織申請資料表
 -- 用於記錄使用者申請加入組織的資料
 -- --------------------------------------------------------
