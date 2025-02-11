@@ -17,6 +17,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   const showCommentPanel = ref(false)
   const theme = ref('dark')
   const previousSection = ref(null)
+  const assetName = ref('')
 
   // Getters
   const getCurrentSectionTitle = () => {
@@ -67,6 +68,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     return null
   }
 
+  // 切換指定章節的展開狀態，如果章節已展開則收起，並選擇該章節
   const toggleSection = (sectionId) => {
     const newExpandedSections = new Set(expandedSections.value)
     if (newExpandedSections.has(sectionId)) {
@@ -82,6 +84,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     selectSection(sectionId)
   }
 
+  // 選擇章節
   const selectSection = async (sectionId) => {
     if (previousSection.value && previousSection.value !== sectionId) {
       const prevSectionInfo = findSectionById(previousSection.value)
@@ -216,6 +219,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     showCommentPanel,
     theme,
     previousSection,
+    assetName,
 
     // Getters
     getCurrentSectionTitle,

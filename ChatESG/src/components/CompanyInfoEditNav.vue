@@ -194,7 +194,7 @@ const comments = inject('comments', ref({}))
 const theme = ref('dark')
 const fileNameInput = ref('')  // 新增用於處理輸入的ref
 const fileName = computed(() => {
-  return companyInfoStore.assetContent?.assetName || '未命名文件'
+  return companyInfoStore.assetName || '未命名文件'
 })
 const isSaved = ref(true)
 const saveStatus = ref('已儲存')

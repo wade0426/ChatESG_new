@@ -349,6 +349,7 @@ const loadAssetContent = async (assetId) => {
   try {
     const content = await companyInfoStore.fetchAssetContent(userStore.organizationID, assetId)
     if (content && content.content) {
+      companyInfoStore.assetName = content.assetName
       companyInfoStore.sections = content.content.chapters.map(chapter => ({
         id: uuidv4(),
         title: chapter.chapterTitle,
@@ -936,7 +937,7 @@ provide('handleSave', handleSave)
   flex: 1;
   padding: 2rem;
   transition: all 0.3s ease;
-  margin-left: 280px;
+  margin-left: 300px;
   height: calc(100vh - 60px);
   overflow-y: auto;
   position: relative;
