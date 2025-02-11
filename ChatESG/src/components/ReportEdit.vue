@@ -19,7 +19,7 @@
           </button>
         </div>
         <div class="sidebar-content">
-          <div class="add-main-section">
+          <div class="add-main-section" style="display: none;">
             <button @click="showAddMainSectionModal" class="add-main-section-btn">
               <i class="mdi mdi-plus"></i>
               <span>新增大章節</span>
@@ -52,6 +52,7 @@
                         class="edit-title-btn"
                         @click.stop="showEditTitleModal(chapter.chapterTitle, 'chapter')"
                         title="編輯標題"
+                        style="display: none;"
                       >
                         <i class="mdi mdi-pencil"></i>
                       </button>
@@ -59,6 +60,7 @@
                         class="add-subsection-btn"
                         @click.stop="showAddSubsectionModal(chapter.chapterTitle)"
                         title="新增中章節"
+                        style="display: none;"
                       >
                         <i class="mdi mdi-plus"></i>
                       </button>
@@ -66,6 +68,7 @@
                         class="delete-btn"
                         @click.stop="confirmDelete(chapter.chapterTitle, 'chapter')"
                         title="刪除"
+                        style="display: none;"
                       >
                         <i class="mdi mdi-delete"></i>
                       </button>
@@ -98,6 +101,7 @@
                             class="edit-title-btn"
                             @click.stop="showEditTitleModal(subChapter.BlockID, 'subChapter')"
                             title="編輯標題"
+                            style="display: none;"
                           >
                             <i class="mdi mdi-pencil"></i>
                           </button>
@@ -105,6 +109,7 @@
                             class="delete-btn"
                             @click.stop="confirmDelete(chapter.chapterTitle, 'subChapter', subChapter.subChapterTitle)"
                             title="刪除"
+                            style="display: none;"
                           >
                             <i class="mdi mdi-delete"></i>
                           </button>
