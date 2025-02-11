@@ -29,7 +29,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
 
   const isLeafSection = (sectionId) => {
     if (!sectionId) return false
-    const result = findSectionAndPath(sections.value, sectionId)
+    const result = findSectionAndPath(sectionId)
     if (!result) return false
     const { section, path } = result
     if (path.length !== 2) return false
@@ -55,25 +55,38 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     return findInArray(sections.value)
   }
 
-  const findSectionAndPath = (sectionsArray, targetId, path = []) => {
-    for (const section of sectionsArray) {
-      if (section.id === targetId) {
-        return { section, path }
+  // 重新實現 findSectionAndPath 方法
+  const findSectionAndPath = (targetId) => {
+    const findInArray = (array, currentPath = []) => {
+      for (const section of array) {
+        // 當前路徑
+        const path = [section, ...currentPath]
+        
+        // 如果找到目標
+        if (section.id === targetId) {
+          return { section, path: currentPath }
+        }
+        
+        // 如果有子節點，繼續搜索
+        if (section.children) {
+          const result = findInArray(section.children, path)
+          if (result) {
+            return result
+          }
+        }
       }
-      if (section.children) {
-        const result = findSectionAndPath(section.children, targetId, [...path, section])
-        if (result) return result
-      }
+      return null
     }
-    return null
+    
+    return findInArray(sections.value)
   }
 
-  // 切換指定章節的展開狀態，如果章節已展開則收起，並選擇該章節
+  // 切換指定章節的展開狀態
   const toggleSection = (sectionId) => {
     const newExpandedSections = new Set(expandedSections.value)
     if (newExpandedSections.has(sectionId)) {
       newExpandedSections.delete(sectionId)
-      const section = sections.value.find(s => s.id === sectionId)
+      const section = findSectionById(sectionId)
       if (section && section.children) {
         section.children.forEach(child => newExpandedSections.delete(child.id))
       }
@@ -227,6 +240,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
 
     // Actions
     findSectionById,
+    findSectionAndPath,
     toggleSection,
     selectSection,
     toggleTheme,

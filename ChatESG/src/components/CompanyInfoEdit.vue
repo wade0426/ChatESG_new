@@ -230,12 +230,12 @@
   <!-- 新增子標題的彈出視窗 -->
   <div v-if="showModal" class="modal-overlay" @click="closeModal">
     <div class="modal-content" @click.stop>
-      <h3>新增子標題</h3>
+      <h3>{{ getModalTitle(currentLevel) }}</h3>
       <div class="modal-form">
         <input 
           v-model="newSubsectionTitle" 
           type="text" 
-          placeholder="請輸入子標題名稱"
+          :placeholder="getModalPlaceholder(currentLevel)"
           @keyup.enter="addSubsection"
         >
         <div class="modal-buttons">
@@ -249,12 +249,12 @@
   <!-- 編輯標題的彈出視窗 -->
   <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
     <div class="modal-content" @click.stop>
-      <h3>編輯標題</h3>
+      <h3>{{ getEditModalTitle(editingSectionId) }}</h3>
       <div class="modal-form">
         <input 
           v-model="editingTitle" 
           type="text" 
-          placeholder="請輸入標題名稱"
+          :placeholder="getEditModalPlaceholder(editingSectionId)"
           @keyup.enter="updateSectionTitle"
         >
         <div class="modal-buttons">
@@ -709,6 +709,73 @@ const handleSave = () => {
 
 // 提供儲存方法給子組件
 provide('handleSave', handleSave)
+
+// 在 script setup 部分添加以下方法
+const getModalTitle = (level) => {
+  switch (level) {
+    case 1:
+      return '新增中章節'
+    case 2:
+      return '新增小章節'
+    default:
+      return '新增章節'
+  }
+}
+
+const getModalPlaceholder = (level) => {
+  switch (level) {
+    case 1:
+      return '請輸入中章節名稱'
+    case 2:
+      return '請輸入小章節名稱'
+    default:
+      return '請輸入章節名稱'
+  }
+}
+
+const getEditModalTitle = (sectionId) => {
+  try {
+    if (!sectionId) return '編輯標題'
+    
+    const section = companyInfoStore.findSectionById(sectionId)
+    if (!section) return '編輯標題'
+    
+    const result = companyInfoStore.findSectionAndPath(sectionId)
+    if (!result) return '編輯標題'
+    
+    // 根據路徑長度判斷章節層級
+    const pathLength = result.path.length
+    if (pathLength === 0) return '編輯大章節'  // 頂層，沒有父節點
+    if (pathLength === 1) return '編輯中章節'  // 有一個父節點
+    if (pathLength === 2) return '編輯小章節'  // 有兩個父節點
+    return '編輯標題'
+  } catch (error) {
+    console.error('獲取編輯標題時出錯:', error)
+    return '編輯標題'
+  }
+}
+
+const getEditModalPlaceholder = (sectionId) => {
+  try {
+    if (!sectionId) return '請輸入標題名稱'
+    
+    const section = companyInfoStore.findSectionById(sectionId)
+    if (!section) return '請輸入標題名稱'
+    
+    const result = companyInfoStore.findSectionAndPath(sectionId)
+    if (!result) return '請輸入標題名稱'
+    
+    // 根據路徑長度判斷章節層級
+    const pathLength = result.path.length
+    if (pathLength === 0) return '請輸入大章節名稱'  // 頂層，沒有父節點
+    if (pathLength === 1) return '請輸入中章節名稱'  // 有一個父節點
+    if (pathLength === 2) return '請輸入小章節名稱'  // 有兩個父節點
+    return '請輸入標題名稱'
+  } catch (error) {
+    console.error('獲取輸入提示時出錯:', error)
+    return '請輸入標題名稱'
+  }
+}
 </script>
 
 
