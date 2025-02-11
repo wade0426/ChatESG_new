@@ -4061,7 +4061,7 @@ async def add_company_info_chapter(data: dict):
                                     )
                                 )
 
-                                # 獲取組織的所有角色
+                                # 獲取組織的 RoleName="一般"
                                 await cur.execute(
                                     """
                                     SELECT RoleID FROM Roles 
@@ -4070,12 +4070,13 @@ async def add_company_info_chapter(data: dict):
                                         FROM OrganizationAssets 
                                         WHERE AssetID = %s
                                     )
+                                    AND RoleName = %s
                                     """,
-                                    (asset_id_binary,)
+                                    (asset_id_binary, "一般")
                                 )
                                 roles = await cur.fetchall()
 
-                                # 為每個角色新增權限映射
+                                # 為每個角色新增權限映射 實際上是一般後續可以修改
                                 for role in roles:
                                     await cur.execute(
                                         """
@@ -4087,7 +4088,7 @@ async def add_company_info_chapter(data: dict):
                                             role[0],
                                             bytes.fromhex(access_permissions.replace('-', '')),
                                             asset_id_binary,
-                                            'report/template/company_info',
+                                            'company_info',
                                             'read_write'
                                         )
                                     )
