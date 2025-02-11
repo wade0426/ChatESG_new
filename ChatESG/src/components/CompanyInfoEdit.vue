@@ -33,7 +33,7 @@
             <div class="section-level-1">
               <div 
                 :class="['section-title', { 'active': selectedSection === section.id }]"
-                @click="toggleSection(section.id)"
+                @click="selectSection(section.id)"
               >
                 <div class="section-title-content">
                   <span>{{ getSectionNumber(index) }}. {{ section.title }}</span>
@@ -59,7 +59,13 @@
                     >
                       <i class="mdi mdi-delete"></i>
                     </button>
-                    <i :class="['mdi', isExpanded(section.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                    <button 
+                      class="toggle-btn"
+                      @click.stop="toggleSection(section.id)"
+                      title="展開/收合"
+                    >
+                      <i :class="['mdi', isExpanded(section.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -73,7 +79,7 @@
                 >
                   <div 
                     :class="['section-title', { 'active': selectedSection === subSection.id }]"
-                    @click="toggleSubSection(subSection.id)"
+                    @click="selectSection(subSection.id)"
                   >
                     <div class="section-title-content">
                       <span>{{ getAlphabetLabel(subIndex) }}. {{ subSection.title }}</span>
@@ -99,7 +105,14 @@
                         >
                           <i class="mdi mdi-delete"></i>
                         </button>
-                        <i v-if="subSection.children" :class="['mdi', isExpanded(subSection.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                        <button 
+                          v-if="subSection.children"
+                          class="toggle-btn"
+                          @click.stop="toggleSubSection(subSection.id)"
+                          title="展開/收合"
+                        >
+                          <i :class="['mdi', isExpanded(subSection.id) ? 'mdi-chevron-down' : 'mdi-chevron-right']"></i>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1806,5 +1819,34 @@ const addMainSection = () => {
 /* 確保 modal 樣式與其他 modal 一致 */
 .modal-overlay {
   z-index: 1001;
+}
+
+/* 摺疊/展開按鈕樣式 */
+.toggle-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.light .toggle-btn {
+  color: #4b5563;
+}
+
+.dark .toggle-btn {
+  color: #e2e8f0;
+}
+
+.toggle-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style>
