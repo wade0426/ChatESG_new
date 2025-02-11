@@ -2924,10 +2924,19 @@ async def create_report(data: dict):
                             )
 
                     await conn.commit()
-                    
+
+                    # 新增報告書_公司資料_對應表
+                    await cur.execute(
+                        "INSERT INTO `reportcompanyinfomapping` (`MappingID`, `ReportID`, `CompanyInfoID`, `CreatedAt`) VALUES (NULL, %s, %s, current_timestamp())",
+                        (new_asset_id, company_info_asset_id)
+                    )
+
+                    # 提交事務
+                    await conn.commit()
+
                     return {
                         "status": "success",
-                        "message": "报告书创建成功",
+                        "message": "報告書創建成功",
                         "data": {
                             "AssetID": new_asset_id.hex(),
                             "AssetName": data['AssetName']
