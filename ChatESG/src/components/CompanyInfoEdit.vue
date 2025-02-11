@@ -286,19 +286,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, provide, nextTick } from 'vue'
-import { Editor, EditorContent } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
-import Table from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableCell from '@tiptap/extension-table-cell'
-import TableHeader from '@tiptap/extension-table-header'
-import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
+import { ref, computed, onMounted, provide } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useCompanyInfoStore } from '@/stores/companyInfo'
-import { v4 as uuidv4 } from 'uuid'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useToast } from 'vue-toastification'
+import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
+import { v4 as uuidv4 } from 'uuid'
+
+// 使用 toast
+const toast = useToast()
 
 // 使用 router 和 route
 const router = useRouter()
@@ -308,24 +305,17 @@ const route = useRoute()
 const userStore = useUserStore()
 const companyInfoStore = useCompanyInfoStore()
 
-// 初始化函数
-const initializeUser = async () => {
-    if (!userStore.isAuthenticated) {
-        await userStore.initializeFromStorage()
-        if (!userStore.isAuthenticated && route.path !== '/login' && route.path !== '/signup') {
-            window.location.href = '/login'
-            return
-        }
-    }
-    await userStore.fetchUserProfile()
-}
+// 從 store 中獲取狀態
+const sections = computed(() => companyInfoStore.sections)
+const selectedSection = computed(() => companyInfoStore.selectedSection)
+const expandedSections = computed(() => companyInfoStore.expandedSections)
+const sectionContents = computed(() => companyInfoStore.sectionContents)
+const comments = computed(() => companyInfoStore.comments)
+const showCommentPanel = computed(() => companyInfoStore.showCommentPanel)
+const theme = computed(() => companyInfoStore.theme)
 
 // 側邊欄狀態
 const isSidebarCollapsed = ref(false)
-const selectedSection = ref(null)
-const theme = ref('dark')
-const expandedSections = ref(new Set())
-const previousSection = ref(null) // 添加追踪上一個選中章節的變量
 
 // 新增子標題相關的響應式變量
 const showModal = ref(false)
@@ -342,15 +332,24 @@ const editingSectionId = ref(null)
 const showMainSectionModal = ref(false)
 const newMainSectionTitle = ref('')
 
-// 章節資料
-const sections = ref([])
+// 初始化函数
+const initializeUser = async () => {
+    if (!userStore.isAuthenticated) {
+        await userStore.initializeFromStorage()
+        if (!userStore.isAuthenticated && route.path !== '/login' && route.path !== '/signup') {
+            window.location.href = '/login'
+            return
+        }
+    }
+    await userStore.fetchUserProfile()
+}
 
 // 加載資產內容
 const loadAssetContent = async (assetId) => {
   try {
     const content = await companyInfoStore.fetchAssetContent(userStore.organizationID, assetId)
     if (content && content.content) {
-      sections.value = content.content.chapters.map(chapter => ({
+      companyInfoStore.sections = content.content.chapters.map(chapter => ({
         id: uuidv4(),
         title: chapter.chapterTitle,
         children: chapter.subChapters.map(subChapter => ({
@@ -367,124 +366,7 @@ const loadAssetContent = async (assetId) => {
     }
   } catch (error) {
     console.error('加載資產內容失敗:', error)
-  }
-}
-
-// 修改選擇章節的方法
-const selectSection = async (sectionId) => {
-  // 如果有上一個選中的章節，則記錄離開信息
-  if (previousSection.value && previousSection.value !== sectionId) {
-    const prevSectionInfo = findSectionById(previousSection.value, sections.value)
-    if (prevSectionInfo && sectionContents.value[previousSection.value]) {
-      console.log(`從 ${prevSectionInfo.title} 離開章節 BlockID: ${prevSectionInfo.blockId}`)
-      console.log(`離開時的文字內容: ${sectionContents.value[previousSection.value]}`)
-      
-      try {
-        const response = await fetch('http://localhost:8000/api/organizations/update_company_table_block', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            block_id: prevSectionInfo.blockId,
-            asset_id: route.query.assetId,
-            user_id: userStore.userID,
-            content: sectionContents.value[previousSection.value]
-          })
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.detail || '更新區塊內容失敗')
-        }
-
-        const data = await response.json()
-        if (data.status === 'success') {
-          console.log('區塊內容已成功更新')
-        } else {
-          throw new Error(data.message || '更新區塊內容失敗')
-        }
-      } catch (error) {
-        console.error('更新區塊內容時發生錯誤:', error)
-        // 這裡可以添加錯誤提示，例如使用 element-plus 的 ElMessage
-        ElMessage.error('更新區塊內容失敗：' + error.message)
-      }
-    }
-  }
-
-  // 更新上一個選中的章節
-  previousSection.value = sectionId
-  selectedSection.value = sectionId
-
-  // 查找並輸出 BlockID 和 章節權限識別標籤
-  const findBlockId = (sections) => {
-    for (const section of sections) {
-      if (section.children) {
-        for (const subSection of section.children) {
-          if (subSection.children) {
-            for (const item of subSection.children) {
-              if (item.id === sectionId) {
-                return {
-                  blockId: item.blockId,
-                  accessPermissions: item.accessPermissions
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return { blockId: null, accessPermissions: null }
-  }
-
-  const { blockId, accessPermissions } = findBlockId(sections.value)
-  if (blockId) {
-    try {
-      // 從 URL 獲取 asset_id
-      const assetId = route.query.assetId
-
-      // 從 userStore 獲取 user_id
-      const userId = userStore.userID
-
-      // 從 userStore 獲取角色 ID 並轉換為所需格式
-      const roleIds = userStore.organizationRoles.map(role => role.roleID)
-      // console.log('roleIds:', roleIds)
-
-      // 準備 API 請求數據
-      const requestData = {
-        blockID: blockId,
-        permissionChapter_id: accessPermissions,
-        asset_id: assetId,
-        user_id: userId,
-        roleID: roleIds.join(',')
-      }
-
-      // console.log('requestData:', requestData)
-
-      // 發送 API 請求
-      const response = await fetch('http://localhost:8000/api/organizations/get_company_table_blocks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      })
-
-      
-      if (!response.ok) {
-        throw new Error('獲取章節內容失敗')
-      }
-      
-      const data = await response.json()
-      console.log('response:', data)
-      if (data.status === 'success') {
-        // 更新章節內容
-        sectionContents.value[sectionId] = data.data.content.content.text || ''
-      }
-    } catch (error) {
-      console.error('獲取章節內容錯誤:', error)
-      // 可以在這裡添加錯誤提示
-    }
+    toast.error('加載資產內容失敗：' + error.message)
   }
 }
 
@@ -503,66 +385,279 @@ onMounted(async () => {
   initializeExpandedSections()
 })
 
-// 編輯器配置
-const createEditor = (content = '') => new Editor({
-  extensions: [
-    StarterKit,
-    Table.configure({ resizable: true }),
-    TableRow,
-    TableCell,
-    TableHeader
-  ],
-  content,
-  editorProps: {
-    attributes: {
-      class: 'prose prose-lg max-w-none',
-    }
-  }
-})
-
-// 為每個章節創建編輯器實例
-const editors = {}
-sections.value.forEach(section => {
-  editors[section.id] = createEditor()
-  if (section.children) {
-    section.children.forEach(subSection => {
-      editors[subSection.id] = createEditor()
-      if (subSection.children) {
-        subSection.children.forEach(item => {
-          editors[item.id] = createEditor()
-        })
-      }
-    })
-  }
-})
-
 // 方法
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
 }
 
+// 輔助函數：將數字轉換為字母標籤 (A, B, C...)
+const getAlphabetLabel = (index) => {
+  return String.fromCharCode(65 + index)
+}
+
+// 輔助函數：將數字轉換為羅馬數字
+const getRomanNumeral = (num) => {
+  const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx']
+  return romanNumerals[num - 1] || num
+}
+
+// 初始化展開狀態
+const initializeExpandedSections = () => {
+  sections.value.forEach(section => {
+    expandedSections.value.add(section.id)
+  })
+}
+
+// 使用 store 中的方法
+const selectSection = async (sectionId) => {
+  const section = companyInfoStore.findSectionById(sectionId)
+  if (section) {
+    await companyInfoStore.selectSection(sectionId)
+  }
+}
+
+// 展開/收合章節
+const toggleSection = companyInfoStore.toggleSection
+// 是否展開
+const isExpanded = (sectionId) => expandedSections.value.has(sectionId)
+// 獲取當前章節標題
+const getCurrentSectionTitle = companyInfoStore.getCurrentSectionTitle
+// 是否為葉子節點
+const isLeafSection = companyInfoStore.isLeafSection
+
+// 主題切換
+const handleThemeChange = (newTheme) => {
+  companyInfoStore.theme = newTheme
+}
+
+// 字體大小切換
+const handleFontSizeChange = (size) => {
+  const fontSizes = {
+    small: '14px',
+    medium: '16px',
+    large: '20px'
+  }
+  document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
+}
+
+// 新增子標題相關方法
+const addSubsection = () => {
+  if (!newSubsectionTitle.value.trim()) {
+    alert('請輸入子標題名稱')
+    return
+  }
+
+  const newId = uuidv4()
+  const newSubsection = {
+    id: newId,
+    title: newSubsectionTitle.value.trim(),
+    children: currentLevel.value === 1 ? [] : null
+  }
+
+  const updateSections = (sectionsArr) => {
+    return sectionsArr.map(section => {
+      if (section.id === currentParentId.value) {
+        return {
+          ...section,
+          children: [...(section.children || []), newSubsection]
+        }
+      }
+      if (section.children) {
+        return {
+          ...section,
+          children: updateSections(section.children)
+        }
+      }
+      return section
+    })
+  }
+
+  companyInfoStore.sections = updateSections(sections.value)
+  expandedSections.value.add(currentParentId.value)
+  closeModal()
+}
+
+const showAddSubsectionModal = (parentId, level) => {
+  currentParentId.value = parentId
+  currentLevel.value = level
+  showModal.value = true
+  newSubsectionTitle.value = ''
+}
+
+const closeModal = () => {
+  showModal.value = false
+  newSubsectionTitle.value = ''
+}
+
+// 大章節相關方法
+const addMainSection = () => {
+  if (!newMainSectionTitle.value.trim()) {
+    alert('請輸入大章節名稱')
+    return
+  }
+
+  const newSection = {
+    id: uuidv4(),
+    title: newMainSectionTitle.value.trim(),
+    children: []
+  }
+
+  companyInfoStore.sections.push(newSection)
+  expandedSections.value.add(newSection.id)
+  closeMainSectionModal()
+}
+
+const showAddMainSectionModal = () => {
+  showMainSectionModal.value = true
+  newMainSectionTitle.value = ''
+}
+
+const closeMainSectionModal = () => {
+  showMainSectionModal.value = false
+  newMainSectionTitle.value = ''
+}
+
+// 註解相關方法
+const updateCommentStatus = (sectionId, status) => {
+  if (comments.value[sectionId]) {
+    comments.value[sectionId].status = status
+  }
+}
+
+const updateCommentContent = (sectionId, content) => {
+  if (comments.value[sectionId]) {
+    comments.value[sectionId] = {
+      ...comments.value[sectionId],
+      content
+    }
+  }
+}
+
+const addComment = (sectionId) => {
+  if (!comments.value[sectionId]) {
+    comments.value[sectionId] = {
+      create_user: 1, // 這裡應該使用實際的用戶ID
+      content: '',
+      status: 'unfinished',
+      section: getCurrentSectionTitle(), // 添加章節信息
+      created_at: new Date().toISOString() // 添加創建時間
+    }
+  }
+  showCommentPanel.value = true
+}
+
+const closeCommentPanel = () => {
+  showCommentPanel.value = false
+}
+
+const toggleSubSection = (sectionId) => {
+  companyInfoStore.toggleSection(sectionId)
+}
+
+// 編輯標題相關方法
+const showEditTitleModal = (sectionId, title, event) => {
+  event.stopPropagation()
+  editingSectionId.value = sectionId
+  editingTitle.value = title
+  showEditModal.value = true
+}
+
+const updateSectionTitle = () => {
+  if (!editingTitle.value.trim()) {
+    alert('請輸入標題名稱')
+    return
+  }
+
+  const updateTitle = (sectionsArr) => {
+    return sectionsArr.map(section => {
+      if (section.id === editingSectionId.value) {
+        return { ...section, title: editingTitle.value.trim() }
+      }
+      if (section.children) {
+        return {
+          ...section,
+          children: updateTitle(section.children)
+        }
+      }
+      return section
+    })
+  }
+
+  companyInfoStore.sections = updateTitle(sections.value)
+  closeEditModal()
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editingTitle.value = ''
+  editingSectionId.value = null
+}
+
+// 刪除章節相關方法
+const deleteSection = async (sectionId) => {
+  if (selectedSection.value === sectionId) {
+    selectedSection.value = null
+  }
+  
+  if (expandedSections.value.has(sectionId)) {
+    expandedSections.value.delete(sectionId)
+  }
+  
+  if (sectionContents.value[sectionId]) {
+    delete sectionContents.value[sectionId]
+  }
+  if (comments.value[sectionId]) {
+    delete comments.value[sectionId]
+  }
+
+  const deleteFromArray = (arr) => {
+    const newArr = [...arr]
+    const index = newArr.findIndex(item => item.id === sectionId)
+    if (index !== -1) {
+      newArr.splice(index, 1)
+      return { found: true, array: newArr }
+    }
+    
+    for (let i = 0; i < newArr.length; i++) {
+      if (newArr[i].children) {
+        const result = deleteFromArray(newArr[i].children)
+        if (result.found) {
+          newArr[i] = { ...newArr[i], children: result.array }
+          return { found: true, array: newArr }
+        }
+      }
+    }
+    return { found: false, array: newArr }
+  }
+
+  const result = deleteFromArray(sections.value)
+  if (result.found) {
+    companyInfoStore.sections = result.array
+  }
+}
+
+const confirmDelete = async (sectionId, title) => {
+  if (confirm(`確定要刪除「${title}」嗎？此操作無法復原。`)) {
+    await deleteSection(sectionId)
+  }
+}
+
+// 生成章節序號的方法
+const getSectionNumber = (index) => {
+  let visibleIndex = 0
+  sections.value.forEach((section, i) => {
+    if (i < index) {
+      visibleIndex++
+    }
+  })
+  return visibleIndex + 1
+}
+
 const toggleTheme = () => {
-  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  companyInfoStore.theme = companyInfoStore.theme === 'light' ? 'dark' : 'light'
 }
 
-const getCurrentEditor = () => {
-  return editors[selectedSection.value]
-}
-
-// 修改：儲存各區段內容的響應式對象，包含內容和註解
-const sectionContents = ref({})
-
-// 新增：註解相關的狀態
-const comments = ref({})
-const showCommentPanel = ref(false)
-const selectedCommentFilter = ref('current')
-
-// 新增：處理註解篩選變更
-const handleCommentFilterChange = (filter) => {
-  selectedCommentFilter.value = filter
-}
-
-// 修改：格式化資料的方法，加入註解
+// 格式化資料的方法
 const formatDataToJson = () => {
   const result = []
   
@@ -596,389 +691,22 @@ const formatDataToJson = () => {
   return result
 }
 
-// 新增：添加註解的方法
-const addComment = (sectionId) => {
-  if (!comments.value[sectionId]) {
-    comments.value[sectionId] = {
-      create_user: 1, // 這裡應該使用實際的用戶ID
-      content: '',
-      status: 'unfinished',
-      section: getCurrentSectionTitle(), // 添加章節信息
-      created_at: new Date().toISOString() // 添加創建時間
-    }
-  }
-  showCommentPanel.value = true
-}
-
-// 新增：更新註解狀態的方法
-const updateCommentStatus = (sectionId, status) => {
-  if (comments.value[sectionId]) {
-    comments.value[sectionId].status = status
-  }
-}
-
-// 新增：更新註解內容的方法
-const updateCommentContent = (sectionId, content) => {
-  if (comments.value[sectionId]) {
-    comments.value[sectionId] = {
-      ...comments.value[sectionId],
-      content
-    }
-  }
-}
-
 // 提供給子組件的儲存方法
 const handleSave = () => {
-  const formattedData = formatDataToJson()
-  console.log(JSON.stringify(formattedData, null, 2))
-  return true
+  try {
+    const formattedData = formatDataToJson()
+    console.log(JSON.stringify(formattedData, null, 2))
+    toast.success('儲存成功')
+    return true
+  } catch (error) {
+    console.error('儲存失敗:', error)
+    toast.error('儲存失敗：' + error.message)
+    return false
+  }
 }
 
 // 提供儲存方法給子組件
 provide('handleSave', handleSave)
-
-// 新增：判斷是否為最小層級（葉節點）的函數
-const isLeafSection = (sectionId) => {
-  // 如果沒有選擇章節,返回false
-  if (!sectionId) return false
-
-  // 內部遞迴函數,用於在章節樹中尋找指定ID的章節和其層級路徑
-  const findSectionAndPath = (sections, path = []) => {
-    for (const section of sections) {
-      if (section.id === sectionId) {
-        return {
-          section,
-          path
-        }
-      }
-      if (section.children) {
-        const result = findSectionAndPath(section.children, [...path, section])
-        if (result) return result
-      }
-    }
-    return null
-  }
-
-  // 從根章節開始搜索
-  const result = findSectionAndPath(sections.value)
-  if (!result) return false
-
-  const { section, path } = result
-
-  // 檢查是否為小標題(第三層)
-  if (path.length !== 2) return false
-
-  // 檢查上層(中標題)是否有內容
-  const parentSection = path[1]
-  if (!parentSection.children || parentSection.children.length === 0) return false
-
-  // 檢查上上層(大標題)是否有內容
-  const grandParentSection = path[0] 
-  if (!grandParentSection.children || grandParentSection.children.length === 0) return false
-
-  // 檢查當前章節是否為葉節點
-  return !section.children || section.children.length === 0
-}
-
-// 修改：獲取當前標題的函數，只顯示最小層級的標題
-const getCurrentSectionTitle = () => {
-  if (!selectedSection.value) return ''
-  const section = findSectionById(selectedSection.value, sections.value)
-  if (!section) return ''
-  return isLeafSection(selectedSection.value) ? section.title : ''
-}
-
-const findSectionById = (id, sectionsArray) => {
-  for (const section of sectionsArray) {
-    if (section.id === id) {
-      return section;
-    }
-    if (section.children) {
-      const foundInChildren = findSectionById(id, section.children);
-      if (foundInChildren) {
-        return foundInChildren;
-      }
-    }
-  }
-  return null;
-}
-
-const save = () => {
-  // 實作儲存邏輯
-  console.log('儲存內容')
-}
-
-const cancel = () => {
-  // 實作取消邏輯
-  console.log('取消編輯')
-}
-
-// 輔助函數：將數字轉換為字母標籤 (A, B, C...)
-const getAlphabetLabel = (index) => {
-  return String.fromCharCode(65 + index);
-}
-
-// 輔助函數：將數字轉換為羅馬數字
-const getRomanNumeral = (num) => {
-  const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
-  return romanNumerals[num - 1] || num;
-}
-
-// 初始化展開狀態
-const initializeExpandedSections = () => {
-  sections.value.forEach(section => {
-    expandedSections.value.add(section.id)
-    if (section.children) {
-      section.children.forEach(subSection => {
-        // 預設不展開子標題
-        // expandedSections.value.add(subSection.id)
-      })
-    }
-  })
-}
-
-const toggleSection = (sectionId) => {
-  const newExpandedSections = new Set(expandedSections.value);
-  if (newExpandedSections.has(sectionId)) {
-    newExpandedSections.delete(sectionId);
-    // 收合直接子節點
-    const section = sections.value.find(s => s.id === sectionId);
-    if (section && section.children) {
-      section.children.forEach(child => newExpandedSections.delete(child.id));
-    }
-  } else {
-    newExpandedSections.add(sectionId);
-  }
-  expandedSections.value = newExpandedSections;
-  selectSection(sectionId);
-}
-
-const toggleSubSection = (sectionId) => {
-  const newExpandedSections = new Set(expandedSections.value);
-  if (newExpandedSections.has(sectionId)) {
-    newExpandedSections.delete(sectionId);
-  } else {
-    newExpandedSections.add(sectionId);
-  }
-  expandedSections.value = newExpandedSections;
-  selectSection(sectionId);
-}
-
-const isExpanded = (sectionId) => {
-  return expandedSections.value.has(sectionId)
-}
-
-// 主題切換
-const handleThemeChange = (newTheme) => {
-  theme.value = newTheme
-}
-
-// 字體大小切換
-const handleFontSizeChange = (size) => {
-  const fontSizes = {
-    small: '14px',
-    medium: '16px',
-    large: '20px'
-  }
-  document.documentElement.style.setProperty('--editor-font-size', fontSizes[size])
-}
-
-// 顯示新增子標題的彈出視窗
-const showAddSubsectionModal = (parentId, level) => {
-  currentParentId.value = parentId
-  currentLevel.value = level
-  showModal.value = true
-  newSubsectionTitle.value = ''
-}
-
-// 關閉彈出視窗
-const closeModal = () => {
-  showModal.value = false
-  newSubsectionTitle.value = ''
-}
-
-// 新增子標題
-const addSubsection = () => {
-  if (!newSubsectionTitle.value.trim()) {
-    alert('請輸入子標題名稱')
-    return
-  }
-
-  const newId = uuidv4()
-  const newSubsection = {
-    id: newId,
-    title: newSubsectionTitle.value.trim(),
-    children: currentLevel.value === 1 ? [] : null
-  }
-
-  const updateSections = (sectionsArr) => {
-    return sectionsArr.map(section => {
-      if (section.id === currentParentId.value) {
-        return {
-          ...section,
-          children: [...(section.children || []), newSubsection]
-        }
-      }
-      if (section.children) {
-        return {
-          ...section,
-          children: updateSections(section.children)
-        }
-      }
-      return section
-    })
-  }
-
-  sections.value = updateSections(sections.value)
-  expandedSections.value.add(currentParentId.value)
-  closeModal()
-}
-
-// 添加編輯標題的方法
-const showEditTitleModal = (sectionId, title, event) => {
-  event.stopPropagation()
-  editingSectionId.value = sectionId
-  editingTitle.value = title
-  showEditModal.value = true
-}
-
-// 更新標題的方法
-const updateSectionTitle = () => {
-  if (!editingTitle.value.trim()) {
-    alert('請輸入標題名稱')
-    return
-  }
-
-  const updateTitle = (sectionsArr) => {
-    return sectionsArr.map(section => {
-      if (section.id === editingSectionId.value) {
-        return { ...section, title: editingTitle.value.trim() }
-      }
-      if (section.children) {
-        return {
-          ...section,
-          children: updateTitle(section.children)
-        }
-      }
-      return section
-    })
-  }
-
-  sections.value = updateTitle(sections.value)
-  closeEditModal()
-}
-
-// 關閉編輯模態框
-const closeEditModal = () => {
-  showEditModal.value = false
-  editingTitle.value = ''
-  editingSectionId.value = null
-}
-
-// 提供註解數據給子組件
-provide('comments', comments)
-
-// 新增：關閉註解面板的方法
-const closeCommentPanel = () => {
-  showCommentPanel.value = false
-}
-
-// 修改刪除章節的方法
-const deleteSection = async (sectionId) => {
-  // 如果刪除的是當前選中的章節，先清除選中狀態
-  if (selectedSection.value === sectionId) {
-    selectedSection.value = null
-  }
-  
-  // 從展開狀態中移除
-  if (expandedSections.value.has(sectionId)) {
-    expandedSections.value.delete(sectionId)
-  }
-  
-  // 清除相關的內容和註解
-  if (sectionContents.value[sectionId]) {
-    delete sectionContents.value[sectionId]
-  }
-  if (comments.value[sectionId]) {
-    delete comments.value[sectionId]
-  }
-
-  // 使用臨時數組進行刪除操作
-  const deleteFromArray = (arr) => {
-    const newArr = [...arr]
-    const index = newArr.findIndex(item => item.id === sectionId)
-    if (index !== -1) {
-      newArr.splice(index, 1)
-      return { found: true, array: newArr }
-    }
-    
-    for (let i = 0; i < newArr.length; i++) {
-      if (newArr[i].children) {
-        const result = deleteFromArray(newArr[i].children)
-        if (result.found) {
-          newArr[i] = { ...newArr[i], children: result.array }
-          return { found: true, array: newArr }
-        }
-      }
-    }
-    return { found: false, array: newArr }
-  }
-
-  const result = deleteFromArray(sections.value)
-  if (result.found) {
-    await nextTick()
-    sections.value = result.array
-  }
-}
-
-// 修改確認刪除的方法
-const confirmDelete = async (sectionId, title) => {
-  if (confirm(`確定要刪除「${title}」嗎？此操作無法復原。`)) {
-    await deleteSection(sectionId)
-  }
-}
-
-// 生成章節序號的方法
-const getSectionNumber = (index) => {
-  // 重新計算實際的序號（跳過已刪除的章節）
-  let visibleIndex = 0;
-  sections.value.forEach((section, i) => {
-    if (i < index) {
-      visibleIndex++;
-    }
-  });
-  return visibleIndex + 1;
-}
-
-// 顯示新增大章節的彈出視窗
-const showAddMainSectionModal = () => {
-  showMainSectionModal.value = true
-  newMainSectionTitle.value = ''
-}
-
-// 關閉新增大章節的彈出視窗
-const closeMainSectionModal = () => {
-  showMainSectionModal.value = false
-  newMainSectionTitle.value = ''
-}
-
-// 新增大章節
-const addMainSection = () => {
-  if (!newMainSectionTitle.value.trim()) {
-    alert('請輸入大章節名稱')
-    return
-  }
-
-  const newSection = {
-    id: uuidv4(),
-    title: newMainSectionTitle.value.trim(),
-    children: []
-  }
-
-  sections.value.push(newSection)
-  expandedSections.value.add(newSection.id)
-  closeMainSectionModal()
-}
 </script>
 
 
@@ -1413,6 +1141,10 @@ const addMainSection = () => {
 
 .dark .add-subsection-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.add-subsection-btn i {
+  font-size: 1.2rem;
 }
 
 .modal-overlay {
