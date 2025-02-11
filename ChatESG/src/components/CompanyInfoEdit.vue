@@ -694,9 +694,10 @@ const formatDataToJson = () => {
 // 提供給子組件的儲存方法
 const handleSave = () => {
   try {
-    const formattedData = formatDataToJson()
-    console.log(JSON.stringify(formattedData, null, 2))
-    toast.success('儲存成功')
+    // const formattedData = formatDataToJson()
+    // console.log(JSON.stringify(formattedData, null, 2))
+    // selectSection(section.id)
+    // toast.success('儲存成功')
     return true
   } catch (error) {
     console.error('儲存失敗:', error)
@@ -737,7 +738,7 @@ provide('handleSave', handleSave)
 
 .sidebar {
   height: calc(100vh - 60px);
-  width: 300px;
+  width: 318px;
   transition: all 0.3s ease;
   position: fixed;
   background-color: #f8f9fa;

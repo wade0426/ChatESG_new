@@ -16,6 +16,7 @@
           @input="handleFileNameInput"
           @change="handleFileNameChange"
           placeholder="輸入檔案名稱"
+          disabled
         >
       </div>
     </div>
@@ -75,7 +76,8 @@
         <i class="mdi mdi-cog"></i>
       </button>
 
-      <button class="save-btn" @click="saveContent" :class="{ 'saved': isSaved }">
+      <!-- 儲存按鈕 -->
+      <button class="save-btn" @click="saveContent" :class="{ 'saved': isSaved }" style="display: none;">
         <i class="mdi mdi-content-save"></i>
         <span>{{ saveStatus }}</span>
       </button>
@@ -199,7 +201,7 @@ const saveStatus = ref('已儲存')
 const showSettings = ref(false)
 
 // 設定相關
-const autoSaveInterval = ref(30)
+const autoSaveInterval = ref(60)
 const fontSize = ref('medium')
 let autoSaveTimer = null
 
