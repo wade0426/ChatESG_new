@@ -951,7 +951,7 @@ const handleGenerateImage = async () => {
 
 .sidebar {
   height: calc(100vh - 60px);
-  width: 318px;
+  width: 300px;
   transition: all 0.3s ease;
   position: fixed;
   background-color: #f8f9fa;
@@ -1148,7 +1148,7 @@ const handleGenerateImage = async () => {
 
 .main-content {
   flex: 1;
-  padding: 2rem 2rem 2rem 3rem;
+  padding: 2rem 2rem 2rem 2rem;
   transition: all 0.3s ease;
   margin-left: 280px;
   height: calc(100vh - 60px);
