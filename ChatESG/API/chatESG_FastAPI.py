@@ -4435,6 +4435,33 @@ async def edit_company_info_chapter_title(data: dict):
 
                     if not chapter_found:
                         raise HTTPException(status_code=404, detail="找不到指定的章節")
+                    
+                    # 同步更修報告書的章節，因為是對應關係。
+                    # 先判斷 報告書和公司資料是否有對應關係
+                    # 去 reportcompanyinfomapping 查詢 報告書的 report_asset_id
+                    # 獲取資產內容
+                    await cur.execute(
+                        "SELECT ReportID FROM ReportCompanyInfoMapping WHERE CompanyInfoID = %s",
+                        (asset_id_binary,)
+                    )
+                    report_asset_result = await cur.fetchone()
+
+                    # 判斷 report_asset_id 是否有值 是否為空 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                    if report_asset_result and report_asset_result[0]:  # 檢查是否為 None 以及第一個元素 (ReportID) 是否存在且不為空
+                        # report_asset_id 存在，表示有對應關係，進行同步更修報告書章節的邏輯
+                        report_asset_id = report_asset_result[0]  # 取得 ReportID
+                        # 將二進制的 UUID 轉換為字符串格式
+                        report_asset_id_str = str(uuid.UUID(bytes=report_asset_id))
+                        # 使用 await 調用異步函數
+                        await rename_chapter_title({
+                            "asset_id": report_asset_id_str,
+                            "chapter_title": chapter_title,
+                            "new_chapter_title": new_chapter_title
+                        })
+                    else:
+                        # 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                        print("沒有找到對應的報告書，不進行章節同步。")
+                        pass
 
                 elif chapter_level == 2:
                     # 編輯次層章節名稱
@@ -4454,6 +4481,34 @@ async def edit_company_info_chapter_title(data: dict):
                         raise HTTPException(status_code=404, detail="找不到指定的上層章節")
                     if not subchapter_found:
                         raise HTTPException(status_code=404, detail="找不到指定的次層章節")
+                    
+                    # 同步更修報告書的章節，因為是對應關係。
+                    # 先判斷 報告書和公司資料是否有對應關係
+                    # 去 reportcompanyinfomapping 查詢 報告書的 report_asset_id
+                    # 獲取資產內容
+                    await cur.execute(
+                        "SELECT ReportID FROM ReportCompanyInfoMapping WHERE CompanyInfoID = %s",
+                        (asset_id_binary,)
+                    )
+                    report_asset_result = await cur.fetchone()
+
+                    # 判斷 report_asset_id 是否有值 是否為空 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                    if report_asset_result and report_asset_result[0]:  # 檢查是否為 None 以及第一個元素 (ReportID) 是否存在且不為空
+                        # report_asset_id 存在，表示有對應關係，進行同步更修報告書章節的邏輯
+                        report_asset_id = report_asset_result[0]  # 取得 ReportID
+                        # 將二進制的 UUID 轉換為字符串格式
+                        report_asset_id_str = str(uuid.UUID(bytes=report_asset_id))
+                        # 使用 await 調用異步函數
+                        await rename_subchapter({
+                            "AssetID": report_asset_id_str,
+                            "chapterTitle": chapter_title,
+                            "subChapterTitle": subchapter_title,
+                            "new_subChapterTitle": new_chapter_title
+                        })
+                    else:
+                        # 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                        print("沒有找到對應的報告書，不進行章節同步。")
+                        pass
 
                 elif chapter_level == 3:
                     # 編輯最下層章節名稱
