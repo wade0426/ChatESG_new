@@ -234,7 +234,8 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
           asset_id: assetId,
           chapter_title: chapterTitle,
           subchapter_title: subchapterTitle,
-          chapter_level: chapterLevel
+          chapter_level: chapterLevel,
+          user_id: userStore.userID
         })
       })
 

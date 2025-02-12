@@ -3411,7 +3411,7 @@ async def update_report_outline(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
-# 更新報告書大綱(新增章節標題)
+# 更新報告書大綱(新增報告書章節標題)
 @app.post("/api/report/update_report_outline_add_chapter_title")
 async def update_report_outline_add_chapter_title(data: dict):
     try:
@@ -3966,9 +3966,10 @@ async def add_company_info_chapter(data: dict):
         chapter_title = data.get("chapter_title")
         subchapter_title = data.get("subchapter_title")
         chapter_level = data.get("chapter_level")
+        user_id = data.get("user_id")
 
         # 驗證必要參數
-        if not all([asset_id, chapter_title, subchapter_title, chapter_level]):
+        if not all([asset_id, chapter_title, subchapter_title, chapter_level, user_id]):
             raise HTTPException(status_code=400, detail="缺少必要參數")
 
         if chapter_level not in [1, 2, 3]:
@@ -4001,6 +4002,32 @@ async def add_company_info_chapter(data: dict):
                     }
                     content["chapters"].append(new_chapter)
 
+                    # 同步更修報告書的章節，因為是對應關係。
+                    # 先判斷 報告書和公司資料是否有對應關係
+                    # 去 reportcompanyinfomapping 查詢 報告書的 report_asset_id
+                    # 獲取資產內容
+                    await cur.execute(
+                        "SELECT ReportID FROM ReportCompanyInfoMapping WHERE CompanyInfoID = %s",
+                        (asset_id_binary,)
+                    )
+                    report_asset_result = await cur.fetchone()
+
+                    # 判斷 report_asset_id 是否有值 是否為空 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                    if report_asset_result and report_asset_result[0]:  # 檢查是否為 None 以及第一個元素 (ReportID) 是否存在且不為空
+                        # report_asset_id 存在，表示有對應關係，進行同步更修報告書章節的邏輯
+                        report_asset_id = report_asset_result[0]  # 取得 ReportID
+                        # 將二進制的 UUID 轉換為字符串格式
+                        report_asset_id_str = str(uuid.UUID(bytes=report_asset_id))
+                        # 使用 await 調用異步函數
+                        await update_report_outline_add_chapter_title({
+                            "asset_id": report_asset_id_str,
+                            "chapterTitle": chapter_title
+                        })
+                    else:
+                        # 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                        print("沒有找到對應的報告書，不進行章節同步。")
+                        pass
+
                 elif chapter_level == 2:
                     # 在指定的上層章節下新增次層章節
                     chapter_found = False
@@ -4016,6 +4043,36 @@ async def add_company_info_chapter(data: dict):
 
                     if not chapter_found:
                         raise HTTPException(status_code=404, detail="找不到指定的上層章節")
+                    
+                    # 同步更修報告書的章節，因為是對應關係。
+                    # 先判斷 報告書和公司資料是否有對應關係
+                    # 去 reportcompanyinfomapping 查詢 報告書的 report_asset_id
+                    # 獲取資產內容
+                    await cur.execute(
+                        "SELECT ReportID FROM ReportCompanyInfoMapping WHERE CompanyInfoID = %s",
+                        (asset_id_binary,)
+                    )
+                    report_asset_result = await cur.fetchone()
+
+                    # 判斷 report_asset_id 是否有值 是否為空 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                    if report_asset_result and report_asset_result[0]:  # 檢查是否為 None 以及第一個元素 (ReportID) 是否存在且不為空
+                        # report_asset_id 存在，表示有對應關係，進行同步更修報告書章節的邏輯
+                        report_asset_id = report_asset_result[0]  # 取得 ReportID
+                        # 將二進制的 UUID 轉換為字符串格式
+                        report_asset_id_str = str(uuid.UUID(bytes=report_asset_id))
+                        # 使用 await 調用異步函數
+                        print("user_id", user_id) # 輸出：4ab19295b506448db952c910a51c00e5
+                        print("report_asset_id_str", report_asset_id_str)
+                        await add_subchapter({
+                            "asset_id": report_asset_id_str.replace("-", ""),
+                            "chapter_title": chapter_title,
+                            "subchapter_title": subchapter_title,
+                            "user_id": user_id
+                        })
+                    else:
+                        # 如果為空 代表沒有對應關係 不用同步更修報告書的章節
+                        print("沒有找到對應的報告書，不進行章節同步。")
+                        pass
 
                 elif chapter_level == 3:
                     # 在指定的次層章節下新增最下層章節
