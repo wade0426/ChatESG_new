@@ -636,11 +636,16 @@ const updateSectionTitle = () => {
 
           // 記錄日誌
           if (pathLength === 0) {
-            console.log("編輯大標題", section.title, editingTitle.value.trim())
+            // console.log("編輯大標題", section.title, editingTitle.value.trim())
+            companyInfoStore.editCompanyInfoChapter(route.query.assetId, section.title, section.title, editingTitle.value.trim(), 1)
           } else if (pathLength === 1) {
-            console.log("編輯中標題", section.title, editingTitle.value.trim())
+            // console.log("編輯中標題", section.title, editingTitle.value.trim())
+            // console.log("大標題", result.path[0].title, "中標題", editingTitle.value.trim())
+            companyInfoStore.editCompanyInfoChapter(route.query.assetId, result.path[0].title, section.title, editingTitle.value.trim(), 2)
           } else if (pathLength === 2) {
-            console.log("編輯小標題", section.title, editingTitle.value.trim())
+            // console.log("編輯小標題", section.title, editingTitle.value.trim())
+            // console.log("中標題", result.path[0].title, "小標題", editingTitle.value.trim())
+            companyInfoStore.editCompanyInfoChapter(route.query.assetId, result.path[0].title, section.title, editingTitle.value.trim(), 3)
           }
         }
         return { ...section, title: editingTitle.value.trim() }
