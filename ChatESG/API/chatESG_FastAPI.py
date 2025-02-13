@@ -4904,6 +4904,55 @@ async def get_report_chapters(data: dict):
         }
 
 
+# 獲取組織可用的身分組
+@app.post("/api/organization/approver-groups")
+async def get_approver_groups(data: dict):
+    try:
+        # 獲取組織ID
+        organization_id = data.get("organizationID")
+        if not organization_id:
+            return {"status": "error", "message": "缺少組織ID"}
+
+        # 將傳入的 organization_id 轉換為 UUID 格式的 bytes
+        org_id_bytes = uuid.UUID(organization_id).bytes
+
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 查詢該組織下的所有角色
+                query = """
+                    SELECT
+                        RoleID as roleId,
+                        RoleName as roleName,
+                        Description as description,
+                        Color as color,
+                        CreatedAt as createdAt
+                    FROM Roles
+                    WHERE OrganizationID = %s
+                """
+                await cur.execute(query, (org_id_bytes,))
+                roles_tuple_list = await cur.fetchall() # 取得的是 tuple 列表
+
+                roles = [] # 創建一個新的列表來存放字典格式的角色資訊
+                for role_tuple in roles_tuple_list:
+                    role_dict = {
+                        "roleId": uuid.UUID(bytes=role_tuple[0]).hex, # 使用數字索引 0 取 RoleID
+                        "roleName": role_tuple[1], # 使用數字索引 1 取 RoleName
+                        "description": role_tuple[2], # 使用數字索引 2 取 Description
+                        "color": role_tuple[3], # 使用數字索引 3 取 Color
+                        "createdAt": role_tuple[4].isoformat() if role_tuple[4] else None # 使用數字索引 4 取 CreatedAt
+                    }
+                    roles.append(role_dict)
+
+
+                return {"status": "success", "data": roles}
+
+    except ValueError as e:
+        return {"status": "error", "message": "無效的組織ID格式"}
+    except Exception as e:
+        return {"status": "error", "message": f"獲取角色資訊失敗: {str(e)}"}
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
