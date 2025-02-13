@@ -98,7 +98,6 @@ class Token(BaseModel):
 class User(BaseModel):
     username: str
     password: str
-    userEmail: str
 
 class LoginUser(BaseModel):
     username: str
@@ -4818,7 +4817,7 @@ async def get_report_info(data: dict):
                 # 獲取報告書資訊
                 query = """
                     SELECT 
-                        CAST(AssetID AS CHAR) as assetID,
+                        AssetID as assetID,
                         AssetName as assetName,
                         CreatedAt as createdAt,
                         UpdatedAt as updatedAt,
@@ -4831,6 +4830,10 @@ async def get_report_info(data: dict):
                 """
                 await cur.execute(query, (organization_id_binary,))
                 reports = await cur.fetchall()
+
+                # 轉換report的assetID格式為字符串
+                for report in reports:
+                    report['assetID'] = uuid.UUID(bytes=report['assetID']).hex
 
                 # 轉換日期時間格式為字符串
                 for report in reports:
