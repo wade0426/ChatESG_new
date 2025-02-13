@@ -4853,6 +4853,57 @@ async def get_report_info(data: dict):
         }
 
 
+# 獲取報告書章節列表
+@app.post("/api/report/get_report_chapters")
+async def get_report_chapters(data: dict):
+    # 傳入 AssetID
+    asset_id = data.get("AssetID")
+    if not asset_id:
+        return {"status": "error", "message": "缺少資產ID"}
+    
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 將字符串格式的UUID轉換為二進制
+                asset_id_binary = uuid.UUID(asset_id).bytes
+
+                # 查詢資產內容
+                query = """
+                    SELECT Content 
+                    FROM OrganizationAssets 
+                    WHERE AssetID = %s AND IsDeleted = FALSE
+                """
+                await cur.execute(query, (asset_id_binary,))
+                result = await cur.fetchone()
+
+                if not result:
+                    return {
+                        "status": "error",
+                        "message": "找不到指定的資產"
+                    }
+
+                content = json.loads(result[0]) if result[0] else {}
+                chapters = content.get("chapters", [])
+
+                # 提取所有章節標題
+                chapter_titles = []
+                for chapter in chapters:
+                    chapter_titles.append(chapter.get("chapterTitle", ""))
+
+                return {
+                    "status": "success",
+                    "data": chapter_titles
+                }
+
+    except Exception as e:
+        print(f"Error in get_report_chapters: {str(e)}")
+        return {
+            "status": "error",
+            "message": "獲取報告書章節列表失敗"
+        }
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
