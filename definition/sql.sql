@@ -242,3 +242,25 @@ ALTER TABLE OrganizationAssets ADD INDEX idx_deleted_status (IsDeleted, DeletedA
 ALTER TABLE OrganizationApplications 
 ADD INDEX idx_application_status (OrganizationID, ApplicationStatus, CreatedAt),
 ADD INDEX idx_applicant_history (ApplicantID, ApplicationStatus, CreatedAt);
+
+
+-- --------------------------------------------------------
+-- 審核流程階段資料表
+-- 定義每個章節的審核流程包含的階段和順序
+-- --------------------------------------------------------
+CREATE TABLE WorkflowStages (
+    WorkflowStageID BINARY(16) PRIMARY KEY COMMENT '審核流程階段唯一標識 (UUID)',
+    OrganizationID BINARY(16) NOT NULL COMMENT '所屬組織(UUID)',
+    AssetID BINARY(16) NOT NULL COMMENT '所屬資產(UUID)',
+    PermissionChapterID BINARY(16) NOT NULL COMMENT '權限識別標籤(UUID)',
+    StageOrder INT UNSIGNED NOT NULL COMMENT '階段順序 (例如：1, 2, 3)',
+    StageName VARCHAR(100) NOT NULL COMMENT '階段名稱 (例如：初審, 主管複審, 最終核准)',
+    Description VARCHAR(255) COMMENT '階段描述',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+    FOREIGN KEY (WorkflowID) REFERENCES ApprovalWorkflows(WorkflowID) ON DELETE CASCADE,
+    UNIQUE KEY unique_stage_order_in_workflow (WorkflowID, StageOrder) -- 確保階段順序在流程內唯一
+) COMMENT '審核流程階段資料表';
+
+
+UUID, OrganizationID, AssetID, PermissionChapterID, "關於本報告書", "階段順序", "階段名稱", "階段描述"

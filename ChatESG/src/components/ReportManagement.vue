@@ -3,6 +3,17 @@
       <div class="page-header">
         <h1>報告書管理</h1>
       </div>
+      
+      <!-- 錯誤提示 -->
+      <div v-if="error" class="error-message">
+        {{ error }}
+      </div>
+
+      <!-- 載入中提示 -->
+      <div v-if="loading" class="loading-message">
+        載入中...
+      </div>
+
       <div class="report-list">
         <div class="table-container">
           <table class="report-table">
@@ -36,6 +47,9 @@
                     <div class="dropdown-menu" v-show="activeDropdown === report.assetID">
                       <button @click="openWorkflowSettings(report)">
                         <i class="fas fa-cog"></i> 設定審核流程
+                      </button>
+                      <button @click="editReport(report)">
+                        <i class="fas fa-edit"></i> 查看審核狀態
                       </button>
                       <button @click="editReport(report)">
                         <i class="fas fa-edit"></i> 編輯報告書
@@ -102,33 +116,63 @@
         selectedReport: null,
         showDeleteConfirm: false,
         activeDropdown: null,
+        loading: false,
+        error: null,
       };
     },
     async created() {
-      await this.fetchReports();
       // 點擊其他地方時關閉右鍵選單和下拉選單
       document.addEventListener('click', this.closeContextMenu);
       document.addEventListener('click', this.closeDropdown);
+      
+      // 等待 store 初始化後再獲取報告書
+      await this.initializeData();
     },
     beforeUnmount() {
       document.removeEventListener('click', this.closeContextMenu);
       document.removeEventListener('click', this.closeDropdown);
     },
     methods: {
+      async initializeData() {
+        try {
+          this.loading = true;
+          const userStore = useUserStore();
+          
+          // 等待 store 初始化完成，最多等待 3 秒
+          let attempts = 0;
+          const maxAttempts = 30; // 30 次 * 100ms = 3 秒
+          
+          while (!userStore.organizationID && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100)); // 等待 100ms
+            attempts++;
+          }
+          
+          if (!userStore.organizationID) {
+            throw new Error('無法獲取組織 ID，請確認是否已登入');
+          }
+          
+          await this.fetchReports();
+        } catch (error) {
+          console.error('初始化數據失敗:', error);
+          this.error = error.message || '載入數據失敗，請重新整理頁面';
+        } finally {
+          this.loading = false;
+        }
+      },
       async fetchReports() {
         try {
-          const userStore = useUserStore();
           const response = await axios.post('http://localhost:8000/api/report/get_report_info', {
-            organizationID: userStore.organizationID
+            organizationID: useUserStore().organizationID
           });
           
           if (response.data.status === 'success') {
             this.reports = response.data.data;
           } else {
-            console.error('獲取報告書失敗:', response.data.message);
+            throw new Error(response.data.message || '獲取報告書失敗');
           }
         } catch (error) {
           console.error('獲取報告書錯誤:', error);
+          this.error = error.message || '獲取報告書失敗';
         }
       },
       formatDate(dateString) {
@@ -470,5 +514,19 @@
   
   .dropdown-menu button i {
     width: 16px;
+  }
+
+  .error-message {
+    background-color: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+
+  .loading-message {
+    color: #888;
+    text-align: center;
+    padding: 20px;
   }
   </style> 
