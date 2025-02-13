@@ -26,8 +26,8 @@
               </div>
             </td>
             <td style="text-align: center;" width="10%">{{ member.name }}</td>
-            <td>{{ member.email }}</td>
-            <td>{{ formatDate(member.joinedAt) }}</td>
+            <td style="text-align: center;">{{ member.email }}</td>
+            <td style="text-align: center;">{{ formatDate(member.joinedAt) }}</td>
             <td>
               <div class="roles-cell">
                 <span v-for="role in getMemberRoles(member)" :key="role.roleName" class="role-tag" 
@@ -42,7 +42,7 @@
                 </button>
               </div>
             </td>
-            <td>
+            <td style="text-align: center;">
               <button class="remove-btn" @click="removeMember(member)">移除</button>
             </td>
           </tr>
@@ -472,6 +472,7 @@ export default {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .role-tag {
