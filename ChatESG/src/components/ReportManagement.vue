@@ -98,15 +98,26 @@
           </div>
         </div>
       </div>
+
+      <!-- 審核流程設定 Modal -->
+      <WorkflowSettingsModal 
+        ref="workflowSettingsModal"
+        :report="selectedReport"
+      />
     </div>
   </template>
   
   <script>
   import axios from 'axios';
   import { useUserStore } from '@/stores/user';
+  import WorkflowSettingsModal from './WorkflowSettingsModal.vue';
+  import { useToast } from 'vue-toastification';
   
   export default {
     name: 'ReportManagement',
+    components: {
+      WorkflowSettingsModal
+    },
     data() {
       return {
         reports: [],
@@ -193,8 +204,35 @@
         return `status-${status}`;
       },
       openWorkflowSettings(report) {
-        // TODO: 實現審核流程設定功能
-        console.log('開啟審核流程設定:', report);
+        try {
+          // console.log('Opening workflow settings with report:', report);
+          
+          if (!report || !report.assetID) {
+            console.error('報告書資訊不完整:', report);
+            const toast = useToast()
+            toast.error('無法開啟審核流程設定：報告書資訊不完整')
+            return
+          }
+
+          // 先設置 selectedReport
+          this.selectedReport = report;
+          // console.log('selectedReport set to:', this.selectedReport);
+
+          // 確保 ref 存在且有 showModal 方法
+          if (this.$refs.workflowSettingsModal?.showModal) {
+            // 等待下一個 tick，確保 prop 已經更新
+            this.$nextTick(() => {
+              // console.log('Opening modal with selectedReport:', this.selectedReport);
+              this.$refs.workflowSettingsModal.showModal();
+            });
+          } else {
+            throw new Error('無法開啟設定視窗');
+          }
+        } catch (error) {
+          console.error('開啟審核流程設定失敗:', error);
+          const toast = useToast()
+          toast.error('開啟審核流程設定失敗，請稍後再試');
+        }
       },
       showContextMenu(event, report) {
         this.showMenu = true;
@@ -258,7 +296,12 @@
           this.activeDropdown = null;
         }
       },
-    }
+    },
+    watch: {
+      selectedReport(newValue) {
+        // console.log('selectedReport changed:', newValue);
+      }
+    },
   }
   </script>
   
