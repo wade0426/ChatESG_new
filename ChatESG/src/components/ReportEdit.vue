@@ -150,6 +150,7 @@
               class="subchapter-block"
             >
               <h3 class="subchapter-title">{{ subChapter.subChapterTitle }}</h3>
+              <!-- 大章節的文字輸入框僅供顯示不能修改 -->
               <textarea 
                 v-model="sectionContents[subChapter.BlockID]" 
                 class="content-textarea"
