@@ -4800,6 +4800,54 @@ async def generate_mermaid_image(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 獲取報告書資訊
+@app.post("/api/report/get_report_info")
+async def get_report_info(data: dict):
+    try:
+        # 獲取組織ID
+        organization_id = data.get("organizationID")
+        if not organization_id:
+            return {"status": "error", "message": "缺少組織ID"}
+        
+        organization_id_binary = bytes.fromhex(organization_id.replace('-', ''))
+
+        # 獲取資料庫連接
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # 獲取報告書資訊
+                query = """
+                    SELECT 
+                        CAST(AssetID AS CHAR) as assetID,
+                        AssetName as assetName,
+                        CreatedAt as createdAt,
+                        UpdatedAt as updatedAt,
+                        Status as status
+                    FROM OrganizationAssets 
+                    WHERE OrganizationID = %s
+                    AND AssetType = 'report'
+                    AND IsDeleted = FALSE
+                    ORDER BY UpdatedAt DESC
+                """
+                await cur.execute(query, (organization_id_binary,))
+                reports = await cur.fetchall()
+
+                # 轉換日期時間格式為字符串
+                for report in reports:
+                    report['createdAt'] = report['createdAt'].isoformat() if report['createdAt'] else None
+                    report['updatedAt'] = report['updatedAt'].isoformat() if report['updatedAt'] else None
+
+                return {
+                    "status": "success",
+                    "data": reports
+                }
+
+    except Exception as e:
+        print(f"Error in get_report_info: {str(e)}")
+        return {
+            "status": "error",
+            "message": "獲取報告書資訊失敗"
+        }
 
 
 if __name__ == "__main__":
