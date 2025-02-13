@@ -155,6 +155,7 @@
                 class="content-textarea"
                 :placeholder="'請輸入' + subChapter.subChapterTitle + '的內容...'"
                 @input="() => handleContentChange(subChapter.BlockID)"
+                disabled
               ></textarea>
             </div>
           </div>
