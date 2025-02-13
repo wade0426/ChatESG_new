@@ -76,7 +76,8 @@
         <i class="mdi mdi-cog"></i>
       </button>
 
-      <button class="save-btn" @click="saveContent" :class="{ 'saved': isSaved }">
+      <!-- 存檔按鈕(暫時隱藏) -->
+      <button class="save-btn" @click="saveContent" :class="{ 'saved': isSaved }" style="display: none;">
         <i class="mdi mdi-content-save"></i>
         <span>{{ saveStatus }}</span>
       </button>
@@ -198,7 +199,7 @@ const saveStatus = ref('已儲存')
 const showSettings = ref(false)
 
 // 設定相關
-const autoSaveInterval = ref(30)
+const autoSaveInterval = ref(3000)
 const fontSize = ref('medium')
 let autoSaveTimer = null
 
