@@ -5043,6 +5043,75 @@ async def save_workflow_stage(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 獲取章節的審核流程設定
+@app.post("/api/report/get_workflow_stage")
+async def get_workflow_stage(data: dict):
+    try:
+        # 獲取資產ID和章節名稱
+        asset_id = data.get("assetID")
+        chapter_name = data.get("chapterName")
+
+        # 驗證必要參數
+        if not all([asset_id, chapter_name]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的UUID轉換為二進制
+        asset_id_binary = uuid.UUID(asset_id).bytes
+
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 查詢工作流程階段
+                await cur.execute("""
+                    SELECT ws.WorkflowStageID, ws.StageName, ws.StageOrder, ws.PermissionChapterID
+                    FROM WorkflowStages ws
+                    WHERE ws.AssetID = %s AND ws.ChapterName = %s
+                    ORDER BY ws.StageOrder ASC
+                """, (asset_id_binary, chapter_name))
+                
+                stages = await cur.fetchall()
+                result = []
+
+                for stage in stages:
+                    workflow_stage_id = stage[0]
+                    stage_name = stage[1]
+                    permission_chapter_id = stage[3]
+
+                    # 查詢每個階段的審核人員組
+                    await cur.execute("""
+                        SELECT r.RoleID, r.RoleName, r.Description, r.Color, r.CreatedAt
+                        FROM RolePermissionMappings rpm
+                        JOIN Roles r ON rpm.RoleID = r.RoleID
+                        WHERE rpm.PermissionChapterID = %s AND rpm.AssetID = %s
+                    """, (permission_chapter_id, asset_id_binary))
+                    
+                    approver_groups = []
+                    roles = await cur.fetchall()
+                    
+                    for role in roles:
+                        role_id = str(uuid.UUID(bytes=role[0]))
+                        approver_groups.append({
+                            "roleId": role_id,
+                            "roleName": role[1],
+                            "description": role[2],
+                            "color": role[3],
+                            "createdAt": role[4].strftime("%Y-%m-%dT%H:%M:%S") if role[4] else None
+                        })
+
+                    result.append({
+                        "id": str(uuid.UUID(bytes=workflow_stage_id)),
+                        "name": stage_name,
+                        "approverGroups": approver_groups
+                    })
+
+                return {"status": "success", "data": result}
+
+    except Exception as e:
+        # 記錄錯誤
+        print(f"Error in get_workflow_stage: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
