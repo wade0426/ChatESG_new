@@ -4953,6 +4953,96 @@ async def get_approver_groups(data: dict):
         return {"status": "error", "message": f"獲取角色資訊失敗: {str(e)}"}
 
 
+# 儲存審核流程階段
+@app.post("/api/report/save_workflow_stage")
+async def save_workflow_stage(data: dict):
+    try:
+        # 獲取輸入數據
+        asset_id = data.get("assetID")
+        chapter_name = data.get("chapterName")
+        stage_settings = data.get("stageSettings")
+
+        # 驗證必要參數
+        if not all([asset_id, chapter_name]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的UUID轉換為二進制
+        asset_id_binary = uuid.UUID(asset_id).bytes
+
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 獲取組織ID
+                await cur.execute(
+                    "SELECT OrganizationID FROM OrganizationAssets WHERE AssetID = %s",
+                    (asset_id_binary,)
+                )
+                result = await cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="找不到對應的資產")
+                organization_id = result[0]
+
+                # 先獲取現有的工作流程階段的 PermissionChapterID
+                await cur.execute(
+                    "SELECT PermissionChapterID FROM WorkflowStages WHERE AssetID = %s AND ChapterName = %s",
+                    (asset_id_binary, chapter_name)
+                )
+                existing_permission_chapters = await cur.fetchall()
+                
+                # 刪除現有的工作流程階段
+                await cur.execute(
+                    "DELETE FROM WorkflowStages WHERE AssetID = %s AND ChapterName = %s",
+                    (asset_id_binary, chapter_name)
+                )
+
+                # 刪除相關的權限映射
+                for permission_chapter in existing_permission_chapters:
+                    await cur.execute(
+                        "DELETE FROM RolePermissionMappings WHERE AssetID = %s AND PermissionChapterID = %s",
+                        (asset_id_binary, permission_chapter[0])
+                    )
+
+                # 如果 stage_settings 為空，則僅刪除相關設定並返回
+                if not stage_settings:
+                    await conn.commit()
+                    return {"status": "success", "message": "已成功刪除該章節的所有審核設定"}
+
+                # 插入新的工作流程階段
+                for stage_order, stage in enumerate(stage_settings, start=1):
+                    # 為每個階段生成獨立的權限章節ID
+                    permission_chapter_id = uuid.uuid4().bytes
+                    workflow_stage_id = uuid.uuid4().bytes
+                    stage_name = stage.get("name")
+
+                    await cur.execute("""
+                        INSERT INTO WorkflowStages 
+                        (WorkflowStageID, OrganizationID, AssetID, PermissionChapterID, 
+                        ChapterName, StageOrder, StageName)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (workflow_stage_id, organization_id, asset_id_binary, 
+                          permission_chapter_id, chapter_name, stage_order, stage_name))
+
+                    # 插入審核人員權限映射
+                    approver_groups = stage.get("approverGroups", [])
+                    for group in approver_groups:
+                        role_id = uuid.UUID(group.get("roleId")).bytes
+                        await cur.execute("""
+                            INSERT INTO RolePermissionMappings 
+                            (RoleID, PermissionChapterID, AssetID, ResourceType, ActionType)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (role_id, permission_chapter_id, asset_id_binary, 
+                              "stage", "read_write"))
+
+                await conn.commit()
+                
+        return {"status": "success", "message": "工作流程階段保存成功"}
+
+    except Exception as e:
+        # 記錄錯誤
+        print(f"Error in save_workflow_stage: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
