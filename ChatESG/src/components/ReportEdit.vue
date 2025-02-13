@@ -129,7 +129,7 @@
     <div :class="['main-content', { 'expanded': isSidebarCollapsed }]">
       <div class="editor-header">
         <div class="header-content">
-          <h2>{{ getCurrentSectionTitle() }}</h2>
+          <!-- <h2>{{ getCurrentSectionTitle() }}</h2> -->
           <div class="theme-toggle">
             <button @click="toggleTheme" class="theme-button">
               <i :class="['mdi', theme === 'light' ? 'mdi-weather-night' : 'mdi-weather-sunny']"></i>
@@ -177,6 +177,27 @@
         <!-- 當選中中章節時顯示單一編輯區域 -->
         <div v-else-if="isSubChapter(selectedSection)" class="input-area">
           <div class="content-wrapper">
+            <!-- 新增工具欄 -->
+            <div class="editor-toolbar">
+              <div class="toolbar-title">
+                <h3>{{ getCurrentSectionTitle() }}</h3>
+              </div>
+              <div class="toolbar-actions">
+                <button class="toolbar-btn generate-text-btn" @click="handleGenerateText" title="生成文字">
+                  <i class="mdi mdi-text"></i>
+                  <span>生成文字</span>
+                </button>
+                <button class="toolbar-btn generate-image-btn" @click="handleGenerateImage" title="生成圖片">
+                  <i class="mdi mdi-image"></i>
+                  <span>生成圖片</span>
+                </button>
+                <button class="toolbar-btn upload-btn" @click="triggerImageUpload" title="上傳圖片">
+                  <i class="mdi mdi-image-plus"></i>
+                  <span>上傳圖片</span>
+                </button>
+              </div>
+            </div>
+
             <textarea 
               v-model="sectionContents[selectedSection]" 
               class="content-textarea"
@@ -194,20 +215,6 @@
                 multiple
                 class="hidden"
               />
-              <div class="image-upload-buttons">
-                <button class="upload-btn" @click="triggerImageUpload">
-                  <i class="mdi mdi-image-plus"></i>
-                  <span>上傳圖片</span>
-                </button>
-                <button class="generate-text-btn" @click="handleGenerateText">
-                  <i class="mdi mdi-text"></i>
-                  <span>生成文字</span>
-                </button>
-                <button class="generate-image-btn" @click="handleGenerateImage">
-                  <i class="mdi mdi-image"></i>
-                  <span>生成圖片</span>
-                </button>
-              </div>
               
               <!-- 圖片預覽區域 -->
               <div v-if="currentImages.length > 0" class="image-preview-area">
@@ -1148,7 +1155,7 @@ const handleGenerateImage = async () => {
 
 .main-content {
   flex: 1;
-  padding: 2rem 2rem 2rem 2rem;
+  padding: 2rem 2rem 2rem 3rem;
   transition: all 0.3s ease;
   margin-left: 280px;
   height: calc(100vh - 60px);
@@ -1301,7 +1308,7 @@ const handleGenerateImage = async () => {
 .dark .content-textarea {
   background-color: #1a1a1a;
   border: 1px solid #2d2d2d;
-  color: #e2e8f0;
+  color: #ffffff;
 }
 
 .no-edit-message {
@@ -1564,9 +1571,7 @@ const handleGenerateImage = async () => {
 }
 
 .image-upload-buttons {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  display: none;
 }
 
 .image-preview-area {
@@ -1860,10 +1865,6 @@ const handleGenerateImage = async () => {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-.dark .add-main-section-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
 .add-main-section-btn i {
   font-size: 1.2rem;
 }
@@ -2073,62 +2074,117 @@ const handleGenerateImage = async () => {
   background-color: #2563eb;
 }
 
-.upload-btn:hover {
-  background-color: #1d4ed8;
-  transform: translateY(-1px);
-}
-
-.upload-btn:active {
-  transform: translateY(0);
-}
-
 .generate-text-btn {
   background-color: #10b981;
-}
-
-.generate-text-btn:hover {
-  background-color: #059669;
-  transform: translateY(-1px);
-}
-
-.generate-text-btn:active {
-  transform: translateY(0);
 }
 
 .generate-image-btn {
   background-color: #8b5cf6;
 }
 
-.generate-image-btn:hover {
-  background-color: #7c3aed;
-  transform: translateY(-1px);
-}
-
-.generate-image-btn:active {
-  transform: translateY(0);
-}
-
 .dark .upload-btn {
   background-color: #3b82f6;
-}
-
-.dark .upload-btn:hover {
-  background-color: #2563eb;
 }
 
 .dark .generate-text-btn {
   background-color: #34d399;
 }
 
-.dark .generate-text-btn:hover {
+.dark .generate-image-btn {
+  background-color: #a78bfa;
+}
+
+/* 新增工具欄樣式 */
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+
+.dark .editor-toolbar {
+  background-color: rgba(45, 45, 45, 0.95);
+}
+
+.toolbar-title h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: white;
+}
+
+.toolbar-btn:hover {
+  transform: translateY(-1px);
+}
+
+.toolbar-btn:active {
+  transform: translateY(0);
+}
+
+/* 調整文本區域樣式以配合工具欄 */
+.content-textarea {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* 修改原有按鈕樣式 */
+.upload-btn,
+.generate-text-btn,
+.generate-image-btn {
+  background-color: var(--primary-color);
+}
+
+.upload-btn {
+  background-color: #2563eb;
+}
+
+.generate-text-btn {
   background-color: #10b981;
+}
+
+.generate-image-btn {
+  background-color: #8b5cf6;
+}
+
+.dark .upload-btn {
+  background-color: #3b82f6;
+}
+
+.dark .generate-text-btn {
+  background-color: #34d399;
 }
 
 .dark .generate-image-btn {
   background-color: #a78bfa;
 }
 
-.dark .generate-image-btn:hover {
-  background-color: #8b5cf6;
+/* 移除原有的圖片上傳區域按鈕 */
+.image-upload-buttons {
+  display: none;
 }
 </style>
