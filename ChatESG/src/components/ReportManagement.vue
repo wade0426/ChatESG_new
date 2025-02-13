@@ -41,7 +41,7 @@
                 </td>
                 <td>
                   <div class="dropdown">
-                    <button class="dropdown-toggle" @click="toggleDropdown(report.assetID)">
+                    <button class="dropdown-toggle" @click="toggleDropdown(report.assetID, $event)">
                       <span class="dots">●●●</span>
                     </button>
                     <div class="dropdown-menu" v-show="activeDropdown === report.assetID">
@@ -222,11 +222,34 @@
         console.log('刪除報告書:', this.selectedReport);
         this.showDeleteConfirm = false;
       },
-      toggleDropdown(assetID) {
+      toggleDropdown(assetID, event) {
         if (this.activeDropdown === assetID) {
           this.activeDropdown = null;
         } else {
           this.activeDropdown = assetID;
+          // 等待 DOM 更新後計算位置
+          this.$nextTick(() => {
+            const button = event.target.closest('.dropdown-toggle');
+            const menu = event.target.closest('.dropdown').querySelector('.dropdown-menu');
+            if (button && menu) {
+              const buttonRect = button.getBoundingClientRect();
+              const menuRect = menu.getBoundingClientRect();
+              
+              // 計算最佳位置
+              let top = buttonRect.bottom + window.scrollY;
+              let left = buttonRect.right - menuRect.width + window.scrollX;
+              
+              // 確保選單不會超出視窗底部
+              const viewportHeight = window.innerHeight;
+              if (top + menuRect.height > viewportHeight) {
+                top = buttonRect.top - menuRect.height + window.scrollY;
+              }
+              
+              // 設置選單位置
+              menu.style.top = `${top}px`;
+              menu.style.left = `${left}px`;
+            }
+          });
         }
       },
       closeDropdown(event) {
@@ -266,6 +289,7 @@
   .table-container {
     max-height: 600px;
     overflow-y: auto;
+    position: relative;
   }
   
   .report-table {
@@ -474,9 +498,7 @@
   }
   
   .dropdown-menu {
-    position: absolute;
-    right: 0;
-    top: 100%;
+    position: fixed;
     background: #2c2c2c;
     border: 1px solid #444;
     border-radius: 4px;
