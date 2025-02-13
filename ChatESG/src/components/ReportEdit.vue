@@ -165,6 +165,11 @@
               <i class="mdi mdi-check-circle"></i>
               準則檢驗
             </button>
+            <!-- 新增審核按鈕 -->
+            <button class="review-btn" @click="handleReview">
+              <i class="mdi mdi-file-document-check"></i>
+              章節審核
+            </button>
           </div>
 
           <!-- 準則檢驗結果 -->
@@ -833,6 +838,13 @@ const handleCriteriaCheck = () => {
       })
   } else {
     toast.error('請先選擇要檢驗的章節')
+  }
+}
+
+// 處理審核按鈕點擊
+const handleReview = () => {
+  if (currentChapter.value) {
+    console.log(`大章節：${currentChapter.value.chapterTitle} 呼叫審核按鈕`)
   }
 }
 
@@ -1966,6 +1978,7 @@ const handleGenerateImage = async () => {
   margin-top: 2rem;
   display: flex;
   justify-content: center;
+  gap: 1rem; /* 添加按鈕之間的間距 */
 }
 
 .criteria-check-btn {
@@ -2186,5 +2199,38 @@ const handleGenerateImage = async () => {
 /* 移除原有的圖片上傳區域按鈕 */
 .image-upload-buttons {
   display: none;
+}
+
+/* 新增審核按鈕樣式 */
+.review-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #059669;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.review-btn:hover {
+  background-color: #047857;
+  transform: translateY(-1px);
+}
+
+.review-btn:active {
+  transform: translateY(0);
+}
+
+.dark .review-btn {
+  background-color: #10b981;
+}
+
+.dark .review-btn:hover {
+  background-color: #059669;
 }
 </style>
