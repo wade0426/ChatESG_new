@@ -251,16 +251,16 @@ ADD INDEX idx_applicant_history (ApplicantID, ApplicationStatus, CreatedAt);
 CREATE TABLE WorkflowStages (
     WorkflowStageID BINARY(16) PRIMARY KEY COMMENT '審核流程階段唯一標識 (UUID)',
     OrganizationID BINARY(16) NOT NULL COMMENT '所屬組織(UUID)',
-    AssetID BINARY(16) NOT NULL COMMENT '所屬資產(UUID)',
-    PermissionChapterID BINARY(16) NOT NULL COMMENT '權限識別標籤(UUID)',
+    AssetID BINARY(16) NOT NULL COMMENT '所屬資產(UUID)', 
+    PermissionChapterID BINARY(16) COMMENT '權限識別標籤(UUID)',
+    ChapterName VARCHAR(100) NOT NULL COMMENT '大章節名稱',
     StageOrder INT UNSIGNED NOT NULL COMMENT '階段順序 (例如：1, 2, 3)',
     StageName VARCHAR(100) NOT NULL COMMENT '階段名稱 (例如：初審, 主管複審, 最終核准)',
     Description VARCHAR(255) COMMENT '階段描述',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '創建時間',
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
-    FOREIGN KEY (WorkflowID) REFERENCES ApprovalWorkflows(WorkflowID) ON DELETE CASCADE,
-    UNIQUE KEY unique_stage_order_in_workflow (WorkflowID, StageOrder) -- 確保階段順序在流程內唯一
+    FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE CASCADE,
+    FOREIGN KEY (AssetID) REFERENCES OrganizationAssets(AssetID) ON DELETE CASCADE,
+    -- 唯一鍵約束，確保在同一組織、資產和權限章節下，階段順序是唯一的
+    UNIQUE KEY unique_stage_order_in_workflow (OrganizationID, AssetID, PermissionChapterID, StageOrder)
 ) COMMENT '審核流程階段資料表';
-
-
-UUID, OrganizationID, AssetID, PermissionChapterID, "關於本報告書", "階段順序", "階段名稱", "階段描述"
