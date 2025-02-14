@@ -4462,6 +4462,25 @@ async def edit_company_info_chapter_title(data: dict):
                         print("沒有找到對應的報告書，不進行章節同步。")
                         pass
 
+                    report_asset_id_bytes = uuid.UUID(report_asset_id_str).bytes
+
+                    # 同步修正 "workflowstages" 表 "ChapterName"
+                    # 先查詢 "workflowstages" 表 "AssetID" 是否等於 asset_id，and "ChapterName" 是否等於 chapter_title
+                    await cur.execute(
+                        "SELECT WorkflowStageID FROM WorkflowStages WHERE AssetID = %s AND ChapterName = %s",
+                        (report_asset_id_bytes, chapter_title)
+                    )
+                    workflow_asset_result = await cur.fetchone() # 注意只會有一筆
+
+                    # 如果有值 WorkflowStageID 就更新 ChapterName
+                    if workflow_asset_result and workflow_asset_result[0]:
+                        # 有可能會一次更新多筆，所以需要使用 WHERE 條件
+                        await cur.execute(
+                            "UPDATE WorkflowStages SET ChapterName = %s WHERE AssetID = %s AND ChapterName = %s",
+                            (new_chapter_title, report_asset_id_bytes, chapter_title)
+                        )
+                        await conn.commit()
+
                 elif chapter_level == 2:
                     # 編輯次層章節名稱
                     chapter_found = False
