@@ -5543,6 +5543,52 @@ async def get_pending_reviews(data: dict):
         raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
 
 
+# 取得送審資料
+@app.post("/api/report/get_submitted_data")
+async def get_submitted_data(data: dict):
+    try:
+        workflow_instance_id = data.get("workflowInstanceID")
+        if not workflow_instance_id:
+            return {"status": "error", "message": "缺少必要參數 workflowInstanceID"}
+
+        # 連接資料庫
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 查詢最新的 WorkflowStageInstance
+                query = """
+                    SELECT wsi.BlockVersionID, cbv.SubmittedContent
+                    FROM WorkflowStageInstances wsi
+                    LEFT JOIN ContentBlockVersions cbv ON wsi.BlockVersionID = cbv.BlockVersionID
+                    WHERE wsi.WorkflowInstanceID = UNHEX(%s)
+                    ORDER BY wsi.SubmittedAt DESC
+                    LIMIT 1
+                """
+                await cur.execute(query, (workflow_instance_id.replace('-', ''),))
+                result = await cur.fetchone()
+
+                if not result:
+                    return {"status": "error", "message": "找不到相關的送審資料"}
+
+                block_version_id, submitted_content = result
+
+                if not submitted_content:
+                    return {"status": "error", "message": "送審內容為空"}
+                
+                # print("submitted_content:", submitted_content)
+
+                return {
+                    "status": "success",
+                    "data": {
+                        "blockVersionID": block_version_id.hex() if block_version_id else None,
+                        "submittedContent": submitted_content
+                    }
+                }
+
+    except Exception as e:
+        print(f"Error in get_submitted_data: {str(e)}")
+        return {"status": "error", "message": f"獲取送審資料時發生錯誤: {str(e)}"}
+
 
 
 if __name__ == "__main__":
