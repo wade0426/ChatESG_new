@@ -108,6 +108,24 @@ const router = createRouter({
             name: 'ReportEdit',
             component: () => import('../components/ReportEdit.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/review-list',
+            name: 'ReviewList',
+            component: () => import('@/components/ReviewList.vue'),
+            meta: {
+                requiresAuth: true,
+                title: '審核列表'
+            }
+        },
+        {
+            path: '/review',
+            name: 'ReviewDetail',
+            component: () => import('@/components/ReviewDetail.vue'),
+            meta: {
+                requiresAuth: true,
+                title: '審核詳情'
+            }
         }
     ]
 })
