@@ -89,17 +89,46 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   // 提交審核結果
-  const submitReview = async (blockId, status, comment) => {
+  const submitReview = async (WorkflowInstanceID, userID, status, comment) => {
     try {
-      // TODO: 調用 API 提交審核結果
-      // const response = await api.submitReview({ blockId, status, comment })
+      // console.log("WorkflowInstanceID", WorkflowInstanceID)
+      // console.log("userID", userID)
+      // console.log("status", status)
+      // console.log("comment", comment)
+      // console.log("blockVersionID", currentReview.value.blockVersionID)
+      const response = await fetch('http://localhost:8000/api/report/submit_review', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          WorkflowInstanceID: WorkflowInstanceID,
+          ReviewerID: userID,
+          ReviewAction: status,
+          ReviewComment: comment,
+          BlockVersionID: currentReview.value.blockVersionID
+        })
+      });
+      const result = await response.json();
+      console.log("result", result)
       // 更新本地狀態
-      await fetchPendingReviews()
+      // await fetchPendingReviews()
       return true
     } catch (error) {
       console.error('提交審核結果失敗:', error)
       throw error
     }
+  }
+
+  // 獲取審核歷程
+  const fetchReviewHistory = async (workflowInstanceID) => {
+    const response = await fetch('http://localhost:8000/api/report/get_submitted_data', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ workflowInstanceID: workflowInstanceID })
+    })
   }
 
   return {
@@ -109,7 +138,7 @@ export const useReviewStore = defineStore('review', () => {
     reviewStatus,
     filteredPendingReviews,
     fetchPendingReviews,
-    fetchReviewHistory,
+    fetchReviewData,
     submitReview
   }
 }) 
