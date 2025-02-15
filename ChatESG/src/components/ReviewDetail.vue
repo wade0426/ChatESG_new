@@ -228,6 +228,14 @@ const handleReject = async () => {
 // 初始化數據
 onMounted(async () => {
   try {
+
+    // 判斷是否有get id
+    if (route.query.id) {
+      await reviewStore.fetchReview(route.query.id)
+    } else {
+      router.push('/home')
+    }
+
     // 獲取當前審核內容
     currentReview.value = reviewStore.currentReview
     
