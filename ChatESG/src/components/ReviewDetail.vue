@@ -18,9 +18,9 @@
       <div class="content-section">
         <div class="content-header">
           <h2>{{ currentReview?.title }}</h2>
-          <el-tag :type="getStatusType(currentReview?.status)">
+          <!-- <el-tag :type="getStatusType(currentReview?.status)">
             {{ reviewStore.reviewStatus[currentReview?.status]?.label }}
-          </el-tag>
+          </el-tag> -->
         </div>
 
         <!-- 章節內容顯示 -->
@@ -40,14 +40,21 @@
                   
                   <!-- 圖片內容 -->
                   <div v-if="subChapter.img_content?.length" class="content-images">
-                    <el-image
-                      v-for="(img, imgIndex) in subChapter.img_content"
-                      :key="imgIndex"
-                      :src="img"
-                      :preview-src-list="subChapter.img_content"
-                      fit="cover"
-                      class="content-image"
-                    />
+                    <div v-for="(img, imgIndex) in subChapter.img_content" :key="imgIndex" class="image-container">
+                      <el-image
+                        :src="img.url"
+                        :preview-src-list="[img.url]"
+                        :preview-teleported="true"
+                        :initial-index="imgIndex"
+                        fit="cover"
+                        class="content-image"
+                        loading="lazy"
+                      />
+                      <div class="image-info" v-if="img.title || img.subtitle">
+                        <h5 v-if="img.title">{{ img.title }}</h5>
+                        <p v-if="img.subtitle">{{ img.subtitle }}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -124,11 +131,11 @@ const reviewSteps = [
   { title: '完成', description: '審核完成' }
 ]
 
-const currentStep = ref(1)
-const reviewComment = ref('')
-const showHistory = ref(false)
-const currentReview = ref(null)
-const reviewHistory = ref([])
+const currentStep = ref(1) // 審核步驟
+const reviewComment = ref('') // 審核意見
+const showHistory = ref(false) // 是否顯示審核歷程
+const currentReview = ref(null) // 當前審核內容
+const reviewHistory = ref([]) // 審核歷程
 
 // 獲取狀態類型
 const getStatusType = (status) => {
@@ -182,7 +189,7 @@ const handleApprove = async () => {
     })
 
     await reviewStore.submitReview(
-      route.params.id,
+      route.query.id,
       'APPROVED',
       reviewComment.value
     )
@@ -211,7 +218,7 @@ const handleReject = async () => {
     })
 
     await reviewStore.submitReview(
-      route.params.id,
+      route.query.id,
       'REJECTED',
       reviewComment.value
     )
@@ -228,22 +235,26 @@ const handleReject = async () => {
 // 初始化數據
 onMounted(async () => {
   try {
-
     // 判斷是否有get id
-    if (route.query.id) {
-      await reviewStore.fetchReview(route.query.id)
-    } else {
+    if (!route.query.id) {
       router.push('/home')
+      return
     }
 
-    // 獲取當前審核內容
-    currentReview.value = reviewStore.currentReview
+    console.log("開始獲取審核資料，ID:", route.query.id)
+    // 獲取審核資料內容
+    await reviewStore.fetchReviewData(route.query.id)
     
-    // 獲取審核歷程
-    await reviewStore.fetchReviewHistory(route.params.id)
-    reviewHistory.value = reviewStore.reviewHistory
+    // 直接使用 store 中處理好的數據
+    currentReview.value = reviewStore.currentReview
+    console.log("組件中的數據:", currentReview.value)
+    
+    // // 獲取審核歷程
+    // await reviewStore.fetchReviewHistory(route.query.id)
+    // reviewHistory.value = reviewStore.reviewHistory
   } catch (error) {
     ElMessage.error('獲取數據失敗')
+    console.error('獲取數據失敗:', error)
   }
 })
 </script>
@@ -373,17 +384,56 @@ onMounted(async () => {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   margin: 16px 0;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
-.content-image {
+.image-container {
+  position: relative;
   width: 100%;
   height: 150px;
   border-radius: 8px;
   transition: transform 0.2s;
+  will-change: transform;
+  transform: translateZ(0);
+  overflow: hidden;
 }
 
-.content-image:hover {
+.image-container:hover {
   transform: scale(1.02);
+}
+
+.content-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  transition: transform 0.2s;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.image-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 0 0 8px 8px;
+}
+
+.image-info h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.image-info p {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #FFFFFF;
 }
 
 .review-section {
@@ -491,5 +541,29 @@ onMounted(async () => {
   border-width: 1px;
   font-weight: 500;
   padding: 4px 12px;
+}
+
+:deep(.el-image-viewer__wrapper) {
+  position: fixed;
+  z-index: 2000;
+}
+
+:deep(.el-image-viewer__mask) {
+  position: fixed;
+  z-index: 2000;
+}
+
+:deep(.el-image-viewer__btn) {
+  z-index: 2001;
+}
+
+:deep(.el-image-viewer__canvas) {
+  z-index: 2001;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+:deep(.el-image-viewer__actions) {
+  z-index: 2001;
 }
 </style> 
