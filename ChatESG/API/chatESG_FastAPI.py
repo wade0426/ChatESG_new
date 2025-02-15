@@ -5168,6 +5168,15 @@ async def create_workflow_instance(data: dict):
                 asset_binary = bytes.fromhex(asset_id.replace('-', ''))
                 organization_id_binary = bytes.fromhex(organization_id.replace('-', ''))
                 user_binary = bytes.fromhex(user_id.replace('-', ''))
+
+                # 檢查是否已經建立審核流程階段
+                # 去 workflowstages 取得 workflowstageid
+                await cur.execute("SELECT WorkflowStageID FROM WorkflowStages WHERE AssetID = %s AND ChapterName = %s", (asset_binary, chapter_name))
+                workflow_stage = await cur.fetchone()
+                if not workflow_stage:
+                    raise HTTPException(status_code=404, detail="尚未建立審核流程階段，無法送出審核")
+                # workflow_stage = workflow_stage[0] 只用於檢查不需要使用
+
                 # 檢查是否已存在審核中的流程實例
                 check_query = """
                     SELECT WorkflowInstanceID, Status
