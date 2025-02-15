@@ -5147,6 +5147,97 @@ async def get_workflow_stage(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 建立審核流程實例
+@app.post("/api/report/create_workflow_instance")
+async def create_workflow_instance(data: dict):
+    # 傳入 AssetID, OrganizationID, ChapterName, userID
+    asset_id = data.get("assetID")
+    organization_id = data.get("organizationID")
+    chapter_name = data.get("chapterName")
+    user_id = data.get("userID")
+
+    # 檢查必要參數
+    if not all([asset_id, organization_id, chapter_name, user_id]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+
+    # 連接資料庫
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                asset_binary = bytes.fromhex(asset_id.replace('-', ''))
+                organization_id_binary = bytes.fromhex(organization_id.replace('-', ''))
+                user_binary = bytes.fromhex(user_id.replace('-', ''))
+                # 檢查是否已存在審核中的流程實例
+                check_query = """
+                    SELECT WorkflowInstanceID, Status
+                    FROM WorkflowInstances 
+                    WHERE AssetID = %s
+                    AND ChapterName = %s
+                    AND Status IN ('審核中', '已退回')
+                """
+                await cur.execute(check_query, (asset_binary, chapter_name))
+                existing_workflow = await cur.fetchone()
+
+                if existing_workflow:
+                    if existing_workflow[1] == '審核中':
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"該章節 '{chapter_name}' 已有審核中的流程實例"
+                        )
+                    elif existing_workflow[1] == '已退回':
+                        return {
+                            "status": "success", 
+                            "message": "已經有審核實例",
+                            "data": {
+                                "workflowInstanceID": str(uuid.UUID(bytes=existing_workflow[0]))
+                            }
+                        }
+
+                # 生成新的 UUID
+                workflow_instance_id = str(uuid.uuid4())
+                workflow_instance_id_binary = bytes.fromhex(workflow_instance_id.replace('-', ''))
+
+                # 建立審核流程實例
+                insert_query = """
+                    INSERT INTO WorkflowInstances (
+                        WorkflowInstanceID,
+                        OrganizationID,
+                        AssetID,
+                        ChapterName,
+                        Status,
+                        CreatedBy
+                    ) VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        '審核中',
+                        %s
+                    )
+                """
+                await cur.execute(insert_query, (
+                    workflow_instance_id_binary,
+                    organization_id_binary,
+                    asset_binary,
+                    chapter_name,
+                    user_binary
+                ))
+
+                await conn.commit()
+
+                return {
+                    "status": "success",
+                    "message": "成功建立審核流程實例",
+                    "data": {
+                        "workflowInstanceID": workflow_instance_id
+                    }
+                }
+
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"建立審核流程實例失敗: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
