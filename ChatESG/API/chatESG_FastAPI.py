@@ -5238,6 +5238,71 @@ async def create_workflow_instance(data: dict):
                 await conn.rollback()
                 raise HTTPException(status_code=500, detail=f"建立審核流程實例失敗: {str(e)}")
 
+
+# 建立送出審核資料
+@app.post("/api/report/create_workflow_submit_data")
+async def create_workflow_submit_data(data: dict):
+    # 傳入 userID, SubmittedContent(json)
+    user_id = data.get("userID")
+    submitted_content = data.get("SubmittedContent")
+
+    # 檢查必要參數
+    if not all([user_id, submitted_content]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+
+    # 連接資料庫
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                # 生成新的 UUID 作為 BlockVersionID
+                block_version_id = str(uuid.uuid4())
+                block_version_binary = bytes.fromhex(block_version_id.replace('-', ''))
+                user_binary = bytes.fromhex(user_id.replace('-', ''))
+
+                # 將 submitted_content 轉換為 JSON 字符串
+                if isinstance(submitted_content, str):
+                    # 如果已經是字符串，確保它是有效的 JSON
+                    try:
+                        json.loads(submitted_content)
+                    except json.JSONDecodeError:
+                        raise HTTPException(status_code=400, detail="提交的內容不是有效的 JSON 格式")
+                else:
+                    # 如果是字典或列表，轉換為 JSON 字符串
+                    submitted_content = json.dumps(submitted_content, ensure_ascii=False)
+
+                # 插入資料到 ContentBlockVersions 表
+                insert_query = """
+                    INSERT INTO ContentBlockVersions (
+                        BlockVersionID,
+                        SubmittedContent,
+                        ModifiedBy
+                    ) VALUES (
+                        %s,
+                        %s,
+                        %s
+                    )
+                """
+                await cur.execute(insert_query, (
+                    block_version_binary,
+                    submitted_content,
+                    user_binary
+                ))
+
+                await conn.commit()
+
+                return {
+                    "status": "success",
+                    "message": "成功建立送審資料版本",
+                    "data": {
+                        "blockVersionID": block_version_id
+                    }
+                }
+
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"建立送審資料版本失敗: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
