@@ -46,15 +46,45 @@ export const useReviewStore = defineStore('review', () => {
     }
   }
 
-  // 獲取審核歷程
-  const fetchReviewHistory = async (blockId) => {
+  // 獲取審核資料內容
+  const fetchReviewData = async (workflowInstanceID) => {
     try {
-      // TODO: 調用 API 獲取審核歷程
-      // const response = await api.getReviewHistory(blockId)
-      // reviewHistory.value = response.data
+        const response = await fetch('http://localhost:8000/api/report/get_submitted_data', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            workflowInstanceID: workflowInstanceID
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // 直接解析 submittedContent
+            if (result.data && result.data.submittedContent) {
+                try {
+                    const parsedContent = JSON.parse(result.data.submittedContent);
+                    currentReview.value = {
+                        ...result.data,
+                        ...parsedContent
+                    };
+                    console.log("處理後的數據:", currentReview.value);
+                } catch (error) {
+                    console.error('解析 submittedContent 失敗:', error);
+                    currentReview.value = result.data;
+                }
+            } else {
+                currentReview.value = result.data;
+            }
+            return result.data;
+        } else {
+            throw new Error(result.message || '獲取審核資料失敗');
+        }
     } catch (error) {
-      console.error('獲取審核歷程失敗:', error)
-      throw error
+      console.error('獲取審核資料內容失敗:', error);
+      throw error;
     }
   }
 
