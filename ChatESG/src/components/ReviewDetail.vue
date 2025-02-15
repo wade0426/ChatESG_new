@@ -1,5 +1,8 @@
 <!-- 審核詳情頁面 -->
 <template>
+  <Sidebar :isOpen="isSidebarOpen" @close="closeNav" />
+  <Header @openNav="openNav" />
+
   <div class="review-detail">
     <!-- 頂部進度條 -->
     <div class="review-progress">
@@ -118,10 +121,23 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useReviewStore } from '@/stores/review'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import Sidebar from './Sidebar.vue'
+import Header from './Header.vue'
+import { useUserStore } from '@/stores/user'
 
+const isSidebarOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
 const reviewStore = useReviewStore()
+const userStore = useUserStore()
+
+const openNav = () => {
+    isSidebarOpen.value = true
+}
+
+const closeNav = () => {
+    isSidebarOpen.value = false
+}
 
 // 審核步驟
 const reviewSteps = [
@@ -190,7 +206,8 @@ const handleApprove = async () => {
 
     await reviewStore.submitReview(
       route.query.id,
-      'APPROVED',
+      userStore.userID,
+      'approved',
       reviewComment.value
     )
 
@@ -219,7 +236,8 @@ const handleReject = async () => {
 
     await reviewStore.submitReview(
       route.query.id,
-      'REJECTED',
+      userStore.userID,
+      'rejected',
       reviewComment.value
     )
 
