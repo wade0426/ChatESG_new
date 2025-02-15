@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
+import { useToast } from 'vue-toastification'
+
+const toast = useToast()
 
 export const useReportEditStore = defineStore('reportEdit', {
   state: () => ({
@@ -7,7 +10,9 @@ export const useReportEditStore = defineStore('reportEdit', {
     company_info_assetID: null,
     standard_template_id: null,
     asset_id: null,
-    chapters: []
+    chapters: [],
+    workflow_instance_id: null,
+    block_version_id: null
   }),
 
   getters: {
@@ -695,6 +700,141 @@ export const useReportEditStore = defineStore('reportEdit', {
         console.error('生成 Mermaid 圖片時發生錯誤:', error)
         throw error
       }
-    }
+    },
+
+    // 審核流程入口
+    async workflow_instance(asset_id, organization_id, user_id, chapterTitle) {
+      // console.log('呼叫審核流程', asset_id, organization_id, user_id, chapterTitle)
+      try {
+        await this.createWorkflowInstance(asset_id, organization_id, chapterTitle, user_id)
+        await this.workflow_upload_data(user_id, chapterTitle)
+        await this.createWorkflowSubmitRecord(this.workflow_instance_id, user_id, this.block_version_id)
+      } catch (error) {
+        console.error('審核流程時發生錯誤:', error);
+        throw error;
+      }
+    },
+
+    // 審核流程 - 建立審核流程實例
+    async createWorkflowInstance(asset_id, organization_id, chapterTitle, user_id) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/create_workflow_instance`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            assetID: asset_id,
+            organizationID: organization_id,
+            chapterName: chapterTitle,
+            userID: user_id
+          })
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.detail || '建立審核流程實例失敗');
+        }
+
+        if (responseData.status === 'success') {
+          console.log("建立審核流程實例成功", responseData);
+          this.workflow_instance_id = responseData.data.workflowInstanceID
+          return responseData;
+        } else {
+          throw new Error('建立審核流程實例失敗');
+        }
+      } catch (error) {
+        console.error('建立審核流程實例時發生錯誤:', error);
+        toast.error('建立審核流程實例時發生錯誤:' + error)
+        throw error;
+      }
+    },
+
+    // 審核流程 - 上傳要審核的資料
+    async workflow_upload_data(user_id, chapterTitle) {
+      console.log('審核流程', chapterTitle)
+      const chapterTitle_data = this.chapters.find(c => c.chapterTitle === chapterTitle)
+      console.log('審核流程原始資料:', chapterTitle_data)
+
+      // 格式化資料
+      const formattedData = {
+        chapters: [{
+          chapterTitle: chapterTitle_data.chapterTitle,
+          guidelines: chapterTitle_data.guidelines || {},
+          subChapters: chapterTitle_data.subChapters.map(sub => ({
+            subChapterTitle: sub.subChapterTitle,
+            txt: sub.text_content,
+            img_content: sub.img_content_url.map(img => ({
+              url: img.url || img,
+              title: img.title || '',
+              subtitle: img.subtitle || ''
+            }))
+          }))
+        }]
+      }
+
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/create_workflow_submit_data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userID: user_id,
+            SubmittedContent: formattedData
+          })
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.detail || '上傳審核資料失敗');
+        }
+
+        if (responseData.status === 'success') {
+          console.log("上傳審核資料成功", responseData);
+          this.block_version_id = responseData.data.blockVersionID
+          return responseData;
+        } else {
+          throw new Error('上傳審核資料失敗');
+        }
+      } catch (error) {
+        console.error('上傳審核資料時發生錯誤:', error);
+        throw error;
+      }
+    },
+
+
+    // 建立送出審核記錄
+    async createWorkflowSubmitRecord(workflow_instance_id, user_id, block_version_id) {
+      // console.log('建立送出審核記錄', workflow_instance_id, user_id, block_version_id)
+      try {
+        const response = await fetch(`http://localhost:8000/api/report/create_workflow_submit_record`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            workflowInstanceID: workflow_instance_id,
+            userID: user_id,
+            blockVersionID: block_version_id
+          })
+        });
+
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error(responseData.detail || '建立送出審核記錄失敗');
+        }
+
+        if (responseData.status === 'success') {
+          console.log("建立送出審核記錄成功", responseData);
+          return responseData;
+        } else {
+          throw new Error('建立送出審核記錄失敗');
+        }
+      } catch (error) {
+        console.error('建立送出審核記錄時發生錯誤:', error);
+        throw error;
+      }
+    },
   }
 })
