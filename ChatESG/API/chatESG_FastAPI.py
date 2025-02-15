@@ -5303,6 +5303,109 @@ async def create_workflow_submit_data(data: dict):
                 await conn.rollback()
                 raise HTTPException(status_code=500, detail=f"建立送審資料版本失敗: {str(e)}")
 
+
+# 建立送出審核記錄
+@app.post("/api/report/create_workflow_submit_record")
+async def create_workflow_submit_record(data: dict):
+    # 傳入 WorkflowInstanceID, userID, BlockVersionID
+    workflow_instance_id = data.get("workflowInstanceID")
+    user_id = data.get("userID")
+    block_version_id = data.get("blockVersionID")
+
+    # 檢查必要參數
+    if not all([workflow_instance_id, user_id, block_version_id]):
+        raise HTTPException(status_code=400, detail="缺少必要參數")
+
+    # 連接資料庫
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                # 轉換 UUID 為 binary
+                workflow_instance_binary = bytes.fromhex(workflow_instance_id.replace('-', ''))
+
+                # 查詢工作流程實例資訊
+                instance_query = """
+                    SELECT AssetID, ChapterName
+                    FROM WorkflowInstances 
+                    WHERE WorkflowInstanceID = %s
+                """
+                await cur.execute(instance_query, (workflow_instance_binary,))
+                instance_result = await cur.fetchone()
+
+                if not instance_result:
+                    raise HTTPException(status_code=404, detail="找不到對應的工作流程實例")
+
+                asset_binary, chapter_name = instance_result
+
+                # 查詢第一個階段的 WorkflowStageID
+                stage_query = """
+                    SELECT WorkflowStageID
+                    FROM WorkflowStages 
+                    WHERE AssetID = %s
+                    AND ChapterName = %s
+                    AND StageOrder = 1
+                """
+                await cur.execute(stage_query, (asset_binary, chapter_name))
+                stage_result = await cur.fetchone()
+
+                if not stage_result:
+                    raise HTTPException(status_code=404, detail="找不到對應的工作流程階段")
+
+                workflow_stage_binary = stage_result[0]
+
+                # 生成新的 UUID 作為 WorkflowInstanceStageID
+                workflow_instance_stage_id = str(uuid.uuid4())
+                workflow_instance_stage_binary = bytes.fromhex(workflow_instance_stage_id.replace('-', ''))
+                user_binary = bytes.fromhex(user_id.replace('-', ''))
+                block_version_binary = bytes.fromhex(block_version_id.replace('-', ''))
+
+                # 建立工作流程階段實例記錄
+                insert_query = """
+                    INSERT INTO WorkflowStageInstances (
+                        WorkflowInstanceStageID,
+                        WorkflowInstanceID,
+                        WorkflowStageID,
+                        SubmitterID,
+                        BlockVersionID
+                    ) VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s
+                    )
+                """
+                await cur.execute(insert_query, (
+                    workflow_instance_stage_binary,
+                    workflow_instance_binary,
+                    workflow_stage_binary,
+                    user_binary,
+                    block_version_binary
+                ))
+
+                await conn.commit()
+
+                # 將 binary 轉回 UUID 字符串用於返回
+                workflow_stage_id = uuid.UUID(bytes=workflow_stage_binary).hex
+                workflow_stage_id = f"{workflow_stage_id[:8]}-{workflow_stage_id[8:12]}-{workflow_stage_id[12:16]}-{workflow_stage_id[16:20]}-{workflow_stage_id[20:]}"
+
+                return {
+                    "status": "success",
+                    "message": "成功建立送審記錄",
+                    "data": {
+                        "workflowInstanceStageID": workflow_instance_stage_id,
+                        "workflowStageID": workflow_stage_id
+                    }
+                }
+
+            except HTTPException as he:
+                await conn.rollback()
+                raise he
+            except Exception as e:
+                await conn.rollback()
+                raise HTTPException(status_code=500, detail=f"建立送審記錄失敗: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
