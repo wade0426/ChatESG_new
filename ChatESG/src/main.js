@@ -1,6 +1,10 @@
 import './assets/main.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import zhTw from 'element-plus/dist/locale/zh-tw.mjs'
 import App from './App.vue'
 import router from './router'
 import '@mdi/font/css/materialdesignicons.css'
@@ -33,8 +37,16 @@ const toastOptions = {
 // 加入性能優化配置
 app.config.performance = process.env.NODE_ENV !== 'production'
 
+// 註冊所有圖標
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
+
 app.use(pinia)
 app.use(router)
 app.use(Toast, toastOptions)
+app.use(ElementPlus, {
+  locale: zhTw,
+})
 
 app.mount('#app')
