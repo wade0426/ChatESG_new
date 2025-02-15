@@ -5406,6 +5406,134 @@ async def create_workflow_submit_record(data: dict):
                 await conn.rollback()
                 raise HTTPException(status_code=500, detail=f"建立送審記錄失敗: {str(e)}")
 
+
+# 獲取待審核列表
+@app.post("/api/report/get_pending_reviews")
+async def get_pending_reviews(data: dict):
+    try:
+        # 獲取必要參數
+        user_id = data.get("userID")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        # 將字符串格式的user_id轉換為BINARY(16)格式
+        try:
+            user_id_binary = uuid.UUID(user_id).bytes
+        except ValueError:
+            raise HTTPException(status_code=400, detail="無效的用戶ID格式")
+
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    # 開始事務
+                    await conn.begin()
+
+                    # 1. 獲取用戶的所有角色
+                    await cur.execute("""
+                        SELECT DISTINCT ur.RoleID
+                        FROM UserRoles ur
+                        WHERE ur.UserID = %s
+                    """, (user_id_binary,))
+                    role_ids = await cur.fetchall()
+                    
+                    if not role_ids:
+                        return {"status": "success", "data": []}
+
+                    # 2. 獲取這些角色對應的審核權限
+                    role_ids_list = [role[0] for role in role_ids]
+                    placeholders = ', '.join(['%s'] * len(role_ids_list))
+                    
+                    await cur.execute(f"""
+                        SELECT DISTINCT rpm.PermissionChapterID
+                        FROM RolePermissionMappings rpm
+                        WHERE rpm.RoleID IN ({placeholders})
+                        AND rpm.ResourceType = 'stage'
+                    """, tuple(role_ids_list))
+                    
+                    permission_chapters = await cur.fetchall()
+                    
+                    if not permission_chapters:
+                        return {"status": "success", "data": []}
+
+                    # 3. 獲取對應的工作流程階段
+                    permission_chapters_list = [pc[0] for pc in permission_chapters]
+                    placeholders = ', '.join(['%s'] * len(permission_chapters_list))
+                    
+                    await cur.execute(f"""
+                        SELECT DISTINCT ws.WorkflowStageID
+                        FROM WorkflowStages ws
+                        WHERE ws.PermissionChapterID IN ({placeholders})
+                    """, tuple(permission_chapters_list))
+                    
+                    workflow_stages = await cur.fetchall()
+                    
+                    if not workflow_stages:
+                        return {"status": "success", "data": []}
+
+                    # 4. 獲取待審核的實例
+                    workflow_stages_list = [ws[0] for ws in workflow_stages]
+                    placeholders = ', '.join(['%s'] * len(workflow_stages_list))
+                    
+                    await cur.execute(f"""
+                        SELECT 
+                            wi.WorkflowInstanceID,
+                            wi.AssetID,
+                            wi.ChapterName,
+                            wsi.WorkflowStageID,
+                            wsi.SubmitterID,
+                            wsi.BlockVersionID,
+                            wsi.SubmittedAt,
+                            oa.AssetName,
+                            u.UserName as SubmitterName
+                        FROM WorkflowStageInstances wsi
+                        JOIN WorkflowInstances wi ON wsi.WorkflowInstanceID = wi.WorkflowInstanceID
+                        JOIN OrganizationAssets oa ON wi.AssetID = oa.AssetID
+                        JOIN Users u ON wsi.SubmitterID = u.UserID
+                        WHERE wsi.WorkflowStageID IN ({placeholders})
+                        AND NOT EXISTS (
+                            SELECT 1 
+                            FROM StageApprovalLogs sal 
+                            WHERE sal.WorkflowInstanceID = wi.WorkflowInstanceID 
+                            AND sal.WorkflowStageID = wsi.WorkflowStageID
+                            AND sal.ReviewerID = %s
+                        )
+                        ORDER BY wsi.SubmittedAt DESC
+                    """, tuple(workflow_stages_list) + (user_id_binary,))
+                    
+                    reviews = await cur.fetchall()
+                    
+                    # 格式化返回數據
+                    review_list = []
+                    for review in reviews:
+                        review_list.append({
+                            "title": f"{review[7]} - {review[2]}", # AssetName - ChapterName
+                            "workflow_instance_id": uuid.UUID(bytes=review[0]).hex,
+                            "workflow_stage_id": uuid.UUID(bytes=review[3]).hex,
+                            "block_version_id": uuid.UUID(bytes=review[5]).hex,
+                            "submitter": review[8],  # SubmitterName
+                            "submitted_at": review[6].isoformat() if review[6] else None
+                        })
+
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "data": review_list
+                    }
+
+                except Exception as e:
+                    await conn.rollback()
+                    print(f"數據庫操作失敗: {str(e)}")
+                    raise HTTPException(status_code=500, detail=f"獲取待審核列表失敗: {str(e)}")
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"未預期的錯誤: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"處理請求時發生錯誤: {str(e)}")
+
+
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
