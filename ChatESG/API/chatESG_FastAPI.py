@@ -5590,6 +5590,136 @@ async def get_submitted_data(data: dict):
         return {"status": "error", "message": f"獲取送審資料時發生錯誤: {str(e)}"}
 
 
+# 提交審核結果
+@app.post("/api/report/submit_review")
+async def submit_review(data: dict):
+    try:
+        workflow_instance_id = data.get('WorkflowInstanceID')
+        reviewer_id = data.get('ReviewerID')
+        review_action = data.get('ReviewAction')
+        review_comment = data.get('ReviewComment')
+        block_version_id = data.get('BlockVersionID')
+
+        # 參數驗證
+        if not all([workflow_instance_id, reviewer_id, review_action, block_version_id]):
+            raise HTTPException(status_code=400, detail="缺少必要參數")
+
+        if review_action not in ['approved', 'rejected', 'recalled']:
+            raise HTTPException(status_code=400, detail="無效的審核動作")
+
+        # 連接資料庫
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+
+                workflow_instance_id_binary = bytes.fromhex(workflow_instance_id.replace('-', ''))
+                reviewer_id_binary = bytes.fromhex(reviewer_id.replace('-', ''))
+                block_version_id_binary = bytes.fromhex(block_version_id.replace('-', ''))
+
+                # 獲取當前階段資訊
+                await cur.execute("""
+                    SELECT ws.WorkflowStageID, ws.AssetID, ws.ChapterName, ws.StageOrder, ws.OrganizationID
+                    FROM WorkflowStageInstances wsi
+                    JOIN WorkflowStages ws ON wsi.WorkflowStageID = ws.WorkflowStageID
+                    WHERE wsi.WorkflowInstanceID = %s
+                """, (workflow_instance_id_binary,))
+                current_stage = await cur.fetchone()
+
+                if not current_stage:
+                    raise HTTPException(status_code=404, detail="找不到對應的審核流程階段")
+
+                current_stage_id, asset_id, chapter_name, stage_order, organization_id = current_stage
+
+                # 記錄審核日誌
+                approval_log_id = uuid.uuid4()
+                await cur.execute("""
+                    INSERT INTO StageApprovalLogs (
+                        ApprovalStageLogID, WorkflowInstanceID, WorkflowStageID,
+                        ReviewerID, ReviewAction, ReviewComments,
+                        ReviewedAt, BlockVersionID
+                    ) VALUES (
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        CURRENT_TIMESTAMP, %s
+                    )
+                """, (
+                    approval_log_id, workflow_instance_id_binary, current_stage_id,
+                    reviewer_id_binary, review_action, review_comment,
+                    block_version_id_binary
+                ))
+
+                # 處理審核動作
+                next_stage_order = 1 if review_action == 'rejected' else stage_order + 1
+
+                # 如果是拒絕，更新工作流實例狀態
+                if review_action == 'rejected':
+                    await cur.execute("""
+                        UPDATE WorkflowInstances 
+                        SET Status = '已退回', UpdatedAt = CURRENT_TIMESTAMP
+                        WHERE WorkflowInstanceID = %s
+                    """, (workflow_instance_id_binary,))
+
+                # 查詢下一個階段
+                await cur.execute("""
+                    SELECT WorkflowStageID 
+                    FROM WorkflowStages 
+                    WHERE AssetID = %s 
+                    AND ChapterName = %s 
+                    AND StageOrder = %s
+                """, (asset_id, chapter_name, next_stage_order))
+                next_stage = await cur.fetchone()
+
+                # 如果沒有下一個階段，完成審核流程
+                if not next_stage and review_action == 'approved':
+                    await complete_review(conn, workflow_instance_id_binary)
+                    await conn.commit()
+                    return {"message": "審核流程已完成", "status": "completed"}
+
+                # 更新工作流階段實例
+                if next_stage:
+                    await cur.execute("""
+                        UPDATE WorkflowStageInstances 
+                        SET WorkflowStageID = %s, 
+                            LastUpdatedAt = CURRENT_TIMESTAMP
+                        WHERE WorkflowInstanceID = %s
+                    """, (next_stage[0], workflow_instance_id_binary))
+
+                await conn.commit()
+
+                return {
+                    "message": "審核結果已提交",
+                    "next_stage": next_stage[0].hex() if next_stage else None,
+                    "status": "success"
+                }
+
+    except Exception as e:
+        # 記錄錯誤
+        print(f"提交審核結果時發生錯誤: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"提交審核結果時發生錯誤: {str(e)}")
+
+
+# 完成審核流程的輔助函數
+async def complete_review(conn, workflow_instance_id_binary):
+    """完成審核流程的輔助函數"""
+    async with conn.cursor() as cur:
+        # 更新工作流實例狀態
+        await cur.execute("""
+            UPDATE WorkflowInstances 
+            SET Status = '已核准',
+                EndTime = CURRENT_TIMESTAMP,
+                UpdatedAt = CURRENT_TIMESTAMP
+            WHERE WorkflowInstanceID = %s
+        """, (workflow_instance_id_binary,))
+
+        # 更新 workflowstageinstances 的 WorkflowStageID 為 NULL
+        await cur.execute("""
+            UPDATE WorkflowStageInstances 
+            SET WorkflowStageID = NULL, 
+                LastUpdatedAt = CURRENT_TIMESTAMP
+            WHERE WorkflowInstanceID = %s
+        """, (workflow_instance_id_binary,))
+
+
 
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
