@@ -4481,6 +4481,22 @@ async def edit_company_info_chapter_title(data: dict):
                         )
                         await conn.commit()
 
+                    # 同步修正 "workflowinstances" 表 "ChapterName"
+                    # 先查詢 "workflowinstances" 表 "AssetID" 是否等於 report_asset_id_bytes 和 "ChapterName" 是否等於 chapter_title
+                    await cur.execute(
+                        "SELECT WorkflowInstanceID FROM WorkflowInstances WHERE AssetID = %s AND ChapterName = %s",
+                        (report_asset_id_bytes, chapter_title)
+                    )
+                    workflow_instance_result = await cur.fetchone()
+
+                    # 如果有值 WorkflowInstanceID 就更新 ChapterName
+                    if workflow_instance_result and workflow_instance_result[0]:
+                        await cur.execute(
+                            "UPDATE WorkflowInstances SET ChapterName = %s WHERE AssetID = %s AND ChapterName = %s",
+                            (new_chapter_title, report_asset_id_bytes, chapter_title)
+                        )
+                        await conn.commit()
+
                 elif chapter_level == 2:
                     # 編輯次層章節名稱
                     chapter_found = False
