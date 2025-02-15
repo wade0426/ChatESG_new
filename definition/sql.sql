@@ -264,3 +264,76 @@ CREATE TABLE WorkflowStages (
     -- 唯一鍵約束，確保在同一組織、資產和權限章節下，階段順序是唯一的
     UNIQUE KEY unique_stage_order_in_workflow (OrganizationID, AssetID, PermissionChapterID, StageOrder)
 ) COMMENT '審核流程階段資料表';
+
+
+-- --------------------------------------------------------
+-- 審核流程實例資料表
+-- 記錄每個審核流程的執行實例
+-- --------------------------------------------------------
+CREATE TABLE WorkflowInstances (
+    WorkflowInstanceID BINARY(16) PRIMARY KEY COMMENT '審核流程實例唯一標識 (UUID)',
+    OrganizationID BINARY(16) NOT NULL COMMENT '所屬組織(UUID)',
+    AssetID BINARY(16) NOT NULL COMMENT '所屬資產(UUID)',
+    ChapterName VARCHAR(100) NOT NULL COMMENT '大章節名稱',
+    StartTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '流程實例開始時間',
+    EndTime TIMESTAMP NULL DEFAULT NULL COMMENT '流程實例結束時間',
+    Status ENUM('審核中', '已核准', '已退回', '已終止') NOT NULL DEFAULT '審核中' COMMENT '流程實例狀態',
+    CreatedBy BINARY(16) DEFAULT NULL COMMENT '建立者(UUID)',
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+    FOREIGN KEY (OrganizationID) REFERENCES Organizations(OrganizationID) ON DELETE CASCADE,
+    FOREIGN KEY (AssetID) REFERENCES OrganizationAssets(AssetID) ON DELETE CASCADE,
+    FOREIGN KEY (CreatedBy) REFERENCES Users(UserID) ON DELETE SET NULL
+) COMMENT '審核流程實例資料表';
+
+
+-- --------------------------------------------------------
+-- 審核流程階段執行實例資料表
+-- 記錄每個審核流程實例的階段執行情況
+-- --------------------------------------------------------
+CREATE TABLE WorkflowStageInstances (
+    WorkflowInstanceStageID BINARY(16) PRIMARY KEY COMMENT '審核流程階段執行實例唯一標識 (UUID)',
+    WorkflowInstanceID BINARY(16) NOT NULL COMMENT '所屬審核流程實例 (UUID)',
+    WorkflowStageID BINARY(16) DEFAULT NULL COMMENT '對應的審核流程階段定義 (UUID)',
+    SubmitterID BINARY(16) DEFAULT NULL COMMENT '送審者(UUID)',
+    BlockVersionID BINARY(16) COMMENT '送審內容',
+    SubmittedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '送審時間',
+    LastUpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+    FOREIGN KEY (WorkflowInstanceID) REFERENCES WorkflowInstances(WorkflowInstanceID) ON DELETE CASCADE,
+    FOREIGN KEY (WorkflowStageID) REFERENCES WorkflowStages(WorkflowStageID) ON DELETE SET NULL,
+    FOREIGN KEY (BlockVersionID) REFERENCES ContentBlockVersions(BlockVersionID) ON DELETE RESTRICT,
+    FOREIGN KEY (SubmitterID) REFERENCES Users(UserID) ON DELETE SET NULL
+) COMMENT '審核流程階段執行實例資料表';
+
+
+-- --------------------------------------------------------
+-- 區塊審核階段日誌資料表
+-- 記錄每個審核階段的詳細日誌，包含審核人員、時間、意見、版本等
+-- --------------------------------------------------------
+CREATE TABLE StageApprovalLogs (
+    ApprovalStageLogID BINARY(16) PRIMARY KEY COMMENT '區塊審核階段日誌唯一標識 (UUID)',
+    WorkflowInstanceID BINARY(16) NOT NULL COMMENT '所屬審核流程實例(UUID)',
+    WorkflowStageID BINARY(16) DEFAULT NULL COMMENT '所屬審核流程階段(UUID)',
+    ReviewerID BINARY(16) COMMENT '審核人員(UUID)',
+    ReviewAction ENUM('pending', 'approved', 'rejected', 'recalled') DEFAULT 'pending' COMMENT '審核動作 (pending: 待審核, approved: 核准, rejected: 拒絕, recalled: 撤回)',
+    ReviewComments TEXT COMMENT '審核意見',
+    ReviewedAt TIMESTAMP NULL COMMENT '審核時間',
+    BlockVersionID BINARY(16) COMMENT '審核時的區塊版本',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '日誌記錄時間',
+    FOREIGN KEY (WorkflowInstanceID) REFERENCES WorkflowInstances(WorkflowInstanceID) ON DELETE CASCADE,
+    FOREIGN KEY (WorkflowStageID) REFERENCES WorkflowStages(WorkflowStageID) ON DELETE SET NULL,
+    FOREIGN KEY (ReviewerID) REFERENCES Users(UserID) ON DELETE SET NULL,
+    FOREIGN KEY (BlockVersionID) REFERENCES ContentBlockVersions(BlockVersionID) ON DELETE RESTRICT
+) COMMENT '區塊審核階段日誌資料表';
+
+
+-- --------------------------------------------------------
+-- 區塊版本歷史資料表
+-- 儲存 ReportContentBlocks 的版本歷史記錄
+-- --------------------------------------------------------
+CREATE TABLE ContentBlockVersions (
+    BlockVersionID BINARY(16) PRIMARY KEY COMMENT '區塊版本唯一標識 (UUID)',
+    SubmittedContent JSON COMMENT '版本內容 (文字、圖片、內容檢驗、註解)',
+    ModifiedBy BINARY(16) DEFAULT NULL COMMENT '內容修改者(UUID)',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '版本創建時間',
+    FOREIGN KEY (ModifiedBy) REFERENCES Users(UserID) ON DELETE SET NULL
+) COMMENT '區塊版本歷史資料表';
