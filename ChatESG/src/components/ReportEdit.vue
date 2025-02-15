@@ -846,7 +846,8 @@ const handleCriteriaCheck = () => {
 // 處理審核按鈕點擊
 const handleReview = () => {
   if (currentChapter.value) {
-    console.log(`大章節：${currentChapter.value.chapterTitle} 呼叫審核按鈕`)
+    // console.log(`大章節：${currentChapter.value.chapterTitle} 呼叫審核按鈕`)
+    reportEditStore.workflow_instance(route.query.assetId, userStore.organizationID, userStore.userID, currentChapter.value.chapterTitle)
   }
 }
 
