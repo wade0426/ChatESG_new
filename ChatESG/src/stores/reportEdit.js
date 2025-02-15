@@ -709,6 +709,7 @@ export const useReportEditStore = defineStore('reportEdit', {
         await this.createWorkflowInstance(asset_id, organization_id, chapterTitle, user_id)
         await this.workflow_upload_data(user_id, chapterTitle)
         await this.createWorkflowSubmitRecord(this.workflow_instance_id, user_id, this.block_version_id)
+        toast.success('審核送出成功')
       } catch (error) {
         console.error('審核流程時發生錯誤:', error);
         throw error;
