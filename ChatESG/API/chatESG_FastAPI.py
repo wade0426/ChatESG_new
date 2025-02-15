@@ -5431,7 +5431,9 @@ async def get_pending_reviews(data: dict):
         except ValueError:
             raise HTTPException(status_code=400, detail="無效的用戶ID格式")
 
-        async with db_pool.acquire() as conn:
+        # 連接資料庫
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
             async with conn.cursor() as cur:
                 try:
                     # 開始事務
