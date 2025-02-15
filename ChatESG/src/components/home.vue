@@ -25,10 +25,10 @@
             <i>🌐</i>
             <span>加入組織</span>
         </a>
-        <a href="#" class="tool-item">
-            <i>☁️</i>
-            <span>測試</span>
-        </a>
+        <router-link to="/review-list" class="tool-item">
+            <i>✔️</i>
+            <span>審核</span>
+        </router-link>
     </div>
 
     <!-- 快捷功能區 -->
@@ -48,12 +48,11 @@
     <StandardTemplateModel ref="standardTemplateModelRef" />
 
     <!-- 最近設計 -->
-    <div class="recent-designs">
+    <!-- <div class="recent-designs">
         <h2>最近的報告書</h2>
         <div class="design-grid">
-            <!-- 設計項目將通過 JavaScript 動態添加 -->
         </div>
-    </div>
+    </div> -->
 </template>
 
 
