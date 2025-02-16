@@ -5720,6 +5720,78 @@ async def complete_review(conn, workflow_instance_id_binary):
         """, (workflow_instance_id_binary,))
 
 
+# 獲取審核流程和進度
+@app.post("/api/report/get_review_progress")
+async def get_review_progress(data: dict):
+    try:
+        # 獲取並驗證 workflowInstanceID
+        workflow_instance_id = data.get('workflowInstanceID')
+        if not workflow_instance_id:
+            raise HTTPException(status_code=400, detail="缺少必要參數 workflowInstanceID")
+
+        # 將 UUID 轉換為二進制格式
+        workflow_instance_id_bin = bytes.fromhex(workflow_instance_id.replace('-', ''))
+
+        # 連接資料庫
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # 1. 查詢當前工作流實例的基本信息
+                await cur.execute("""
+                    SELECT wi.*, wsi.WorkflowStageID, ws.StageOrder, ws.StageName, ws.AssetID, ws.ChapterName
+                    FROM WorkflowInstances wi
+                    LEFT JOIN WorkflowStageInstances wsi ON wi.WorkflowInstanceID = wsi.WorkflowInstanceID
+                    LEFT JOIN WorkflowStages ws ON wsi.WorkflowStageID = ws.WorkflowStageID
+                    WHERE wi.WorkflowInstanceID = %s
+                    ORDER BY wsi.SubmittedAt DESC
+                    LIMIT 1
+                """, (workflow_instance_id_bin,))
+                
+                current_workflow = await cur.fetchone()
+                if not current_workflow:
+                    raise HTTPException(status_code=404, detail="找不到指定的審核流程")
+
+                # 2. 查詢該章節的所有審核階段
+                await cur.execute("""
+                    SELECT StageOrder, StageName
+                    FROM WorkflowStages
+                    WHERE AssetID = %s AND ChapterName = %s
+                    ORDER BY StageOrder
+                """, (current_workflow['AssetID'], current_workflow['ChapterName']))
+                
+                all_stages = await cur.fetchall()
+
+                # 構建返回數據
+                response_data = {
+                    "currentStage": {
+                        "stageOrder": current_workflow['StageOrder'],
+                        "stageName": current_workflow['StageName']
+                    },
+                    "allStages": [
+                        {
+                            "stageOrder": stage['StageOrder'],
+                            "stageName": stage['StageName']
+                        }
+                        for stage in all_stages
+                    ],
+                    "workflowStatus": current_workflow['Status']
+                }
+
+                return {
+                    "status_code": 200,
+                    "content": {
+                        "code": 200,
+                        "message": "成功獲取審核進度",
+                        "data": response_data
+                    }
+                }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error in get_review_progress: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取審核進度時發生錯誤")
+
 
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
