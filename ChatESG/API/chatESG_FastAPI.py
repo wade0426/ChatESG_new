@@ -5195,6 +5195,13 @@ async def create_workflow_instance(data: dict):
                             detail=f"該章節 '{chapter_name}' 已有審核中的流程實例"
                         )
                     elif existing_workflow[1] == '已退回':
+                        # 更新 workflowinstances 的 Status 為 審核中
+                        update_query = """
+                            UPDATE `WorkflowInstances` SET `Status` = '審核中' WHERE `WorkflowInstanceID` = %s;
+                        """
+                        await cur.execute(update_query, (existing_workflow[0],))
+                        await conn.commit()  # 添加事务提交
+
                         return {
                             "status": "success", 
                             "message": "已經有審核實例",
