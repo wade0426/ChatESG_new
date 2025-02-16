@@ -5467,6 +5467,7 @@ async def get_pending_reviews(data: dict):
                         WHERE ur.UserID = %s
                     """, (user_id_binary,))
                     role_ids = await cur.fetchall()
+                    # print("role_ids", role_ids)
                     
                     if not role_ids:
                         return {"status": "success", "data": []}
@@ -5483,6 +5484,7 @@ async def get_pending_reviews(data: dict):
                     """, tuple(role_ids_list))
                     
                     permission_chapters = await cur.fetchall()
+                    # print("permission_chapters", permission_chapters)
                     
                     if not permission_chapters:
                         return {"status": "success", "data": []}
@@ -5522,15 +5524,8 @@ async def get_pending_reviews(data: dict):
                         JOIN OrganizationAssets oa ON wi.AssetID = oa.AssetID
                         JOIN Users u ON wsi.SubmitterID = u.UserID
                         WHERE wsi.WorkflowStageID IN ({placeholders})
-                        AND NOT EXISTS (
-                            SELECT 1 
-                            FROM StageApprovalLogs sal 
-                            WHERE sal.WorkflowInstanceID = wi.WorkflowInstanceID 
-                            AND sal.WorkflowStageID = wsi.WorkflowStageID
-                            AND sal.ReviewerID = %s
-                        )
                         ORDER BY wsi.SubmittedAt DESC
-                    """, tuple(workflow_stages_list) + (user_id_binary,))
+                    """, tuple(workflow_stages_list))
                     
                     reviews = await cur.fetchall()
                     
@@ -5547,6 +5542,7 @@ async def get_pending_reviews(data: dict):
                         })
 
                     await conn.commit()
+                    # print("review_list", review_list)
                     return {
                         "status": "success",
                         "data": review_list
@@ -5679,6 +5675,15 @@ async def submit_review(data: dict):
                         SET Status = '已退回', UpdatedAt = CURRENT_TIMESTAMP
                         WHERE WorkflowInstanceID = %s
                     """, (workflow_instance_id_binary,))
+
+                    # 更新 workflowstageinstances 的 WorkflowStageID 為 NULL
+                    await cur.execute("""
+                        UPDATE WorkflowStageInstances 
+                        SET WorkflowStageID = NULL, LastUpdatedAt = CURRENT_TIMESTAMP
+                        WHERE WorkflowInstanceID = %s
+                    """, (workflow_instance_id_binary,))
+                    await conn.commit()
+                    return {"message": "已退回修改", "status": "rejected"}
 
                 # 查詢下一個階段
                 await cur.execute("""
