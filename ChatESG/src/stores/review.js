@@ -122,13 +122,29 @@ export const useReviewStore = defineStore('review', () => {
 
   // 獲取審核歷程
   const fetchReviewHistory = async (workflowInstanceID) => {
-    const response = await fetch('http://localhost:8000/api/report/get_submitted_data', {
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ workflowInstanceID: workflowInstanceID })
-    })
+    try {
+      const response = await fetch('http://localhost:8000/api/report/get_review_progress', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          workflowInstanceID: workflowInstanceID,
+        })
+      });
+      const result = await response.json();
+      console.log("result", result)
+      if (result.status_code === 200) {
+        return result.content.data
+      
+      }
+      // 更新本地狀態
+      // await fetchPendingReviews()
+      return true
+    } catch (error) {
+      console.error('提交審核結果失敗:', error)
+      throw error
+    }
   }
 
   return {
@@ -139,6 +155,7 @@ export const useReviewStore = defineStore('review', () => {
     filteredPendingReviews,
     fetchPendingReviews,
     fetchReviewData,
-    submitReview
+    submitReview,
+    fetchReviewHistory
   }
 }) 

@@ -140,12 +140,7 @@ const closeNav = () => {
 }
 
 // 審核步驟
-const reviewSteps = [
-  { title: '提交審核', description: '等待審核' },
-  { title: '初審', description: '部門主管審核' },
-  { title: '複審', description: '高層審核' },
-  { title: '完成', description: '審核完成' }
-]
+const reviewSteps = ref([])
 
 const currentStep = ref(1) // 審核步驟
 const reviewComment = ref('') // 審核意見
@@ -265,11 +260,26 @@ onMounted(async () => {
     
     // 直接使用 store 中處理好的數據
     currentReview.value = reviewStore.currentReview
-    console.log("組件中的數據:", currentReview.value)
     
-    // // 獲取審核歷程
-    // await reviewStore.fetchReviewHistory(route.query.id)
-    // reviewHistory.value = reviewStore.reviewHistory
+    // 獲取審核歷程
+    const response_data = await reviewStore.fetchReviewHistory(route.query.id)
+
+    // 設定目前審核步驟
+    currentStep.value = response_data.currentStage.stageOrder
+
+    // 建立審核流程步驟
+    const steps = [
+      { title: '提交審核', description: '等待審核' },
+      ...response_data.allStages.map(stage => ({
+        title: stage.stageName,
+        description: stage.stageName
+      })),
+      { title: '完成', description: '審核完成' }
+    ]
+    reviewSteps.value = steps
+
+
+    // reviewHistory.value = response_data
   } catch (error) {
     ElMessage.error('獲取數據失敗')
     console.error('獲取數據失敗:', error)
