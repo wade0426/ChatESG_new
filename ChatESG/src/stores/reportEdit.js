@@ -712,6 +712,7 @@ export const useReportEditStore = defineStore('reportEdit', {
         toast.success('審核送出成功')
       } catch (error) {
         console.error('審核流程時發生錯誤:', error);
+        toast.error('審核流程時發生錯誤:' + error)
         throw error;
       }
     },

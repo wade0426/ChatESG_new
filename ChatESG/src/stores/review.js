@@ -38,7 +38,7 @@ export const useReviewStore = defineStore('review', () => {
         })
 
         const data = await response.json()
-        console.log("response data", data)
+        console.log("待審核列表資料：", data)
         pendingReviews.value = data.data
     } catch (error) {
       console.error('獲取待審核列表失敗:', error)
