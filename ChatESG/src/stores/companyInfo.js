@@ -2,11 +2,13 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useUserStore } from './user'
 import { useRoute } from 'vue-router'
+import { useToast } from 'vue-toastification'
 
 export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 使用 user store
   const userStore = useUserStore()
   const route = useRoute()
+  const toast = useToast()
 
   // 狀態
   const sections = ref([])
@@ -123,6 +125,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
         sectionContents.value[sectionId] = content
       } catch (error) {
         console.error('獲取章節內容錯誤:', error)
+        toast.error(error.message)
       }
     }
   }
