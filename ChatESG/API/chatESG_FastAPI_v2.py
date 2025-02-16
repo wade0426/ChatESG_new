@@ -19,16 +19,6 @@ import os
 from rag_main import find_most_relevant_answer
 from ESG_Criteria_Assessment import Gemini_ESG_Criteria_Assessment
 
-# 載入 .env 檔案
-load_dotenv()
-
-api_keys = list(json.loads(os.getenv("api_keys")))
-model_name = os.getenv("model_name")
-config = os.getenv("config")
-config = dict(json.loads(config))
-base_url = os.getenv("base_url")
-max_retry = int(os.getenv("max_retry"))
-
 # 資料庫配置
 DB_CONFIG = {
     'host': 'localhost',
@@ -139,6 +129,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # 準則檢驗
 @app.post("/api/report/gri_verification_criteria_by_chapter")
 async def gri_verification_criteria_by_chapter(data: dict):
+
+    # 載入 .env 檔案
+    load_dotenv()
+
+    api_keys = list(json.loads(os.getenv("api_keys")))
+    model_name = os.getenv("model_name")
+    config = os.getenv("config")
+    config = dict(json.loads(config))
+    base_url = os.getenv("base_url")
+    max_retry = int(os.getenv("max_retry"))
+    
     try:
         # 傳入整個大章節標題和內容
         esg_report = data.get("chapterTitle_text_content")
