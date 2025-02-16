@@ -5370,6 +5370,20 @@ async def create_workflow_submit_record(data: dict):
 
                 workflow_stage_binary = stage_result[0]
 
+                # 先查詢 workflowstageinstances 表的 WorkflowInstanceID 是否存在
+                await cur.execute("SELECT WorkflowInstanceID FROM WorkflowStageInstances WHERE WorkflowInstanceID = %s", (workflow_instance_binary,))
+                workflow_instance_id_result = await cur.fetchone()
+                if workflow_instance_id_result:
+                    # 如果存在，則更新 workflowstageinstances 的 WorkflowStageID 為 第一階段
+                    await cur.execute("UPDATE WorkflowStageInstances SET WorkflowStageID = %s WHERE WorkflowInstanceID = %s", (workflow_stage_binary, workflow_instance_binary))
+                    await conn.commit()
+                    return {
+                        "status": "success",
+                        "message": "已經更新現有的審核實例",
+                        "data": {}
+                    }
+
+                # 如果 workflowstageinstances 表的 WorkflowInstanceID 不存在，則建立新的審核實例
                 # 生成新的 UUID 作為 WorkflowInstanceStageID
                 workflow_instance_stage_id = str(uuid.uuid4())
                 workflow_instance_stage_binary = bytes.fromhex(workflow_instance_stage_id.replace('-', ''))
