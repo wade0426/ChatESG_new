@@ -5893,6 +5893,30 @@ async def get_review_logs(data: dict):
         print(f"Error in get_review_logs: {str(e)}")
         return {"status": "error", "message": f"獲取審核記錄失敗: {str(e)}"}
 
+
+# 根據 BlockVersionID 獲取審核內容
+@app.post("/api/report/get_review_content")
+async def get_review_content(data: dict):
+    block_version_id = data.get('blockVersionID')
+    if not block_version_id:
+        return {"status": "error", "message": "缺少 blockVersionID"}
+    
+    # 將 UUID 字符串轉換為二進制格式
+    block_version_id_bin = bytes.fromhex(block_version_id.replace('-', ''))
+
+    # 連接資料庫
+    try:
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT SubmittedContent FROM ContentBlockVersions WHERE BlockVersionID = %s", (block_version_id_bin,))
+                content = await cur.fetchone()
+                return {"status": "success", "data": content}
+    except Exception as e:
+        print(f"Error in get_review_content: {str(e)}")
+        return {"status": "error", "message": f"獲取審核內容失敗: {str(e)}"}
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
