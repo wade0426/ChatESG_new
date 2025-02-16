@@ -826,7 +826,6 @@ export const useReportEditStore = defineStore('reportEdit', {
       }
     },
 
-
     // 建立送出審核記錄
     async createWorkflowSubmitRecord(workflow_instance_id, user_id, block_version_id) {
       // console.log('建立送出審核記錄', workflow_instance_id, user_id, block_version_id)
@@ -859,5 +858,50 @@ export const useReportEditStore = defineStore('reportEdit', {
         throw error;
       }
     },
+
+    // 獲取審核記錄
+    async fetchReviewLogs(workflowInstanceID) {
+      try {
+        const response = await fetch('http://localhost:8000/api/report/get_review_logs', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            workflowInstanceID: workflowInstanceID
+          })
+        })
+
+        const result = await response.json();
+        console.log("獲取審核記錄：", result)
+        return result.data
+      } catch (error) {
+        console.error('獲取審核記錄失敗:', error)
+        throw error
+      }
+    },
+
+    // 獲取 workflowInstanceID
+    async fetchWorkflowInstanceID(assetID, chapterTitle) {
+      try {
+        const response = await fetch('http://localhost:8000/api/report/get_workflow_instance_id', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            assetID: assetID,
+            chapterTitle: chapterTitle
+          })
+        })
+        const result = await response.json();
+        console.log("獲取 workflowInstanceID：", result)
+        return result.data.workflowInstanceID
+      } catch (error) {
+        console.error('獲取 workflowInstanceID 失敗:', error)
+        throw error
+      }
+    }
+
   }
 })
