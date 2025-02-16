@@ -186,11 +186,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useReviewStore } from '@/stores/review'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close } from '@element-plus/icons-vue'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import { useReviewStore } from '@/stores/review'
 import { useUserStore } from '@/stores/user'
 
 const isSidebarOpen = ref(false)

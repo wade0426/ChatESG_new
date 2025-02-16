@@ -182,6 +182,11 @@
               <i class="mdi mdi-file-document-check"></i>
               <span>章節審核</span>
             </button>
+            <!-- 新增審核記錄按鈕 -->
+            <button class="history-btn" @click="showReviewHistory">
+              <i class="mdi mdi-history"></i>
+              <span>審核記錄</span>
+            </button>
           </div>
 
           <!-- 準則檢驗結果 -->
@@ -376,6 +381,43 @@
       </div>
     </div>
   </div>
+
+  <!-- 新增審核歷程對話框 -->
+  <el-dialog
+    v-model="reviewHistoryDialogVisible"
+    title="審核歷程"
+    width="50%"
+    :destroy-on-close="true"
+    class="review-history-dialog dark"
+    style="--el-dialog-bg-color: #1E1E1E; --el-text-color-primary: #ffffff;"
+  >
+    <div class="review-history-content">
+      <el-timeline>
+        <el-timeline-item
+          v-for="(history, index) in reviewHistory"
+          :key="index"
+          :type="getHistoryType(history.reviewAction)"
+          :timestamp="formatDate(history.reviewedAt)"
+        >
+          <div class="history-item">
+            <div class="history-header" :class="{ 'approved': history.reviewAction === 'approved', 'rejected': history.reviewAction === 'rejected' }">
+              <div class="history-title">
+                <el-icon :size="16" :color="history.reviewAction === 'approved' ? '#67C23A' : '#F56C6C'" class="status-icon">
+                  <Check v-if="history.reviewAction === 'approved'" />
+                  <Close v-else />
+                </el-icon>
+                <h4>{{ history.stageName }} - {{ history.reviewerName }}</h4>
+              </div>
+              <el-tag :type="getStatusType(history.reviewAction)" :effect="history.reviewAction === 'approved' ? 'dark' : 'light'">
+                {{ history.reviewAction === 'approved' ? '通過' : '退回' }}
+              </el-tag>
+            </div>
+            <p class="history-comment">{{ history.reviewComments }}</p>
+          </div>
+        </el-timeline-item>
+      </el-timeline>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -433,6 +475,70 @@ const comments = ref({})
 const showCommentPanel = ref(false)
 const imageInput = ref(null)
 const currentImages = ref([])
+
+// 審核歷程相關
+const reviewHistoryDialogVisible = ref(false)
+const reviewHistory = ref([])
+
+// 格式化日期
+const formatDate = (date) => {
+  return new Date(date).toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 獲取狀態類型
+const getStatusType = (status) => {
+  const statusMap = {
+    approved: 'success',
+    rejected: 'danger',
+    reviewing: 'warning'
+  }
+  return statusMap[status] || 'info'
+}
+
+// 獲取歷程類型
+const getHistoryType = (status) => {
+  const typeMap = {
+    approved: 'success',
+    rejected: 'danger',
+    reviewing: 'warning'
+  }
+  return typeMap[status] || 'info'
+}
+
+// 顯示審核歷程
+const showReviewHistory = async () => {
+  if (!currentChapter.value) {
+    ElMessage.warning('請先選擇要查看的章節')
+    return
+  }
+
+  try {
+    // 先獲取 workflowInstanceID
+    const workflowInstanceID = await reportEditStore.fetchWorkflowInstanceID(
+      route.query.assetId,
+      currentChapter.value.chapterTitle
+    )
+
+    if (!workflowInstanceID) {
+      ElMessage.warning('尚未有審核記錄')
+      return
+    }
+
+    // 獲取審核記錄
+    const logs = await reportEditStore.fetchReviewLogs(workflowInstanceID)
+    reviewHistory.value = logs
+    reviewHistoryDialogVisible.value = true
+  } catch (error) {
+    console.error('獲取審核記錄失敗:', error)
+    ElMessage.error('獲取審核記錄失敗')
+  }
+}
 
 // 監聽選中的章節變化，更新圖片列表
 watch(selectedSection, (newSection) => {
@@ -2380,5 +2486,192 @@ const getLoadingMessage = computed(() => {
 .criteria-check-btn.disabled i,
 .criteria-check-btn.disabled span {
   opacity: 0.8;
+}
+
+/* 審核歷程對話框樣式 */
+.review-history-dialog :deep(.el-dialog) {
+  background-color: #1E1E1E;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.review-history-dialog :deep(.el-dialog__title) {
+  color: #FFFFFF;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.review-history-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: #FFFFFF;
+}
+
+.review-history-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  margin: 0;
+  border-bottom: 1px solid #333333;
+}
+
+.review-history-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #1E1E1E;
+}
+
+.review-history-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.review-history-content::-webkit-scrollbar-thumb {
+  background-color: #4A5568;
+  border-radius: 3px;
+}
+
+.review-history-content::-webkit-scrollbar-track {
+  background-color: #2D3748;
+}
+
+.history-item {
+  padding: 16px;
+  background-color: #2D3748;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border: 1px solid #3D4A5C;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: -8px -12px 12px;
+  transition: background-color 0.3s ease;
+}
+
+.history-header.approved {
+  background-color: rgba(103, 194, 58, 0.15);
+}
+
+.history-header.rejected {
+  background-color: rgba(245, 108, 108, 0.15);
+}
+
+.history-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.history-header h4 {
+  margin: 0;
+  color: #E2E8F0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.history-comment {
+  color: #CBD5E0;
+  margin: 12px 0 4px;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 0 4px;
+}
+
+:deep(.el-timeline) {
+  padding: 0 8px;
+}
+
+:deep(.el-timeline-item__node) {
+  background-color: #4A5568;
+  border-color: #2D3748;
+  width: 12px;
+  height: 12px;
+}
+
+:deep(.el-timeline-item__tail) {
+  border-left-color: #4A5568;
+}
+
+:deep(.el-timeline-item__wrapper) {
+  padding-left: 28px;
+}
+
+:deep(.el-timeline-item__content) {
+  color: #E2E8F0;
+}
+
+:deep(.el-timeline-item__timestamp) {
+  color: #A0AEC0;
+  font-size: 12px;
+  padding-top: 8px;
+}
+
+:deep(.el-tag) {
+  border: none;
+  padding: 4px 12px;
+  height: 24px;
+  line-height: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+:deep(.el-tag--success) {
+  background-color: rgba(103, 194, 58, 0.2);
+  color: #67C23A;
+}
+
+:deep(.el-tag--danger) {
+  background-color: rgba(245, 108, 108, 0.2);
+  color: #F56C6C;
+}
+
+:deep(.el-tag--warning) {
+  background-color: rgba(230, 162, 60, 0.2);
+  color: #E6A23C;
+}
+
+/* 新增審核記錄按鈕樣式 */
+.history-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #6a7b9a;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-btn:hover {
+  background-color: #2D3748;
+  transform: translateY(-1px);
+}
+
+.history-btn:active {
+  transform: translateY(0);
+}
+
+.dark .history-btn {
+  background-color: #4A5568;
+}
+
+.dark .history-btn:hover {
+  background-color: #2D3748;
 }
 </style>
