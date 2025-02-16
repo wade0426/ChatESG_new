@@ -4722,7 +4722,7 @@ async def update_verification_result(data: dict):
                     if not result:
                         raise HTTPException(status_code=404, detail="未找到指定資產")
 
-                    print(f"當前資產內容: {result[0]}")
+                    # print(f"當前資產內容: {result[0]}")
 
                     # 解析當前內容
                     content = json.loads(result[0])
@@ -4740,7 +4740,7 @@ async def update_verification_result(data: dict):
 
                     # 更新資料庫
                     new_content = json.dumps(content)
-                    print(f"更新後的內容: {new_content}")
+                    # print(f"更新後的內容: {new_content}")
                     
                     await cur.execute(
                         """
