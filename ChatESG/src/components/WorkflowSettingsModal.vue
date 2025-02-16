@@ -784,7 +784,7 @@ defineExpose({
 }
 
 .chapter-item.selected .chapter-title {
-  color: #2563eb;
+  color: #ffffff;
   font-weight: 500;
   transform: translateX(4px);
 }
@@ -1241,11 +1241,22 @@ defineExpose({
 
 .delete-btn {
   background-color: #ef4444;
+  border: none;
   color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .delete-btn:hover {
-  background-color: #dc2626;
+  background-color: #ef4444;
+  transform: translateY(-1px);
+  color: #fff;
 }
 
 /* 拖曳時的樣式 */
@@ -1352,23 +1363,23 @@ defineExpose({
   color: #fff;
 }
 
-.delete-btn {
+.delete-confirm-modal .delete-btn {
+  width: auto;
+  height: auto;
   background-color: #f87171;
-  border: none;
   color: #fff;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
-  cursor: pointer;
   font-weight: 500;
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.delete-btn:hover {
+.delete-confirm-modal .delete-btn:hover {
   background-color: #ef4444;
   transform: translateY(-1px);
+  color: #fff;
 }
 
 @keyframes fadeIn {
