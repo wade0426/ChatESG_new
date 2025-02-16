@@ -5189,7 +5189,7 @@ async def create_workflow_instance(data: dict):
                     FROM WorkflowInstances 
                     WHERE AssetID = %s
                     AND ChapterName = %s
-                    AND Status IN ('審核中', '已退回')
+                    AND Status IN ('審核中', '已退回', '已核准')
                 """
                 await cur.execute(check_query, (asset_binary, chapter_name))
                 existing_workflow = await cur.fetchone()
@@ -5215,6 +5215,11 @@ async def create_workflow_instance(data: dict):
                                 "workflowInstanceID": str(uuid.UUID(bytes=existing_workflow[0]))
                             }
                         }
+                    elif existing_workflow[1] == '已核准':
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"該章節 '{chapter_name}' 已經核准"
+                        )
 
                 # 生成新的 UUID
                 workflow_instance_id = str(uuid.uuid4())
