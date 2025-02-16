@@ -260,7 +260,7 @@ onMounted(async () => {
     
     // 直接使用 store 中處理好的數據
     currentReview.value = reviewStore.currentReview
-    
+
     // 獲取審核歷程
     const response_data = await reviewStore.fetchReviewHistory(route.query.id)
 
@@ -283,6 +283,7 @@ onMounted(async () => {
   } catch (error) {
     ElMessage.error('獲取數據失敗')
     console.error('獲取數據失敗:', error)
+    router.push('/home')
   }
 })
 </script>
