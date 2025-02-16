@@ -105,8 +105,25 @@
                 :type="getHistoryType(history.status)"
                 :timestamp="formatDate(history.time)"
               >
-                <h4>{{ history.reviewer }}</h4>
-                <p>{{ history.comment }}</p>
+                <div class="history-item">
+                  <div class="history-header" :class="{ 'approved': history.status === 'approved', 'rejected': history.status === 'rejected' }">
+                    <div class="history-title">
+                      <el-icon :size="16" :color="history.status === 'approved' ? '#67C23A' : '#F56C6C'" class="status-icon">
+                        <Check v-if="history.status === 'approved'" />
+                        <Close v-else />
+                      </el-icon>
+                      <h4>{{ history.stage }} - {{ history.reviewer }}</h4>
+                    </div>
+                    <el-tag :type="getStatusType(history.status)" :effect="history.status === 'approved' ? 'dark' : 'light'">
+                      {{ history.status === 'approved' ? '通過' : '退回' }}
+                    </el-tag>
+                  </div>
+                  <p class="history-comment">{{ history.comment }}</p>
+                  
+                  <el-button type="primary" link @click="showHistoryVersion(history.blockVersionID)">
+                    查看當時版本
+                  </el-button>
+                </div>
               </el-timeline-item>
             </el-timeline>
           </div>
@@ -114,6 +131,56 @@
       </div>
     </div>
   </div>
+
+  <!-- 歷史版本對話框 -->
+  <el-dialog
+    v-model="historyDialogVisible"
+    title="歷史版本內容"
+    width="80%"
+    :destroy-on-close="true"
+    class="history-dialog"
+  >
+    <div v-if="selectedHistoryVersion" class="history-dialog-content">
+      <template v-for="(chapter, chapterIndex) in selectedHistoryVersion.chapters" :key="chapterIndex">
+        <div class="chapter">
+          <h3>{{ chapter.chapterTitle }}</h3>
+          
+          <template v-for="(subChapter, subIndex) in chapter.subChapters" :key="subIndex">
+            <div class="sub-chapter">
+              <h4>{{ subChapter.subChapterTitle }}</h4>
+              
+              <!-- 文字內容 -->
+              <div class="content-text">
+                {{ subChapter.txt }}
+              </div>
+              
+              <!-- 圖片內容 -->
+              <div v-if="subChapter.img_content?.length" class="content-images">
+                <div v-for="(img, imgIndex) in subChapter.img_content" :key="imgIndex" class="image-container">
+                  <el-image
+                    :src="img.url"
+                    :preview-src-list="[img.url]"
+                    :preview-teleported="true"
+                    :initial-index="imgIndex"
+                    fit="cover"
+                    class="content-image"
+                    loading="lazy"
+                  />
+                  <div class="image-info" v-if="img.title || img.subtitle">
+                    <h5 v-if="img.title">{{ img.title }}</h5>
+                    <p v-if="img.subtitle">{{ img.subtitle }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+    <div v-else class="history-version-loading">
+      <el-skeleton :rows="3" animated />
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -121,6 +188,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useReviewStore } from '@/stores/review'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check, Close } from '@element-plus/icons-vue'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import { useUserStore } from '@/stores/user'
@@ -147,6 +215,9 @@ const reviewComment = ref('') // 審核意見
 const showHistory = ref(false) // 是否顯示審核歷程
 const currentReview = ref(null) // 當前審核內容
 const reviewHistory = ref([]) // 審核歷程
+const historyVersions = ref({}) // 儲存歷史版本內容
+const historyDialogVisible = ref(false)
+const selectedHistoryVersion = ref(null)
 
 // 獲取狀態類型
 const getStatusType = (status) => {
@@ -183,6 +254,25 @@ const formatDate = (date) => {
 // 切換歷程顯示
 const toggleHistory = () => {
   showHistory.value = !showHistory.value
+}
+
+// 顯示歷史版本
+const showHistoryVersion = async (blockVersionID) => {
+  if (!historyVersions.value[blockVersionID]) {
+    try {
+      const content = await reviewStore.fetchReviewContentByBlockVersionID(blockVersionID)
+      if (content && content.length > 0) {
+        const parsedContent = JSON.parse(content[0])
+        historyVersions.value[blockVersionID] = parsedContent
+      }
+    } catch (error) {
+      console.error('獲取歷史版本失敗:', error)
+      ElMessage.error('獲取歷史版本失敗')
+      return
+    }
+  }
+  selectedHistoryVersion.value = historyVersions.value[blockVersionID]
+  historyDialogVisible.value = true
 }
 
 // 處理審核通過
@@ -278,6 +368,16 @@ onMounted(async () => {
     ]
     reviewSteps.value = steps
 
+    // 獲取審核記錄
+    const logs = await reviewStore.fetchReviewLogs(route.query.id)
+    reviewHistory.value = logs.map(log => ({
+      reviewer: log.reviewerName,
+      stage: log.stageName,
+      status: log.reviewAction,
+      comment: log.reviewComments,
+      time: log.reviewedAt,
+      blockVersionID: log.blockVersionID
+    }))
 
     // reviewHistory.value = response_data
   } catch (error) {
@@ -543,13 +643,122 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: -8px -12px 12px;
+  transition: background-color 0.3s ease;
+}
+
+.history-header.approved {
+  background-color: rgba(103, 194, 58, 0.1);
+}
+
+.history-header.rejected {
+  background-color: rgba(245, 108, 108, 0.1);
+}
+
+.history-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.history-header h4 {
+  margin: 0;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.history-header :deep(.el-tag) {
+  padding: 0 12px;
+  height: 24px;
+  line-height: 24px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.history-header :deep(.el-tag--success) {
+  --el-tag-bg-color: var(--el-color-success);
+}
+
+.history-header :deep(.el-tag--danger) {
+  --el-tag-bg-color: transparent;
+  border-color: var(--el-color-danger);
+  color: var(--el-color-danger);
 }
 
 .history-content {
   max-height: calc(100vh - 500px);
   overflow-y: auto;
   padding-right: 16px;
+}
+
+.history-item {
+  padding: 12px;
+  background-color: #333333;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.history-comment {
+  color: #D0D0D0;
+  margin: 8px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.history-version {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #2A2A2A;
+  border-radius: 8px;
+}
+
+.history-version-loading {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #2A2A2A;
+  border-radius: 8px;
+}
+
+:deep(.el-skeleton) {
+  --el-skeleton-color: #333333;
+  --el-skeleton-to-color: #444444;
+}
+
+:deep(.el-collapse) {
+  border: none;
+  background-color: transparent;
+}
+
+:deep(.el-collapse-item__header) {
+  background-color: transparent;
+  color: #5B8FF9;
+  border: none;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+:deep(.el-collapse-item__content) {
+  background-color: transparent;
+  color: #D0D0D0;
+  padding: 0;
+}
+
+:deep(.el-collapse-item__wrap) {
+  border: none;
+  background-color: transparent;
 }
 
 :deep(.el-timeline-item__node) {
@@ -594,5 +803,39 @@ onMounted(async () => {
 
 :deep(.el-image-viewer__actions) {
   z-index: 2001;
+}
+
+.history-dialog :deep(.el-dialog__body) {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.history-dialog-content {
+  background-color: #262626;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.history-dialog :deep(.el-dialog) {
+  background-color: #1E1E1E;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.history-dialog :deep(.el-dialog__title) {
+  color: #FFFFFF;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.history-dialog :deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: #FFFFFF;
+}
+
+.history-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  margin: 0;
+  border-bottom: 1px solid #333333;
 }
 </style> 

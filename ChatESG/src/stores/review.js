@@ -120,7 +120,7 @@ export const useReviewStore = defineStore('review', () => {
     }
   }
 
-  // 獲取審核歷程
+  // 獲取審核歷程 - 狀態顯示
   const fetchReviewHistory = async (workflowInstanceID) => {
     try {
       const response = await fetch('http://localhost:8000/api/report/get_review_progress', {
@@ -133,7 +133,7 @@ export const useReviewStore = defineStore('review', () => {
         })
       });
       const result = await response.json();
-      console.log("result", result)
+      console.log("獲取審核歷程：", result)
       if (result.status_code === 200) {
         return result.content.data
       
@@ -142,7 +142,50 @@ export const useReviewStore = defineStore('review', () => {
       // await fetchPendingReviews()
       return true
     } catch (error) {
-      console.error('提交審核結果失敗:', error)
+      console.error('獲取審核歷程失敗:', error)
+      throw error
+    }
+  }
+
+  // 獲取審核記錄
+  const fetchReviewLogs = async (workflowInstanceID) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/report/get_review_logs', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          workflowInstanceID: workflowInstanceID
+        })
+      })
+      const result = await response.json();
+      console.log("獲取審核記錄：", result)
+      return result.data
+    } catch (error) {
+      console.error('獲取審核記錄失敗:', error)
+      throw error
+    }
+  }
+
+  // 根據 BlockVersionID 獲取歷史審核內容
+  const fetchReviewContentByBlockVersionID = async (blockVersionID) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/report/get_review_content', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          blockVersionID: blockVersionID
+        })
+      })
+      const result = await response.json();
+      console.log("獲取歷史審核內容：", result)
+      return result.data
+
+    } catch (error) {
+      console.error('獲取歷史審核內容失敗:', error)
       throw error
     }
   }
@@ -156,6 +199,8 @@ export const useReviewStore = defineStore('review', () => {
     fetchPendingReviews,
     fetchReviewData,
     submitReview,
-    fetchReviewHistory
+    fetchReviewHistory,
+    fetchReviewLogs,
+    fetchReviewContentByBlockVersionID
   }
 }) 
