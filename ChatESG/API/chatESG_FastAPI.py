@@ -5007,6 +5007,12 @@ async def save_workflow_stage(data: dict):
         pool = await get_db_pool()
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
+                # 使用 AssetID 和 ChapterName 查詢 workflowinstances 表，看是否已經存在實例並且 Status 為 審核中。
+                await cur.execute("SELECT Status FROM WorkflowInstances WHERE AssetID = %s AND ChapterName = %s", (asset_id_binary, chapter_name))
+                result = await cur.fetchone()
+                if result and result[0] == '審核中':
+                    return {"status": "error", "message": "審核中無法修改審核流程"}
+
                 # 獲取組織ID
                 await cur.execute(
                     "SELECT OrganizationID FROM OrganizationAssets WHERE AssetID = %s",
