@@ -5830,6 +5830,69 @@ async def get_review_progress(data: dict):
         raise HTTPException(status_code=500, detail="獲取審核進度時發生錯誤")
 
 
+# 獲取審核記錄
+@app.post("/api/report/get_review_logs")
+async def get_review_logs(data: dict):
+    try:
+        workflow_instance_id = data.get('workflowInstanceID')
+        if not workflow_instance_id:
+            return {"status": "error", "message": "缺少 workflowInstanceID"}
+
+        # 將 UUID 字符串轉換為二進制格式
+        workflow_instance_id_bin = bytes.fromhex(workflow_instance_id.replace('-', ''))
+
+        # 連接資料庫
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # 構建查詢 SQL
+                query = """
+                    SELECT 
+                        sal.ApprovalStageLogID,
+                        ws.StageOrder,
+                        ws.StageName,
+                        u.UserName as ReviewerName,
+                        sal.ReviewAction,
+                        sal.ReviewComments,
+                        sal.ReviewedAt,
+                        sal.BlockVersionID,
+                        cbv.SubmittedContent
+                    FROM StageApprovalLogs sal
+                    LEFT JOIN WorkflowStages ws ON sal.WorkflowStageID = ws.WorkflowStageID
+                    LEFT JOIN Users u ON sal.ReviewerID = u.UserID
+                    LEFT JOIN ContentBlockVersions cbv ON sal.BlockVersionID = cbv.BlockVersionID
+                    WHERE sal.WorkflowInstanceID = %s
+                    ORDER BY sal.ReviewedAt DESC, ws.StageOrder DESC
+                """
+                
+                await cur.execute(query, (workflow_instance_id_bin,))
+                review_logs = await cur.fetchall()
+
+                # 處理查詢結果
+                formatted_logs = []
+                for log in review_logs:
+                    formatted_log = {
+                        "approvalStageLogID": log['ApprovalStageLogID'].hex() if log['ApprovalStageLogID'] else None,
+                        "stageOrder": log['StageOrder'],
+                        "stageName": log['StageName'],
+                        "reviewerName": log['ReviewerName'],
+                        "reviewAction": log['ReviewAction'],
+                        "reviewComments": log['ReviewComments'],
+                        "reviewedAt": log['ReviewedAt'].isoformat() if log['ReviewedAt'] else None,
+                        "blockVersionID": log['BlockVersionID'].hex() if log['BlockVersionID'] else None,
+                        "submittedContent": log['SubmittedContent']
+                    }
+                    formatted_logs.append(formatted_log)
+
+                return {
+                    "status": "success",
+                    "data": formatted_logs
+                }
+
+    except Exception as e:
+        print(f"Error in get_review_logs: {str(e)}")
+        return {"status": "error", "message": f"獲取審核記錄失敗: {str(e)}"}
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
