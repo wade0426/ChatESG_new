@@ -12,7 +12,11 @@ export const useReportEditStore = defineStore('reportEdit', {
     asset_id: null,
     chapters: [],
     workflow_instance_id: null,
-    block_version_id: null
+    block_version_id: null,
+    loading: {
+      isGenerating: false,
+      currentAction: null
+    }
   }),
 
   getters: {
@@ -566,6 +570,9 @@ export const useReportEditStore = defineStore('reportEdit', {
 
     // 生成報告書文字
     async generateText(chapterTitle, subChapterTitle) {
+      if (this.loading.isGenerating) return
+      this.loading.isGenerating = true
+      this.loading.currentAction = 'generateText'
       try {
         const company_info_assetID = this.company_info_assetID
         const response = await fetch(`http://localhost:8000/api/report/generate_text`, {
@@ -585,7 +592,6 @@ export const useReportEditStore = defineStore('reportEdit', {
 
         const responseData = await response.json()
         if (responseData.status === 'success') {
-          // console.log("生成文字成功", responseData)
           return responseData
         } else {
           throw new Error('生成文字失敗')
@@ -593,11 +599,17 @@ export const useReportEditStore = defineStore('reportEdit', {
       } catch (error) {
         console.error('生成報告書文字時發生錯誤:', error)
         throw error
+      } finally {
+        this.loading.isGenerating = false
+        this.loading.currentAction = null
       }
     },
 
     // 準則檢驗
     async verification_criteria_by_chapter(chapterTitle, chapterTitle_text_content) {
+      if (this.loading.isGenerating) return
+      this.loading.isGenerating = true
+      this.loading.currentAction = 'criteriaCheck'
       try {
         const response = await fetch(`http://localhost:8002/api/report/gri_verification_criteria_by_chapter`, {
           method: 'POST',
@@ -635,6 +647,9 @@ export const useReportEditStore = defineStore('reportEdit', {
       } catch (error) {
         console.error('準則檢驗時發生錯誤:', error)
         throw error
+      } finally {
+        this.loading.isGenerating = false
+        this.loading.currentAction = null
       }
     },
 
@@ -677,6 +692,9 @@ export const useReportEditStore = defineStore('reportEdit', {
 
     // 生成圖片(Mermaid)
     async generateMermaidImage(text) {
+      if (this.loading.isGenerating) return
+      this.loading.isGenerating = true
+      this.loading.currentAction = 'generateImage'
       try {
         const response = await fetch(`http://localhost:8000/api/report/generate_mermaid_image`, {
           method: 'POST',
@@ -699,6 +717,9 @@ export const useReportEditStore = defineStore('reportEdit', {
       } catch (error) {
         console.error('生成 Mermaid 圖片時發生錯誤:', error)
         throw error
+      } finally {
+        this.loading.isGenerating = false
+        this.loading.currentAction = null
       }
     },
 

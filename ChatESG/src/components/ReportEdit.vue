@@ -2,6 +2,11 @@
 
 <template>
   <div :class="['editor-container', theme]">
+    <!-- 添加 loading 提示訊息 -->
+    <div v-if="reportEditStore.loading.isGenerating" class="loading-message">
+      <i class="mdi mdi-loading mdi-spin"></i>
+      <span>{{ getLoadingMessage }}</span>
+    </div>
     <!-- 引入頂部導航欄 -->
     <ReportEditNav 
       @toggle-sidebar="toggleSidebar" 
@@ -163,14 +168,19 @@
 
           <!-- 準則檢驗按鈕 -->
           <div class="criteria-check-container">
-            <button class="criteria-check-btn" @click="handleCriteriaCheck">
+            <button 
+              class="criteria-check-btn"
+              @click="handleCriteriaCheck"
+              :disabled="reportEditStore.loading.isGenerating"
+              :class="{ 'disabled': reportEditStore.loading.isGenerating }"
+            >
               <i class="mdi mdi-check-circle"></i>
-              準則檢驗
+              <span>準則檢驗</span>
             </button>
             <!-- 新增審核按鈕 -->
             <button class="review-btn" @click="handleReview">
               <i class="mdi mdi-file-document-check"></i>
-              章節審核
+              <span>章節審核</span>
             </button>
           </div>
 
@@ -190,15 +200,31 @@
                 <h3>{{ getCurrentSectionTitle() }}</h3>
               </div>
               <div class="toolbar-actions">
-                <button class="toolbar-btn generate-text-btn" @click="handleGenerateText" title="生成文字">
+                <button 
+                  class="toolbar-btn generate-text-btn" 
+                  @click="handleGenerateText" 
+                  :disabled="reportEditStore.loading.isGenerating"
+                  :class="{ 'disabled': reportEditStore.loading.isGenerating }"
+                  title="生成文字"
+                >
                   <i class="mdi mdi-text"></i>
                   <span>生成文字</span>
                 </button>
-                <button class="toolbar-btn generate-image-btn" @click="handleGenerateImage" title="生成圖片">
+                <button 
+                  class="toolbar-btn generate-image-btn" 
+                  @click="handleGenerateImage" 
+                  :disabled="reportEditStore.loading.isGenerating"
+                  :class="{ 'disabled': reportEditStore.loading.isGenerating }"
+                  title="生成圖片"
+                >
                   <i class="mdi mdi-image"></i>
                   <span>生成圖片</span>
                 </button>
-                <button class="toolbar-btn upload-btn" @click="triggerImageUpload" title="上傳圖片">
+                <button 
+                  class="toolbar-btn upload-btn" 
+                  @click="triggerImageUpload" 
+                  title="上傳圖片"
+                >
                   <i class="mdi mdi-image-plus"></i>
                   <span>上傳圖片</span>
                 </button>
@@ -472,10 +498,10 @@ const selectSection = async (sectionId) => {
 
   // 如果存在上一個章節，則輸出切換訊息並更新內容
   if (previousSection.value && previousContent) {
-    console.log(`章節切換: ${previousTitle} -> ${newTitle}`);
-    console.log('原章節 BlockID:', previousBlockId);
-    console.log('原文內容:', previousContent);
-    console.log('User ID:', userStore.userID);
+    // console.log(`章節切換: ${previousTitle} -> ${newTitle}`);
+    // console.log('原章節 BlockID:', previousBlockId);
+    // console.log('原文內容:', previousContent);
+    // console.log('User ID:', userStore.userID);
     
     try {
       await reportEditStore.updateReportBlockData(previousBlockId, userStore.userID);
@@ -944,6 +970,20 @@ const handleGenerateImage = async () => {
     ElMessage.error('生成圖片失敗: ' + error.message)
   }
 }
+
+// 添加計算屬性
+const getLoadingMessage = computed(() => {
+  switch (reportEditStore.loading.currentAction) {
+    case 'generateText':
+      return '正在生成文字，請稍後...'
+    case 'generateImage':
+      return '正在生成圖片，請稍後...'
+    case 'criteriaCheck':
+      return '正在進行準則檢驗，請稍後...'
+    default:
+      return '處理中，請稍後...'
+  }
+})
 </script>
 
 <style scoped>
@@ -2235,5 +2275,110 @@ const handleGenerateImage = async () => {
 
 .dark .review-btn:hover {
   background-color: #059669;
+}
+
+/* 添加 loading 提示訊息樣式 */
+.loading-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  animation: slideIn 0.3s ease;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .loading-message {
+  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.loading-message i {
+  font-size: 20px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 添加旋轉動畫 */
+.mdi-spin {
+  animation: spin 1s infinite linear;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 添加禁用狀態樣式 */
+.toolbar-btn.disabled,
+.criteria-check-btn.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.dark .toolbar-btn.disabled,
+.dark .criteria-check-btn.disabled {
+  opacity: 0.5;
+}
+
+/* 修改按鈕 hover 效果 */
+.toolbar-btn:not(.disabled):hover,
+.criteria-check-btn:not(.disabled):hover {
+  transform: translateY(-1px);
+}
+
+.toolbar-btn:not(.disabled):active,
+.criteria-check-btn:not(.disabled):active {
+  transform: translateY(0);
+}
+
+/* 添加禁用時的過渡效果 */
+.toolbar-btn,
+.criteria-check-btn {
+  transition: all 0.3s ease, opacity 0.2s ease;
+}
+
+/* 添加禁用時的視覺反饋 */
+.toolbar-btn.disabled::after,
+.criteria-check-btn.disabled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* 確保按鈕內容在禁用時保持清晰 */
+.toolbar-btn.disabled i,
+.toolbar-btn.disabled span,
+.criteria-check-btn.disabled i,
+.criteria-check-btn.disabled span {
+  opacity: 0.8;
 }
 </style>
