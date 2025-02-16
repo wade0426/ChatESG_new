@@ -274,7 +274,7 @@ onMounted(async () => {
         title: stage.stageName,
         description: stage.stageName
       })),
-      { title: '完成', description: '審核完成' }
+      // { title: '完成', description: '審核完成' }
     ]
     reviewSteps.value = steps
 
