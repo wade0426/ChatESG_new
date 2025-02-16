@@ -5917,6 +5917,59 @@ async def get_review_content(data: dict):
         return {"status": "error", "message": f"獲取審核內容失敗: {str(e)}"}
 
 
+# 獲取 workflowInstanceID
+@app.post("/api/report/get_workflow_instance_id")
+async def get_workflow_instance_id(data: dict):
+    try:
+        asset_id = data.get('assetID')
+        chapter_title = data.get('chapterTitle')
+
+        if not asset_id or not chapter_title:
+            return {"status": "error", "message": "缺少必要參數 assetID 或 chapterTitle"}
+
+        # 將 UUID 字符串轉換為二進制格式
+        asset_id_bin = bytes.fromhex(asset_id.replace('-', ''))
+
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 查詢最新的工作流實例
+                query = """
+                    SELECT WorkflowInstanceID, 
+                           Status, 
+                           StartTime,
+                           EndTime
+                    FROM WorkflowInstances 
+                    WHERE AssetID = %s AND ChapterName = %s
+                    ORDER BY StartTime DESC 
+                    LIMIT 1
+                """
+                await cur.execute(query, (asset_id_bin, chapter_title))
+                result = await cur.fetchone()
+
+                if result:
+                    workflow_instance_id = result[0].hex() if result[0] else None
+                    return {
+                        "status": "success",
+                        "data": {
+                            "workflowInstanceID": workflow_instance_id,
+                            "status": result[1],
+                            "startTime": result[2].isoformat() if result[2] else None,
+                            "endTime": result[3].isoformat() if result[3] else None
+                        }
+                    }
+                else:
+                    return {
+                        "status": "success",
+                        "data": None,
+                        "message": "未找到相關的工作流實例"
+                    }
+
+    except Exception as e:
+        print(f"Error in get_workflow_instance_id: {str(e)}")
+        return {"status": "error", "message": f"查詢工作流實例時發生錯誤: {str(e)}"}
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
