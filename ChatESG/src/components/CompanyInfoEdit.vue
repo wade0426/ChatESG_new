@@ -1255,6 +1255,8 @@ const showEditTitleModal = (sectionId, title, event) => {
   position: relative;
   display: flex;
   gap: 1rem;
+  min-height: 300px;
+  height: auto;
 }
 
 .add-comment-btn {
@@ -1502,6 +1504,8 @@ const showEditTitleModal = (sectionId, title, event) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 300px;
+  height: auto;
 }
 
 .textarea-header {
@@ -1516,9 +1520,9 @@ const showEditTitleModal = (sectionId, title, event) => {
 }
 
 .content-textarea {
-  flex: 1;
   width: 100%;
   min-height: 200px;
+  height: auto;
   padding: 1rem;
   border-radius: 0 0 8px 8px;
   resize: vertical;
@@ -1527,6 +1531,7 @@ const showEditTitleModal = (sectionId, title, event) => {
   font-size: var(--editor-font-size, 16px);
   border: 1px solid var(--border-color);
   border-top: none;
+  overflow-y: auto;
 }
 
 .light .content-textarea {
@@ -1554,6 +1559,10 @@ const showEditTitleModal = (sectionId, title, event) => {
 
 .input-area {
   margin-top: 1rem;
+  min-height: 300px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .section-actions {
