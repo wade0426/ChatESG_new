@@ -175,11 +175,19 @@
         <!-- 只有在選中最小層級標題時才顯示輸入框 -->
         <div v-if="isLeafSection(selectedSection)" class="input-area">
           <div class="content-wrapper">
-            <textarea 
-              v-model="sectionContents[selectedSection]" 
-              class="content-textarea"
-              :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
-            ></textarea>
+            <div class="textarea-container">
+              <div class="textarea-header">
+                <HintComponent 
+                  :title="getCurrentSectionTitle()"
+                  :is-dark-mode="theme === 'dark'"
+                />
+              </div>
+              <textarea 
+                v-model="sectionContents[selectedSection]" 
+                class="content-textarea"
+                :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
+              ></textarea>
+            </div>
             
             <!-- 註解按鈕 -->
             <button 
@@ -292,6 +300,7 @@ import { useCompanyInfoStore } from '@/stores/companyInfo'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import CompanyInfoEditNav from './CompanyInfoEditNav.vue'
+import HintComponent from './HintComponent.vue'
 import { v4 as uuidv4 } from 'uuid'
 
 // 使用 toast
@@ -1242,15 +1251,282 @@ const showEditTitleModal = (sectionId, title, event) => {
   display: none;
 }
 
+.content-wrapper {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+}
+
+.add-comment-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  /* 暫時關閉註解功能 */
+  /* display: flex; */
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+  z-index: 999; /* 確保按鈕在適當的層級 */
+}
+
+.content-wrapper:hover .add-comment-btn {
+  opacity: 1;
+}
+
+.add-comment-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .add-comment-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.comment-panel {
+  position: fixed;
+  top: 60px;
+  right: -300px; /* 初始位置在視窗外 */
+  width: 300px;
+  height: calc(100vh - 60px);
+  background-color: var(--bg-color);
+  border-left: 1px solid var(--border-color);
+  transition: right 0.3s ease;
+  z-index: 1000;
+}
+
+.comment-panel.show {
+  right: 0;
+}
+
+.dark .comment-panel {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.comment-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comment-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-btn.resolved {
+  background-color: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+.close-btn {
+  padding: 0.25rem;
+  border: none;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.comment-body {
+  padding: 1rem;
+}
+
+.comment-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.dark .comment-textarea:focus {
+  border-color: #60a5fa;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: #dc2626;
+}
+
+.section-title:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+.dark .delete-btn {
+  color: #ef4444;
+}
+
+.dark .delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* 添加新的樣式 */
+.add-main-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.add-main-section-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.light .add-main-section-btn {
+  border-color: #e2e8f0;
+  color: #4b5563;
+}
+
+.dark .add-main-section-btn {
+  border-color: #2d2d2d;
+  color: #e2e8f0;
+}
+
+.add-main-section-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .add-main-section-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.add-main-section-btn i {
+  font-size: 1.2rem;
+}
+
+/* 確保 modal 樣式與其他 modal 一致 */
+.modal-overlay {
+  z-index: 1001;
+}
+
+/* 摺疊/展開按鈕樣式 */
+.toggle-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.light .toggle-btn {
+  color: #4b5563;
+}
+
+.dark .toggle-btn {
+  color: #e2e8f0;
+}
+
+.toggle-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.textarea-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.textarea-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dark .textarea-header {
+  border-bottom-color: #2d2d2d;
+}
+
 .content-textarea {
+  flex: 1;
   width: 100%;
   min-height: 200px;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   resize: vertical;
   font-family: inherit;
   line-height: 1.5;
   font-size: var(--editor-font-size, 16px);
+  border: 1px solid var(--border-color);
+  border-top: none;
 }
 
 .light .content-textarea {
@@ -1508,253 +1784,6 @@ const showEditTitleModal = (sectionId, title, event) => {
 }
 
 .dark .edit-title-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.content-wrapper {
-  position: relative;
-  display: flex;
-  gap: 1rem;
-}
-
-.add-comment-btn {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  /* 暫時關閉註解功能 */
-  /* display: flex; */
-  display: none;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: none;
-  color: var(--text-color);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  opacity: 0;
-  z-index: 999; /* 確保按鈕在適當的層級 */
-}
-
-.content-wrapper:hover .add-comment-btn {
-  opacity: 1;
-}
-
-.add-comment-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.dark .add-comment-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.comment-panel {
-  position: fixed;
-  top: 60px;
-  right: -300px; /* 初始位置在視窗外 */
-  width: 300px;
-  height: calc(100vh - 60px);
-  background-color: var(--bg-color);
-  border-left: 1px solid var(--border-color);
-  transition: right 0.3s ease;
-  z-index: 1000;
-}
-
-.comment-panel.show {
-  right: 0;
-}
-
-.dark .comment-panel {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.comment-header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.comment-header h4 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.comment-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.status-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: none;
-  color: var(--text-color);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.status-btn.resolved {
-  background-color: #059669;
-  color: white;
-  border-color: #059669;
-}
-
-.close-btn {
-  padding: 0.25rem;
-  border: none;
-  background: none;
-  color: var(--text-color);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.dark .close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.comment-body {
-  padding: 1rem;
-}
-
-.comment-textarea {
-  width: 100%;
-  min-height: 100px;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  resize: vertical;
-  font-family: inherit;
-  line-height: 1.5;
-}
-
-.comment-textarea:focus {
-  outline: none;
-  border-color: #2563eb;
-}
-
-.dark .comment-textarea:focus {
-  border-color: #60a5fa;
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: all 0.2s ease;
-  color: #dc2626;
-}
-
-.section-title:hover .delete-btn {
-  opacity: 1;
-}
-
-.delete-btn:hover {
-  background-color: rgba(220, 38, 38, 0.1);
-}
-
-.dark .delete-btn {
-  color: #ef4444;
-}
-
-.dark .delete-btn:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-}
-
-/* 添加新的樣式 */
-.add-main-section {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.add-main-section-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px dashed var(--border-color);
-  border-radius: 6px;
-  background: none;
-  color: var(--text-color);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.light .add-main-section-btn {
-  border-color: #e2e8f0;
-  color: #4b5563;
-}
-
-.dark .add-main-section-btn {
-  border-color: #2d2d2d;
-  color: #e2e8f0;
-}
-
-.add-main-section-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.dark .add-main-section-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.add-main-section-btn i {
-  font-size: 1.2rem;
-}
-
-/* 確保 modal 樣式與其他 modal 一致 */
-.modal-overlay {
-  z-index: 1001;
-}
-
-/* 摺疊/展開按鈕樣式 */
-.toggle-btn {
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.light .toggle-btn {
-  color: #4b5563;
-}
-
-.dark .toggle-btn {
-  color: #e2e8f0;
-}
-
-.toggle-btn:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.dark .toggle-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 </style>

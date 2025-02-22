@@ -20,6 +20,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   const theme = ref('dark')
   const previousSection = ref(null)
   const assetName = ref('')
+  const hints = ref({})
 
   // Getters
   const getCurrentSectionTitle = () => {
@@ -320,6 +321,71 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     }
   }
 
+  // 新增提示相關的方法
+  const fetchHint = async (title) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/hints/get_hint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title,
+          asset_id: route.query.assetId
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || '獲取提示失敗')
+      }
+
+      const data = await response.json()
+      if (data.status === 'success') {
+        hints.value[title] = data.data.hint
+        console.log(data)
+        return data.data.hint
+      } else {
+        throw new Error(data.message || '獲取提示失敗')
+      }
+    } catch (error) {
+      console.error('獲取提示失敗:', error)
+      throw error
+    }
+  }
+
+  // 生成提示
+  const generateHint = async (title) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/hints/generate_hint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title,
+          asset_id: route.query.assetId
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || '生成提示失敗')
+      }
+
+      const data = await response.json()
+      if (data.status === 'success') {
+        hints.value[title] = data.data.hint
+        return data.data.hint
+      } else {
+        throw new Error(data.message || '生成提示失敗')
+      }
+    } catch (error) {
+      console.error('生成提示失敗:', error)
+      throw error
+    }
+  }
+
   return {
     // 狀態
     sections,
@@ -331,6 +397,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     theme,
     previousSection,
     assetName,
+    hints,
 
     // Getters
     getCurrentSectionTitle,
@@ -347,6 +414,8 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
     fetchSectionContent,
     addCompanyInfoChapter,
     deleteCompanyInfoChapter,
-    editCompanyInfoChapter
+    editCompanyInfoChapter,
+    fetchHint,
+    generateHint
   }
 }) 
