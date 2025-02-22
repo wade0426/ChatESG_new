@@ -5970,6 +5970,26 @@ async def get_workflow_instance_id(data: dict):
         return {"status": "error", "message": f"查詢工作流實例時發生錯誤: {str(e)}"}
 
 
+# 獲取提示
+@app.post("/api/hints/get_hint")
+async def get_hint(data: dict):
+    title = data.get('title')
+    asset_id = data.get('asset_id')
+
+    if not title:
+        return {"status": "error", "message": "缺少必要參數 title"}
+    
+    # 獲取提示
+    # "D:/NTCUST/Project/ChatESG_new/definition/tipsMap.json"
+    with open("D:/NTCUST/Project/ChatESG_new/definition/tipsMap.json", "r", encoding="utf-8") as file:
+        # 產業暫時固定為金融業
+        industry = "金融業"
+        tips_map = json.load(file)
+        hint = tips_map.get(industry, {}).get(title, "")
+    return {"status": "success", "data": {"hint": hint}}
+
+
+
 if __name__ == "__main__":
     uvicorn.run("chatESG_FastAPI:app", host="0.0.0.0", port=8000, reload=True)
 
