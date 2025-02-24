@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 const toast = useToast()
 
@@ -112,7 +114,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 新增：將 base64 轉換為 URL 的方法
     async convertBase64ToUrl(base64String) {
       try {
-        const response = await fetch(`http://localhost:8000/api/base64_to_url`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/base64_to_url`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -231,7 +233,7 @@ export const useReportEditStore = defineStore('reportEdit', {
 
     // 使用API獲取報告書大綱
     async fetchReportData(data) {
-      const response = await fetch(`http://localhost:8000/api/report/get_report_data`, {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_report_data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -249,7 +251,7 @@ export const useReportEditStore = defineStore('reportEdit', {
 
     // 使用API獲取報告書Block內容
     async fetchReportBlockData(data) {
-      const response = await fetch(`http://localhost:8000/api/report/get_report_block_data`, {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_report_block_data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -297,7 +299,7 @@ export const useReportEditStore = defineStore('reportEdit', {
         
         console.log("formatted content", content)
         
-        const response = await fetch(`http://localhost:8000/api/report/update_report_block_data`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/update_report_block_data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -329,7 +331,7 @@ export const useReportEditStore = defineStore('reportEdit', {
           chapters: this.chapters
         }
 
-        const response = await fetch(`http://localhost:8000/api/report/update_report_outline`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/update_report_outline`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -356,7 +358,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 更新報告書大綱(新增章節標題)
     async updateReportOutlineAddChapterTitle(chapterTitle, asset_id) {
       try {
-        const response = await fetch(`http://localhost:8000/api/report/update_report_outline_add_chapter_title`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/update_report_outline_add_chapter_title`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -390,7 +392,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     async updateReportOutlineRenameChapterTitle(chapterTitle, newChapterTitle) {
       const asset_id = this.asset_id
       try {
-        const response = await fetch(`http://localhost:8000/api/report/rename_chapter_title`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/rename_chapter_title`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -428,7 +430,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     async deleteReportOutline(chapterTitle) {
       try {
         const asset_id = this.asset_id;
-        const response = await fetch(`http://localhost:8000/api/report/delete_report_outline`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/delete_report_outline`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ asset_id: asset_id, chapterTitle: chapterTitle })
@@ -457,7 +459,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     async addSubChapter_api(chapterTitle, subChapterTitle, user_id, organization_id) {
       try {
         const asset_id = this.asset_id
-        const response = await fetch(`http://localhost:8000/api/report/add_subchapter`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/add_subchapter`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -499,7 +501,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     async updateReportOutlineRenameSubChapterTitle(chapterTitle, subChapterTitle, new_subChapterTitle) {
       const asset_id = this.asset_id
       try {
-        const response = await fetch(`http://localhost:8000/api/report/rename_subchapter`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/rename_subchapter`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -541,7 +543,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     async removeSubChapter_api(chapterTitle, subChapterTitle) {
       try {
         const asset_id = this.asset_id
-        const response = await fetch(`http://localhost:8000/api/report/delete_subchapter`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/delete_subchapter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -575,7 +577,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       this.loading.currentAction = 'generateText'
       try {
         const company_info_assetID = this.company_info_assetID
-        const response = await fetch(`http://localhost:8000/api/report/generate_text`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/generate_text`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -611,7 +613,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       this.loading.isGenerating = true
       this.loading.currentAction = 'criteriaCheck'
       try {
-        const response = await fetch(`http://localhost:8002/api/report/gri_verification_criteria_by_chapter`, {
+        const response = await fetch(`${configStore.apiBaseUrl2}/api/report/gri_verification_criteria_by_chapter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -656,7 +658,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 更新檢驗結果
     async updateVerificationResult(chapterTitle, guidelines) {
       try {
-        const response = await fetch(`http://localhost:8000/api/report/update_verification_result`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/update_verification_result`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -696,7 +698,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       this.loading.isGenerating = true
       this.loading.currentAction = 'generateImage'
       try {
-        const response = await fetch(`http://localhost:8000/api/report/generate_mermaid_image`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/generate_mermaid_image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: text })
@@ -741,7 +743,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 審核流程 - 建立審核流程實例
     async createWorkflowInstance(asset_id, organization_id, chapterTitle, user_id) {
       try {
-        const response = await fetch(`http://localhost:8000/api/report/create_workflow_instance`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/create_workflow_instance`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -797,7 +799,7 @@ export const useReportEditStore = defineStore('reportEdit', {
       }
 
       try {
-        const response = await fetch(`http://localhost:8000/api/report/create_workflow_submit_data`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/create_workflow_submit_data`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -830,7 +832,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     async createWorkflowSubmitRecord(workflow_instance_id, user_id, block_version_id) {
       // console.log('建立送出審核記錄', workflow_instance_id, user_id, block_version_id)
       try {
-        const response = await fetch(`http://localhost:8000/api/report/create_workflow_submit_record`, {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/create_workflow_submit_record`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -862,7 +864,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 獲取審核記錄
     async fetchReviewLogs(workflowInstanceID) {
       try {
-        const response = await fetch('http://localhost:8000/api/report/get_review_logs', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_review_logs`, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json'
@@ -884,7 +886,7 @@ export const useReportEditStore = defineStore('reportEdit', {
     // 獲取 workflowInstanceID
     async fetchWorkflowInstanceID(assetID, chapterTitle) {
       try {
-        const response = await fetch('http://localhost:8000/api/report/get_workflow_instance_id', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_workflow_instance_id`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

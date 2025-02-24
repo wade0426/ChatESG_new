@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
   state: () => ({
@@ -87,7 +89,7 @@ export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
           throw new Error('缺少必要參數')
         }
 
-        const response = await fetch('http://localhost:8000/api/organizations/get_standard_template', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/get_standard_template`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -162,7 +164,7 @@ export const useCriteriaTemplateStore = defineStore('criteriaTemplate', {
             console.log(requestData)
 
             // 發送請求到後端 API
-            const response = await fetch('http://localhost:8000/api/organizations/save_standard_template', {
+            const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/save_standard_template`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

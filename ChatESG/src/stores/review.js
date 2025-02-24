@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 export const useReviewStore = defineStore('review', () => {
   // 待審核列表
@@ -27,7 +29,7 @@ export const useReviewStore = defineStore('review', () => {
   // 獲取待審核列表
   const fetchPendingReviews = async (userID) => {
     try {
-        const response = await fetch('http://localhost:8000/api/report/get_pending_reviews', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_pending_reviews`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -49,7 +51,7 @@ export const useReviewStore = defineStore('review', () => {
   // 獲取審核資料內容
   const fetchReviewData = async (workflowInstanceID) => {
     try {
-        const response = await fetch('http://localhost:8000/api/report/get_submitted_data', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_submitted_data`, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json'
@@ -96,7 +98,7 @@ export const useReviewStore = defineStore('review', () => {
       // console.log("status", status)
       // console.log("comment", comment)
       // console.log("blockVersionID", currentReview.value.blockVersionID)
-      const response = await fetch('http://localhost:8000/api/report/submit_review', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/submit_review`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -123,7 +125,7 @@ export const useReviewStore = defineStore('review', () => {
   // 獲取審核歷程 - 狀態顯示
   const fetchReviewHistory = async (workflowInstanceID) => {
     try {
-      const response = await fetch('http://localhost:8000/api/report/get_review_progress', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_review_progress`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -150,7 +152,7 @@ export const useReviewStore = defineStore('review', () => {
   // 獲取審核記錄
   const fetchReviewLogs = async (workflowInstanceID) => {
     try {
-      const response = await fetch('http://localhost:8000/api/report/get_review_logs', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_review_logs`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -171,7 +173,7 @@ export const useReviewStore = defineStore('review', () => {
   // 根據 BlockVersionID 獲取歷史審核內容
   const fetchReviewContentByBlockVersionID = async (blockVersionID) => {
     try {
-      const response = await fetch('http://localhost:8000/api/report/get_review_content', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/get_review_content`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

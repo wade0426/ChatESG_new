@@ -38,10 +38,12 @@
 import { ref, reactive } from 'vue'
 import { useUserStore } from '../stores/user'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
 
 const emit = defineEmits(['template-created'])
 const userStore = useUserStore()
 const toast = useToast()
+const configStore = useConfigStore()
 
 const isVisible = ref(false)
 const templateName = ref("")
@@ -96,7 +98,7 @@ const hideModal = () => {
 const submitForm = async () => {
   if (validateForm()) {
     try {
-      const response = await fetch('http://localhost:8000/api/organizations/create_standard_template', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/create_standard_template`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

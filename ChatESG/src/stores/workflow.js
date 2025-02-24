@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 export const useWorkflowStore = defineStore('workflow', {
   state: () => ({
@@ -31,7 +33,7 @@ export const useWorkflowStore = defineStore('workflow', {
       try {
         this.loading = true
         // TODO: 替換為實際的 API 調用
-        const response = await axios.post(`http://localhost:8000/api/report/get_report_chapters`, {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/report/get_report_chapters`, {
           AssetID: reportId
         })
         
@@ -54,7 +56,7 @@ export const useWorkflowStore = defineStore('workflow', {
       try {
         this.loading = true
         // TODO: 替換為實際的 API 調用
-        const response = await axios.post(`http://localhost:8000/api/organization/approver-groups`, {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/organization/approver-groups`, {
           organizationID: organizationId
         })
         
@@ -76,7 +78,7 @@ export const useWorkflowStore = defineStore('workflow', {
     async fetchWorkflowSettings(reportId, chapterId) {
       try {
         this.loading = true
-        const response = await axios.post(`http://localhost:8000/api/report/get_workflow_stage`, {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/report/get_workflow_stage`, {
           assetID: reportId,
           chapterName: chapterId
         })
@@ -165,7 +167,7 @@ export const useWorkflowStore = defineStore('workflow', {
           }))
         }))
 
-        const response = await axios.post(`http://localhost:8000/api/report/save_workflow_stage`, {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/report/save_workflow_stage`, {
           assetID: reportId,
           chapterName: chapterId,
           stageSettings: formattedStages

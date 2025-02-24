@@ -52,6 +52,9 @@
 <script>
 // 導出模組默認內容，在一個文件中定義主要的功能或組件，可以被其他文件引用和使用。
 import { useUserStore } from '@/stores/user'
+import { useConfigStore } from '@/stores/config'
+
+const configStore = useConfigStore()
 
 export default {
   // 定義組件名稱
@@ -60,7 +63,7 @@ export default {
   // 使用組合式API設置Pinia store
   setup() {
     const userStore = useUserStore()
-    return { userStore }
+    return { userStore, configStore }
   },
 
   // 定義組件的響應式數據
@@ -83,7 +86,7 @@ export default {
     async handleLogin() {
       try {
         // 發送登入請求到後端API
-        const response = await fetch('http://localhost:8000/api/login', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

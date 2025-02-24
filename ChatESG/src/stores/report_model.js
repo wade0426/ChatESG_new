@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 export const useReportStore = defineStore('report_modal', {
   state: () => ({
@@ -30,7 +32,7 @@ export const useReportStore = defineStore('report_modal', {
     async fetchOrganizationAssets(organizationID) {
       try {
         this.loading = true
-        const response = await fetch('http://localhost:8000/api/organizations/get_organization_assets_for_modal', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/get_organization_assets_for_modal`, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json'
@@ -70,7 +72,7 @@ export const useReportStore = defineStore('report_modal', {
       try {
         this.loading = true
         console.log("發送的數據:", data)
-        const response = await fetch('http://localhost:8000/api/organizations/create_report', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/create_report`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

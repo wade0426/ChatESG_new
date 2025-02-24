@@ -179,11 +179,13 @@ import { ref, onMounted, onUnmounted, inject, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCompanyInfoStore } from '@/stores/companyInfo'
 import { useUserStore } from '@/stores/user'
+import { useConfigStore } from '@/stores/config'
 
 const router = useRouter()
 const route = useRoute()
 const companyInfoStore = useCompanyInfoStore()
 const userStore = useUserStore()
+const configStore = useConfigStore()
 // 注入父組件提供的儲存方法
 const handleSave = inject('handleSave')
 
@@ -384,7 +386,7 @@ const handleFileNameChange = async (event) => {
     }
 
     // 調用 API 來更新資產名稱
-    const response = await fetch('http://localhost:8000/api/organizations/update_asset_name', {
+    const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/update_asset_name`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

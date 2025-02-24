@@ -39,8 +39,10 @@
 
 <script>
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
 
 const toast = useToast()
+const configStore = useConfigStore()
 
 export default {
   name: 'EditMemberRoleModal',
@@ -127,7 +129,7 @@ export default {
           throw new Error('缺少組織ID');
         }
 
-        const response = await fetch('http://localhost:8000/api/organizations/update_member_roles', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/update_member_roles`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -112,6 +112,9 @@
   import { useUserStore } from '@/stores/user';
   import WorkflowSettingsModal from './WorkflowSettingsModal.vue';
   import { useToast } from 'vue-toastification';
+  import { useConfigStore } from '@/stores/config'
+
+  const configStore = useConfigStore()
   
   export default {
     name: 'ReportManagement',
@@ -172,7 +175,7 @@
       },
       async fetchReports() {
         try {
-          const response = await axios.post('http://localhost:8000/api/report/get_report_info', {
+          const response = await axios.post(`${configStore.apiBaseUrl}/api/report/get_report_info`, {
             organizationID: useUserStore().organizationID
           });
           

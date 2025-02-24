@@ -2,6 +2,9 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
+
 
 // 定義一個名為 'organization' 的 store
 export const organizationStore = defineStore('organization', {
@@ -61,7 +64,7 @@ export const organizationStore = defineStore('organization', {
         // 獲取組織資料
         async fetchOrganizationInfo(organizationId) {
             try {
-                const response = await axios.post('http://localhost:8000/api/organizations/info', {
+                const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/info`, {
                     organization_id: organizationId
                 })
 
@@ -141,7 +144,7 @@ export const organizationStore = defineStore('organization', {
                     return null
                 }
 
-                const response = await axios.post('http://localhost:8000/api/organizations/get_by_user', {
+                const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/get_by_user`, {
                     user_id: userID
                 })
 

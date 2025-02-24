@@ -122,6 +122,7 @@ import { useRouter } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import axios from 'axios'
+import { useConfigStore } from '@/stores/config'
 
 // 初始化 userStore 和 router
 const userStore = useUserStore()
@@ -130,6 +131,9 @@ const organizationId = computed(() => userStore.organizationID)
 
 // 初始化 toast
 const toast = useToast()
+
+// 初始化 configStore
+const configStore = useConfigStore()
 
 const searchQuery = ref('')
 const activeDropdown = ref(null)
@@ -161,7 +165,7 @@ const fetchAssets = async () => {
     try {
         loading.value = true
         error.value = null
-        const response = await axios.get('http://localhost:8000/api/organizations/get_organization_assets', {
+        const response = await axios.get(`${configStore.apiBaseUrl}/api/organizations/get_organization_assets`, {
             params: {
                 organization_id: organizationId.value
             }
@@ -274,7 +278,7 @@ const confirmRename = async () => {
 
     try {
         isRenaming.value = true
-        const response = await axios.post('http://localhost:8000/api/organizations/update_asset_name', {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/update_asset_name`, {
             asset_id: assetToRename.value.AssetId,
             organization_id: organizationId.value,
             asset_name: newAssetName.value.trim()
@@ -320,7 +324,7 @@ const confirmDelete = async () => {
 
     try {
         isDeleting.value = true
-        const response = await axios.post('http://localhost:8000/api/organizations/delete_asset', {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/delete_asset`, {
             asset_id: assetToDelete.value.AssetId,
             user_id: userStore.userID,
             organization_id: organizationId.value

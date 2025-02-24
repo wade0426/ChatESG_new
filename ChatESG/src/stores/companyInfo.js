@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { useUserStore } from './user'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 使用 user store
@@ -133,7 +135,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
 
   const updateSectionContent = async (blockId, content) => {
     try {
-      const response = await fetch('http://localhost:8000/api/organizations/update_company_table_block', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/update_company_table_block`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -167,7 +169,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
         throw new Error('缺少必要的用戶信息')
       }
       
-      const response = await fetch('http://localhost:8000/api/organizations/get_company_table_blocks', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/get_company_table_blocks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -200,7 +202,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 新增 fetchAssetContent 方法
   const fetchAssetContent = async (organizationId, assetId) => {
     try {
-      const response = await fetch('http://localhost:8000/api/organizations/get_asset_content', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/get_asset_content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -229,7 +231,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 新增_公司資料章節
   const addCompanyInfoChapter = async (assetId, chapterTitle, subchapterTitle, chapterLevel) => {
     try {
-      const response = await fetch('http://localhost:8000/api/report/add_company_info_chapter', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/add_company_info_chapter`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -261,7 +263,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 刪除_公司資料章節
   const deleteCompanyInfoChapter = async (assetId, chapterTitle, subchapterTitle, chapterLevel) => {
     try {
-      const response = await fetch('http://localhost:8000/api/report/delete_company_info_chapter', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/delete_company_info_chapter`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -292,7 +294,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 編輯_公司資料章節
   const editCompanyInfoChapter = async (assetId, chapterTitle, subchapterTitle, newChapterTitle, chapterLevel) => {
     try {
-      const response = await fetch('http://localhost:8000/api/report/edit_company_info_chapter_title', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/report/edit_company_info_chapter_title`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -324,7 +326,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 新增提示相關的方法
   const fetchHint = async (title) => {
     try {
-      const response = await fetch('http://localhost:8000/api/hints/get_hint', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/hints/get_hint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -357,7 +359,7 @@ export const useCompanyInfoStore = defineStore('companyInfo', () => {
   // 生成提示
   const generateHint = async (title) => {
     try {
-      const response = await fetch('http://localhost:8000/api/hints/generate_hint', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/hints/generate_hint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

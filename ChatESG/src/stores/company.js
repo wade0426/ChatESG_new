@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 export const useCompanyStore = defineStore('company', () => {
   // 產業列表
@@ -45,7 +47,7 @@ export const useCompanyStore = defineStore('company', () => {
       }
       
       // 發送 API 請求
-      const response = await fetch('http://localhost:8000/api/organizations/create_company_table', {
+      const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/create_company_table`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

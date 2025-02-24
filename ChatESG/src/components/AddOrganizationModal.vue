@@ -26,8 +26,10 @@
   <script setup>
   import { ref, reactive } from 'vue'
   import { useUserStore } from '../stores/user'
-  
+  import { useConfigStore } from '../stores/config'
+
   const userStore = useUserStore()
+  const configStore = useConfigStore()
   const isVisible = ref(false)
   const organizationId = ref("")
   
@@ -68,7 +70,7 @@
   const submitForm = () => {
     if (validateForm()) {
       // 呼叫 API 加入組織
-      fetch('http://localhost:8000/api/organizations/apply', {
+      fetch(`${configStore.apiBaseUrl}/api/organizations/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

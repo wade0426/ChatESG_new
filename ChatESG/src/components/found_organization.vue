@@ -64,10 +64,12 @@ import { useUserStore } from '../stores/user'
 import debounce from 'lodash/debounce'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import { useConfigStore } from '@/stores/config'
 
 const router = useRouter()
 const isSidebarOpen = ref(false)
 const userStore = useUserStore()
+const configStore = useConfigStore()
 
 const openNav = () => {
   isSidebarOpen.value = true
@@ -174,7 +176,7 @@ const handleSubmit = async () => {
 
   try {
     isSubmitting.value = true
-    const response = await fetch('http://localhost:8000/api/organizations/found', {
+    const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/found`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

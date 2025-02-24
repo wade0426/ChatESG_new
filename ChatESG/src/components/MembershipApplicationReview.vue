@@ -51,9 +51,11 @@
 <script>
 import axios from 'axios'
 import { organizationStore } from '../stores/organization'
-import { storeToRefs } from 'pinia'
 import { useUserStore } from '../stores/user'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
+
+const configStore = useConfigStore()
 
 export default {
   name: 'MembershipApplicationReview',
@@ -99,7 +101,7 @@ export default {
           throw new Error('未找到組織ID')
         }
         
-        const response = await axios.post('http://localhost:8000/api/organizations/get_applications', {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/get_applications`, {
           organization_id: store.organizationId
         })
 
@@ -142,7 +144,7 @@ export default {
         const store = organizationStore()
         const userStore = useUserStore()
         
-        const response = await axios.post('http://localhost:8000/api/organizations/check_join', {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/check_join`, {
           application_id: application.id,
           reviewer_id: userStore.userID,
           is_approved: true
@@ -166,7 +168,7 @@ export default {
         const store = organizationStore()
         const userStore = useUserStore()
         
-        const response = await axios.post('http://localhost:8000/api/organizations/check_join', {
+        const response = await axios.post(`${configStore.apiBaseUrl}/api/organizations/check_join`, {
           application_id: application.id,
           reviewer_id: userStore.userID,
           is_approved: false

@@ -79,6 +79,7 @@ import { onMounted, ref, computed } from 'vue'
 import RoleManagementModal from './RoleManagementModal.vue'
 import EditMemberRoleModal from './EditMemberRoleModal.vue'
 import { useToast } from 'vue-toastification'
+import { useConfigStore } from '@/stores/config'
 
 export default {
   name: 'OrganizationMember',
@@ -88,6 +89,7 @@ export default {
   },
   setup() {
     const toast = useToast()
+    const configStore = useConfigStore()
     const store = organizationStore()
     const { members, roles, organizationId } = storeToRefs(store)
 
@@ -129,7 +131,7 @@ export default {
     const removeMember = async (member) => {
       if (confirm(`確定要移除 ${member.name} 嗎？`)) {
         try {
-          const response = await fetch('http://localhost:8000/api/organizations/delete_member', {
+          const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/delete_member`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -163,7 +165,7 @@ export default {
     const saveMemberRoles = async (newRoles) => {
       if (selectedMember.value?.email) {
         try {
-          const response = await fetch('http://localhost:8000/api/organizations/update_member_roles', {
+          const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/update_member_roles`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -211,7 +213,7 @@ export default {
         }
 
         // 呼叫 API
-        const response = await fetch("http://localhost:8000/api/organizations/update_role", {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/update_role`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -274,7 +276,7 @@ export default {
         });
 
         try {
-          const response = await fetch('http://localhost:8000/api/organizations/delete_role', {
+          const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/delete_role`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -319,7 +321,7 @@ export default {
     const handleAddRole = async (newRole) => {
       console.log('新增的身份組資料:', newRole);
       try {
-        const response = await fetch('http://localhost:8000/api/organizations/add_role', {
+        const response = await fetch(`${configStore.apiBaseUrl}/api/organizations/add_role`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

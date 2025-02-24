@@ -37,6 +37,10 @@
 </template>
 
 <script>
+import { useConfigStore } from '@/stores/config'
+
+const configStore = useConfigStore()
+
 export default {
     name: 'Signup',
     data() {
@@ -74,7 +78,7 @@ export default {
             if(!this.isFormValid) return
 
             try {
-                const response = await fetch('http://localhost:8000/api/register', {
+                const response = await fetch(`${configStore.apiBaseUrl}/api/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
