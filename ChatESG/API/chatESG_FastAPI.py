@@ -3324,7 +3324,7 @@ def convert_base64_to_url(base64_string, output_dir="images", filename=None):
         with open(filepath, 'wb') as f:
             f.write(image_data)
 
-        return "http://localhost:8001/" + filepath
+        return "https://4090p8001.huanna.live/" + filepath
 
     except Exception as e:
         print(f"儲存圖片失敗: {e}")
@@ -4667,7 +4667,7 @@ async def generate_text(data: dict):
                 # 建立物件
                 generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
                 # 獲取訓練數據
-                url = "http://localhost:8001/api/Sample_Report.json"
+                url = "https://4090p8001.huanna.live/api/Sample_Report.json"
                 messages = generator.get_messages(category, chapter_title, sub_chapter_title, url)
 
                 prompt = output_text
@@ -4814,8 +4814,8 @@ async def generate_mermaid_image(data: dict):
                 raise HTTPException(status_code=500, detail=f"生成圖片失敗: {str(e)}")
 
             # 構建圖片URL
-            image_url = f"http://localhost:8000/images/{unique_id}.png"
-            image_url = f"http://localhost:8001/images/9d5ced66-2019-4ad2-8d39-5f659ac13223.png"
+            # image_url = f"http://localhost:8000/images/{unique_id}.png"
+            image_url = f"https://4090p8001.huanna.live/images/9d5ced66-2019-4ad2-8d39-5f659ac13223.png"
             
             return {
                 "status": "success",
