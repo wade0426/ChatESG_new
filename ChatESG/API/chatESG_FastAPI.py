@@ -5984,7 +5984,7 @@ async def get_hint(data: dict):
     # 獲取提示
     # "D:/NTCUST/Project/ChatESG_new/definition/tipsMap.json"
     current_path = os.getcwd()  # 取得當前工作目錄
-    target_path = os.path.abspath(os.path.join(current_path, "..", "definition"))  # 退一層後進入 definition 資料夾
+    target_path = os.path.abspath(os.path.join(current_path, "definition"))  # 進入 definition 資料夾
     tips_map_path = os.path.join(target_path, "tipsMap.json")
     with open(tips_map_path, "r", encoding="utf-8") as file:
         # 產業暫時固定為金融業
