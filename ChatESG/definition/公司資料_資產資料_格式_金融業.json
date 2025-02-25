@@ -1,0 +1,840 @@
+{
+  "AssetID": "UUID",
+  "chapters": [
+    {
+      "chapterTitle": "關於本報告書",
+      "subChapters": [
+        {
+          "subChapterTitle": "關於本報告書",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公司名稱",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "報告期間",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "範疇與邊界",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "報告書撰寫原則",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "聯絡資訊",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "長官的話",
+      "subChapters": [
+        {
+          "subChapterTitle": "長官的話",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公司歷史與成就",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "經營成果與財務績效",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "永續發展策略與目標",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "氣候變遷與環境承諾",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "數位轉型與創新",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "社會責任與公益",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "未來展望",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "永續績效",
+      "subChapters": [
+        {
+          "subChapterTitle": "永續績效",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "環境",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "社會",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "治理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "榮耀與肯定",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "關於本公司",
+      "subChapters": [
+        {
+          "subChapterTitle": "關於本公司",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "產業類別",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "總部位置",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "成立日期",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "資本額",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "實收資本額",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "資產總額",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "員工人數",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "股票代號",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "業務範圍",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "經營據點",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "經營績效",
+      "subChapters": [
+        {
+          "subChapterTitle": "經營績效",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "營運績效",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "財務績效",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "稅務管理",
+      "subChapters": [
+        {
+          "subChapterTitle": "稅務管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "稅務治理政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "所得稅資訊",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "國別稅務資訊",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "永續發展策略",
+      "subChapters": [
+        {
+          "subChapterTitle": "永續治理架構",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續發展委員會",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "永續發展藍圖",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續策略主軸",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "永續目標",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "重大主題分析",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "重大主題鑑別流程",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "重大主題管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "利害關係人溝通",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "利害關係人鑑別",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "利害關係人議和",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "公司治理",
+      "subChapters": [
+        {
+          "subChapterTitle": "公司治理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公司治理架構",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "董事會組成及運作",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "董事會績效評估",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "董事進修",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "薪酬政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "誠信經營",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "誠信經營架構與政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "誠信經營落實",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "誠信經營風險評估",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "教育訓練",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "檢舉制度",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "法令遵循",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "法令遵循架構與管理機制",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "防制洗錢及打擊資恐",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "風險管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "風險管理架構與政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "風險管理機制",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "主要風險管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "新興風險管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "資訊安全管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "資訊安全治理架構與政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "資訊安全教育訓練",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "隱私權保護",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "隱私保護政策與管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "永續金融",
+      "subChapters": [
+        {
+          "subChapterTitle": "永續金融",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續金融政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "責任投資",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "責任投資政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "PRI六大原則與執行成果",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "永續投資",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "責任授信",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "一般授信流程",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "一般融資商品 ",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "赤道原則與授信流程",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "專案融資",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "永續保險",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "永續保險原則",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "永續保險商品",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "普惠金融",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "普惠金融政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "普惠金融商品與服務",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "數位金融",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "數位創新策略",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "金融創新服務",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "AI應用",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "客戶關係管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公平待客原則",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "公平待客教育訓練",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "客戶申訴流程",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "客戶滿意度",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "永續環境",
+      "subChapters": [
+        {
+          "subChapterTitle": "氣候變遷行動",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "氣候治理架構",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "氣候策略",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "氣候風險管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "溫室氣體管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "溫室氣體排放情形",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "範疇三各類溫室氣體排放量",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "能源管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "能源使用情形",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "再生能源使用",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "水資源管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "水資源管理作為",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "節水措施",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "廢棄物管理",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "廢棄物管理作為",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "廢棄物減量措施",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "無紙化推動",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "節能減碳",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "節能減碳行動",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "內部碳定價",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "永續供應鏈",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "供應商管理政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "綠色採購",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "員工關懷",
+      "subChapters": [
+        {
+          "subChapterTitle": "人才吸引",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "員工雇用狀況",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "人才招募",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "新進及離職員工分布",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "多元任用",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "人才培育與發展",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "員工教育訓練",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "員工教育訓練統計",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "員工發展計畫",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "輪調制度",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "人才薪酬與福利",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "員工薪酬政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "員工薪資數據",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "員工福利政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "人權及性別平等",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "人權政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "人權盡職調查",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "人權議題管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "職場安全與健康",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "職場安全與健康管理政策",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "工傷職災狀況",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "職場安全管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "安全與健康風險管理",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "職業安全訓練",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "chapterTitle": "社會共榮",
+      "subChapters": [
+        {
+          "subChapterTitle": "社會公益策略",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "公益策略主軸",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "公益投入",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "公益類型",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "志工投入",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        },
+        {
+          "subChapterTitle": "社會公益專案",
+          "subSubChapters": [
+            {
+              "subSubChapterTitle": "金融教育",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "藝文推廣",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            },
+            {
+              "subSubChapterTitle": "體育推動",
+              "BlockID": "UUID",
+              "access_permissions": "PermissionChapterID"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
