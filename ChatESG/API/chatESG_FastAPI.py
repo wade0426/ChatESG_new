@@ -2927,7 +2927,7 @@ async def create_report(data: dict):
 
                     # 新增報告書_公司資料_對應表
                     await cur.execute(
-                        "INSERT INTO `reportcompanyinfomapping` (`MappingID`, `ReportID`, `CompanyInfoID`, `CreatedAt`) VALUES (NULL, %s, %s, current_timestamp())",
+                        "INSERT INTO `ReportCompanyInfoMapping` (`MappingID`, `ReportID`, `CompanyInfoID`, `CreatedAt`) VALUES (NULL, %s, %s, current_timestamp())",
                         (new_asset_id, company_info_asset_id)
                     )
 
