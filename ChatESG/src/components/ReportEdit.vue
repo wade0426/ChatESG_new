@@ -155,14 +155,26 @@
               class="subchapter-block"
             >
               <h3 class="subchapter-title">{{ subChapter.subChapterTitle }}</h3>
-              <!-- 大章節的文字輸入框僅供顯示不能修改 -->
-              <textarea 
-                v-model="sectionContents[subChapter.BlockID]" 
-                class="content-textarea"
-                :placeholder="'請輸入' + subChapter.subChapterTitle + '的內容...'"
-                @input="() => handleContentChange(subChapter.BlockID)"
-                disabled
-              ></textarea>
+              <!-- 替換為自定義div内容展示 -->
+              <div class="content-container">
+                <div 
+                  class="content-display" 
+                  :class="{ 'expanded': expandedContents[subChapter.BlockID] }"
+                >
+                  <div class="content-text" v-html="formatContentWithParagraphs(sectionContents[subChapter.BlockID])"></div>
+                </div>
+                <!-- 展開/收起按鈕 -->
+                <div class="expand-toggle">
+                  <button 
+                    class="expand-btn" 
+                    @click="toggleContentExpand(subChapter.BlockID)"
+                    v-if="shouldShowExpandButton(sectionContents[subChapter.BlockID])"
+                  >
+                    <i :class="['mdi', expandedContents[subChapter.BlockID] ? 'mdi-chevron-up' : 'mdi-chevron-down']"></i>
+                    <span>{{ expandedContents[subChapter.BlockID] ? '收起' : '展開全部' }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -236,12 +248,14 @@
               </div>
             </div>
 
-            <textarea 
-              v-model="sectionContents[selectedSection]" 
-              class="content-textarea"
+            <!-- 替換為可編輯的div元素 -->
+            <div 
+              class="editable-content" 
+              contenteditable="true"
               :placeholder="'請輸入' + getCurrentSectionTitle() + '的內容...'"
-              @input="() => handleContentChange(selectedSection)"
-            ></textarea>
+              @input="handleEditableContentInput"
+              ref="editableContent"
+            ></div>
             
             <!-- 圖片上傳區域 -->
             <div class="image-upload-area">
@@ -475,6 +489,9 @@ const comments = ref({})
 const showCommentPanel = ref(false)
 const imageInput = ref(null)
 const currentImages = ref([])
+
+// 展開/折疊內容相關
+const expandedContents = ref({})
 
 // 審核歷程相關
 const reviewHistoryDialogVisible = ref(false)
@@ -1090,6 +1107,69 @@ const getLoadingMessage = computed(() => {
       return '處理中，請稍後...'
   }
 })
+
+// 格式化內容，添加段落分隔
+const formatContentWithParagraphs = (content) => {
+  if (!content) return ''
+  // 將文本內容按段落分隔並添加樣式
+  return content
+    .split('\n')
+    .map(paragraph => paragraph.trim())
+    .filter(paragraph => paragraph.length > 0)
+    .map(paragraph => `<p class="content-paragraph">${paragraph}</p>`)
+    .join('')
+}
+
+// 判斷是否顯示展開按鈕
+const shouldShowExpandButton = (content) => {
+  if (!content) return false
+  // 根據內容長度或行數決定是否顯示展開按鈕
+  const lines = content.split('\n').filter(line => line.trim().length > 0)
+  return lines.length > 5 || content.length > 500
+}
+
+// 切換內容展開/折疊狀態
+const toggleContentExpand = (blockId) => {
+  expandedContents.value[blockId] = !expandedContents.value[blockId]
+}
+
+// 處理可編輯內容的輸入事件
+const handleEditableContentInput = (event) => {
+  sectionContents.value[selectedSection.value] = event.target.innerHTML
+  handleContentChange(selectedSection.value)
+}
+
+// 監聽選中的章節變化，更新可編輯div的內容
+watch(selectedSection, (newSection) => {
+  if (newSection) {
+    nextTick(() => {
+      const editableContentElement = document.querySelector('.editable-content')
+      if (editableContentElement && isSubChapter(newSection)) {
+        // 轉換存儲的內容為HTML格式
+        const formattedContent = formatContentToHtml(sectionContents.value[newSection] || '')
+        editableContentElement.innerHTML = formattedContent
+      }
+    })
+  }
+})
+
+// 將純文本內容轉換為HTML
+const formatContentToHtml = (content) => {
+  if (!content) return ''
+  
+  // 如果內容已經是HTML，直接返回
+  if (content.includes('<p') || content.includes('<div')) {
+    return content
+  }
+  
+  // 將純文本轉換為段落
+  return content
+    .split('\n')
+    .map(paragraph => paragraph.trim())
+    .filter(paragraph => paragraph.length > 0)
+    .map(paragraph => `<p>${paragraph}</p>`)
+    .join('')
+}
 </script>
 
 <style scoped>
@@ -2673,5 +2753,172 @@ const getLoadingMessage = computed(() => {
 
 .dark .history-btn:hover {
   background-color: #2D3748;
+}
+
+.content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.content-display {
+  max-height: 200px;
+  overflow: hidden;
+  transition: max-height 0.5s ease;
+  background-color: var(--bg-color-light);
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.content-display.expanded {
+  max-height: 2000px;
+}
+
+.content-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.content-paragraph {
+  margin-bottom: 0.8rem;
+  position: relative;
+  padding-bottom: 0.8rem;
+}
+
+.content-paragraph:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.expand-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  background-color: var(--bg-color-light);
+  font-size: 0.9rem;
+}
+
+.expand-btn:hover {
+  color: #2563eb;
+  background-color: var(--bg-color-hover);
+}
+
+.expand-btn:active {
+  transform: translateY(1px);
+}
+
+.dark .content-display {
+  background-color: #2D3748;
+}
+
+.dark .expand-btn {
+  background-color: #2D3748;
+}
+
+.dark .expand-btn:hover {
+  background-color: #3A4A5E;
+}
+
+.light .content-display {
+  background-color: #F7FAFC;
+}
+
+.light .expand-btn {
+  background-color: #F7FAFC;
+}
+
+.light .expand-btn:hover {
+  background-color: #EDF2F7;
+}
+
+.light .content-paragraph:not(:last-child)::after {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.editable-content {
+  width: 100%;
+  min-height: 300px;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: inherit;
+  line-height: 1.5;
+  font-size: var(--editor-font-size, 16px);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #000000;
+  position: relative;
+  transition: all 0.2s;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.editable-content:empty:before {
+  content: attr(placeholder);
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  color: #a0aec0;
+  pointer-events: none;
+}
+
+.editable-content:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.editable-content p {
+  margin-bottom: 0.8rem;
+  position: relative;
+  padding-bottom: 0.8rem;
+}
+
+.editable-content p:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .editable-content {
+  background-color: #1a1a1a;
+  border-color: #2d2d2d;
+  color: #ffffff;
+}
+
+.dark .editable-content:empty:before {
+  color: #718096;
+}
+
+.dark .editable-content:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+}
+
+.dark .editable-content p:not(:last-child)::after {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style>
