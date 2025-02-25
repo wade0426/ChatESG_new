@@ -4667,7 +4667,7 @@ async def generate_text(data: dict):
                 # 建立物件
                 generator = GeminiGenerator(api_keys, model_name, config, base_url, max_retry)
                 # 獲取訓練數據
-                url = "https://4090p8001.huanna.live/api/Sample_Report.json"
+                url = "https://4090p8001.huanna.live/API/Sample_Report.json"
                 messages = generator.get_messages(category, chapter_title, sub_chapter_title, url)
 
                 prompt = output_text
