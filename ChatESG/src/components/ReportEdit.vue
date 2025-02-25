@@ -160,6 +160,7 @@
                 <div 
                   class="content-display" 
                   :class="{ 'expanded': expandedContents[subChapter.BlockID] }"
+                  :data-block-id="subChapter.BlockID"
                 >
                   <div class="content-text" v-html="formatContentWithParagraphs(sectionContents[subChapter.BlockID])"></div>
                 </div>
@@ -168,7 +169,7 @@
                   <button 
                     class="expand-btn" 
                     @click="toggleContentExpand(subChapter.BlockID)"
-                    v-if="shouldShowExpandButton(sectionContents[subChapter.BlockID])"
+                    v-if="shouldShowExpandButton(sectionContents[subChapter.BlockID]) || isContentOverflowing(subChapter.BlockID)"
                   >
                     <i :class="['mdi', expandedContents[subChapter.BlockID] ? 'mdi-chevron-up' : 'mdi-chevron-down']"></i>
                     <span>{{ expandedContents[subChapter.BlockID] ? '收起' : '展開全部' }}</span>
@@ -585,6 +586,30 @@ watch(selectedSection, (newSection) => {
   }
 })
 
+// 監聽選中的章節變化，更新展開狀態
+watch(selectedSection, (newSection) => {
+  if (newSection) {
+    if (isSubChapter(newSection)) {
+      // 如果是中章節，檢查內容並更新展開狀態
+      const content = sectionContents.value[newSection] || '';
+      if (shouldShowExpandButton(content) && !expandedContents.value.hasOwnProperty(newSection)) {
+        // 默認設置為未展開狀態
+        expandedContents.value[newSection] = false;
+      }
+    } else {
+      // 如果是大章節，檢查所有子章節
+      const subChapters = getSubChapters(newSection);
+      subChapters.forEach(subChapter => {
+        const content = sectionContents.value[subChapter.BlockID] || '';
+        if (shouldShowExpandButton(content) && !expandedContents.value.hasOwnProperty(subChapter.BlockID)) {
+          // 默認設置為未展開狀態
+          expandedContents.value[subChapter.BlockID] = false;
+        }
+      });
+    }
+  }
+})
+
 // 拖曳相關狀態
 const drag = ref(false)
 
@@ -691,7 +716,43 @@ onMounted(async () => {
   })
   
   initializeExpandedSections()
+  
+  // 初始化完成後，檢查內容溢出
+  nextTick(() => {
+    setTimeout(() => {
+      checkContentOverflow();
+      // 預載入展開狀態
+      preloadExpandStates();
+    }, 800);
+  });
 })
+
+// 預載入所有章節的展開狀態
+const preloadExpandStates = () => {
+  reportEditStore.chapters.forEach(chapter => {
+    chapter.subChapters.forEach(subChapter => {
+      // 獲取內容
+      const content = reportEditStore.getSubChapterContent(subChapter.BlockID).text_content || '';
+      // 判斷是否需要展開按鈕
+      if (shouldShowExpandButton(content) || content.length > 150) {
+        // 設置默認為未展開
+        if (!expandedContents.value.hasOwnProperty(subChapter.BlockID)) {
+          expandedContents.value[subChapter.BlockID] = false;
+        }
+      }
+    });
+  });
+}
+
+// 監聽報告書數據變化
+watch(() => reportEditStore.chapters, () => {
+  nextTick(() => {
+    setTimeout(() => {
+      checkContentOverflow();
+      preloadExpandStates();
+    }, 500);
+  });
+}, { deep: true });
 
 const toggleSection = (chapterTitle) => {
   if (expandedSections.value.has(chapterTitle)) {
@@ -1123,15 +1184,73 @@ const formatContentWithParagraphs = (content) => {
 // 判斷是否顯示展開按鈕
 const shouldShowExpandButton = (content) => {
   if (!content) return false
+  
+  // 處理HTML內容
+  let textContent = content;
+  if (content.includes('<') && content.includes('>')) {
+    // 創建臨時DOM元素來解析HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    textContent = tempDiv.textContent || tempDiv.innerText || '';
+  }
+  
   // 根據內容長度或行數決定是否顯示展開按鈕
-  const lines = content.split('\n').filter(line => line.trim().length > 0)
-  return lines.length > 5 || content.length > 500
+  const lines = textContent.split('\n').filter(line => line.trim().length > 0);
+  
+  // 如果內容超過200px可能會被截斷，則顯示展開按鈕
+  // 或者行數超過3行，或者總字符數超過300
+  return lines.length > 3 || textContent.length > 300 || textContent.length > 150;
 }
 
 // 切換內容展開/折疊狀態
 const toggleContentExpand = (blockId) => {
   expandedContents.value[blockId] = !expandedContents.value[blockId]
 }
+
+// 在組件掛載時初始化DOM檢測
+onMounted(() => {
+  nextTick(() => {
+    // 延遲執行以確保DOM已完全渲染
+    setTimeout(checkContentOverflow, 500);
+  });
+});
+
+// 檢查內容是否超出容器
+const checkContentOverflow = () => {
+  const contentDisplays = document.querySelectorAll('.content-display');
+  contentDisplays.forEach(display => {
+    const blockId = display.getAttribute('data-block-id');
+    if (blockId) {
+      const isOverflowing = display.scrollHeight > display.clientHeight;
+      // 如果內容超出且未設置狀態，則顯示展開按鈕
+      if (isOverflowing && !expandedContents.value.hasOwnProperty(blockId)) {
+        expandedContents.value[blockId] = false;
+        // 強制更新視圖
+        nextTick();
+      }
+    }
+  });
+}
+
+// 檢查特定區塊是否溢出
+const isContentOverflowing = (blockId) => {
+  // 先嘗試從DOM獲取信息
+  const contentElement = document.querySelector(`.content-display[data-block-id="${blockId}"]`);
+  if (contentElement) {
+    return contentElement.scrollHeight > contentElement.clientHeight;
+  }
+  
+  // 如果未找到元素，則嘗試其他方法判斷
+  const content = sectionContents.value[blockId] || '';
+  return content.length > 150; // 使用一個保守的判斷
+}
+
+// 添加監聽視圖更新
+watch(() => sectionContents.value, () => {
+  nextTick(() => {
+    setTimeout(checkContentOverflow, 300);
+  });
+}, { deep: true });
 
 // 處理可編輯內容的輸入事件
 const handleEditableContentInput = (event) => {
@@ -2773,7 +2892,7 @@ const formatContentToHtml = (content) => {
 }
 
 .content-display.expanded {
-  max-height: 2000px;
+  max-height: none;
 }
 
 .content-text {
