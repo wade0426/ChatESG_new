@@ -409,8 +409,8 @@ async def create_organization(organization: Organization):
                         VALUES (%s, %s, %s)
                     """, (role_id, organization_id, role_name))
                     
-                    # 如果是資訊部角色，將其分配給創建者
-                    if role_name == "資訊部":
+                    # 如果是資訊部或一般角色，將其分配給創建者
+                    if role_name == "資訊部" or role_name == "一般":
                         await cur.execute("""
                             INSERT INTO UserRoles (UserID, RoleID, OrganizationID)
                             VALUES (%s, %s, %s)
