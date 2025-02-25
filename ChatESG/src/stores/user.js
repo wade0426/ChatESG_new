@@ -1,5 +1,7 @@
 // 引入 Pinia 的 defineStore 函數
 import { defineStore } from 'pinia'
+import { useConfigStore } from '@/stores/config'
+const configStore = useConfigStore()
 
 // 定義一個名為 'user' 的 store
 export const useUserStore = defineStore('user', {
@@ -60,7 +62,7 @@ export const useUserStore = defineStore('user', {
         // 更新用戶資料
         async fetchUserProfile(retryCount = 3) {
             try {
-                const response = await fetch('http://localhost:8000/api/user/profile/Personal_Information', {
+                const response = await fetch(`${configStore.apiBaseUrl}/api/user/profile/Personal_Information`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -74,7 +76,7 @@ export const useUserStore = defineStore('user', {
                     console.error('API請求失敗:', response.status, response.statusText)
                     const errorText = await response.text()
                     console.error('錯誤詳情:', errorText)
-                    
+
                     // 如果還有重試次數，則等待後重試
                     if (retryCount > 0) {
                         console.log(`重試獲取用戶資料，剩餘重試次數: ${retryCount - 1}`)
@@ -94,7 +96,7 @@ export const useUserStore = defineStore('user', {
                 if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
                     console.error('無法連接到後端服務器，請確保服務器正在運行')
                 }
-                
+
                 // 如果還有重試次數，則等待後重試
                 if (retryCount > 0) {
                     console.log(`重試獲取用戶資料，剩餘重試次數: ${retryCount - 1}`)
@@ -117,7 +119,7 @@ export const useUserStore = defineStore('user', {
         // 更新用戶名
         async updateUsername(newUsername) {
             try {
-                const response = await fetch('http://localhost:8000/api/user/profile/Change_Username', {
+                const response = await fetch(`${configStore.apiBaseUrl}/api/user/profile/Change_Username`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -141,7 +143,7 @@ export const useUserStore = defineStore('user', {
         // 更新密碼
         async updatePassword(currentPassword, newPassword) {
             try {
-                const response = await fetch('http://localhost:8000/api/user/profile/Change_Password', {
+                const response = await fetch(`${configStore.apiBaseUrl}/api/user/profile/Change_Password`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
