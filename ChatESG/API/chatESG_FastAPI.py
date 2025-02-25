@@ -5661,6 +5661,7 @@ async def submit_review(data: dict):
 
                 # 記錄審核日誌
                 approval_log_id = uuid.uuid4()
+                approval_log_id_binary = approval_log_id.bytes  # 將 UUID 物件轉換為 bytes
                 await cur.execute("""
                     INSERT INTO StageApprovalLogs (
                         ApprovalStageLogID, WorkflowInstanceID, WorkflowStageID,
@@ -5672,7 +5673,7 @@ async def submit_review(data: dict):
                         CURRENT_TIMESTAMP, %s
                     )
                 """, (
-                    approval_log_id, workflow_instance_id_binary, current_stage_id,
+                    approval_log_id_binary, workflow_instance_id_binary, current_stage_id,
                     reviewer_id_binary, review_action, review_comment,
                     block_version_id_binary
                 ))
