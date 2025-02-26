@@ -788,7 +788,7 @@ export const useReportEditStore = defineStore('reportEdit', {
           guidelines: chapterTitle_data.guidelines || {},
           subChapters: chapterTitle_data.subChapters.map(sub => ({
             subChapterTitle: sub.subChapterTitle,
-            txt: sub.text_content,
+            txt: sub.text_content ? sub.text_content.replace(/<p>/g, '').replace(/<\/p>/g, '').replace(/<br\s*\/?>/g, '\n\n').replace(/<[^>]*>/g, '') : "", // 移除HTML標籤
             img_content: sub.img_content_url.map(img => ({
               url: img.url || img,
               title: img.title || '',
