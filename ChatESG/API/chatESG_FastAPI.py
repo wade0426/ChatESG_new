@@ -5277,6 +5277,18 @@ async def create_workflow_submit_data(data: dict):
     # 檢查必要參數
     if not all([user_id, submitted_content]):
         raise HTTPException(status_code=400, detail="缺少必要參數")
+    
+    # 取得 submitted_content 的 subChapters 的 txt 內容
+    # 改變格式 取代掉 <p> 和 </p> 並且把 <br> 改成 \n
+    # if isinstance(submitted_content, dict) and "chapters" in submitted_content:
+    #     for chapter in submitted_content["chapters"]:
+    #         if "subChapters" in chapter:
+    #             for sub_chapter in chapter["subChapters"]:
+    #                 if "txt" in sub_chapter:
+    #                     sub_chapter_txt = sub_chapter["txt"]
+    #                     sub_chapter_txt = sub_chapter_txt.replace("<p>", "").replace("</p>", "").replace("<br>", "\n")
+    #                     sub_chapter["txt"] = sub_chapter_txt
+    # 已改成前端處理
 
     # 連接資料庫
     pool = await get_db_pool()
